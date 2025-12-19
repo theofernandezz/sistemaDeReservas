@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+
+  @media (width >=--theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+
+  @media (width >=1400px) {
+    max-width: 1400px;
+  }
+}
+
+:root {
+  /* Siv Nails - Pink Palette */
+  --background: 350 50% 98%;
+  /* Soft Pink White */
+  --foreground: 240 5% 15%;
+  /* Soft Charcoal */
+
+  --card: 0 0% 100%;
+  --card-foreground: 240 5% 15%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 5% 15%;
+
+  --primary: 330 85% 50%;
+  /* Vibrant Pink/Magenta */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 350 30% 95%;
+  /* Soft Pink */
+  --secondary-foreground: 240 5% 15%;
+
+  --muted: 350 20% 94%;
+  --muted-foreground: 240 4% 46%;
+
+  --accent: 330 70% 92%;
+  /* Light Pink Accent */
+  --accent-foreground: 330 85% 35%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 350 15% 90%;
+  --input: 350 15% 90%;
+  --ring: 330 85% 50%;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* Luxe Night Palette */
+  --background: 240 5% 10%;
+  /* Deep Gunmetal */
+  --foreground: 40 10% 96%;
+  /* Soft White */
+
+  --card: 240 5% 12%;
+  --card-foreground: 40 10% 96%;
+
+  --popover: 240 5% 12%;
+  --popover-foreground: 40 10% 96%;
+
+  --primary: 40 10% 96%;
+  --primary-foreground: 240 5% 10%;
+
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 40 10% 96%;
+
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 64%;
+
+  --accent: 240 4% 16%;
+  --accent-foreground: 40 10% 96%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 40 10% 96%;
+
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 240 4% 83%;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+}
