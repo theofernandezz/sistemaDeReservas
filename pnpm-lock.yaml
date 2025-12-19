@@ -17,6 +17,9 @@ importers:
       '@fullcalendar/interaction':
         specifier: ^6.1.19
         version: 6.1.19(@fullcalendar/core@6.1.19)
+      '@fullcalendar/list':
+        specifier: ^6.1.19
+        version: 6.1.19(@fullcalendar/core@6.1.19)
       '@fullcalendar/react':
         specifier: ^6.1.19
         version: 6.1.19(@fullcalendar/core@6.1.19)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -236,6 +239,11 @@ packages:
 
   '@fullcalendar/interaction@6.1.19':
     resolution: {integrity: sha512-GOciy79xe8JMVp+1evAU3ytdwN/7tv35t5i1vFkifiuWcQMLC/JnLg/RA2s4sYmQwoYhTw/p4GLcP0gO5B3X5w==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.19
+
+  '@fullcalendar/list@6.1.19':
+    resolution: {integrity: sha512-knZHpAVF0LbzZpSJSUmLUUzF0XlU/MRGK+Py2s0/mP93bCtno1k2L3XPs/kzh528hSjehwLm89RgKTSfW1P6cA==}
     peerDependencies:
       '@fullcalendar/core': ~6.1.19
 
@@ -2547,6 +2555,10 @@ snapshots:
       '@fullcalendar/core': 6.1.19
 
   '@fullcalendar/interaction@6.1.19(@fullcalendar/core@6.1.19)':
+    dependencies:
+      '@fullcalendar/core': 6.1.19
+
+  '@fullcalendar/list@6.1.19(@fullcalendar/core@6.1.19)':
     dependencies:
       '@fullcalendar/core': 6.1.19
 

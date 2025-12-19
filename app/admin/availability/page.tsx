@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AvailabilityManager from '@/components/admin/availability-manager'
+import BlockedDatesManager from '@/components/admin/blocked-dates-manager'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +59,7 @@ export default function AvailabilityPage() {
     schedule: DEFAULT_SCHEDULE,
     interval: 30
   })
+  const [activeTab, setActiveTab] = useState<'schedule' | 'blocked'>('schedule')
 
   useEffect(() => {
     setInitialConfig(getStoredConfig())
@@ -102,14 +104,33 @@ export default function AvailabilityPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-serif font-bold text-foreground">Gestión de Disponibilidad</h1>
-        <p className="text-sm text-muted-foreground">Configura los horarios de atención y el intervalo entre turnos</p>
+        <p className="text-sm text-muted-foreground">Configura los horarios de atención y bloquea fechas específicas</p>
       </div>
 
-      <AvailabilityManager
-        initialSchedule={initialConfig.schedule}
-        initialInterval={initialConfig.interval}
-        onSave={handleSave}
-      />
+      <div className="flex bg-secondary/30 w-full rounded-lg p-1 mb-6">
+        <button
+          className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${activeTab === 'schedule' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          onClick={() => setActiveTab('schedule')}
+        >
+          Horarios de Semana
+        </button>
+        <button
+          className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${activeTab === 'blocked' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          onClick={() => setActiveTab('blocked')}
+        >
+          Bloquear Fechas
+        </button>
+      </div>
+
+      {activeTab === 'schedule' ? (
+        <AvailabilityManager
+          initialSchedule={initialConfig.schedule}
+          initialInterval={initialConfig.interval}
+          onSave={handleSave}
+        />
+      ) : (
+        <BlockedDatesManager />
+      )}
     </div>
   )
 }

@@ -101,8 +101,8 @@ export default function AvailabilityManager({ initialSchedule, initialInterval =
                 key={option.value}
                 onClick={() => handleIntervalChange(option.value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${slotInterval === option.value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                   }`}
               >
                 {option.label}
@@ -121,46 +121,52 @@ export default function AvailabilityManager({ initialSchedule, initialInterval =
             className={`bg-card p-4 rounded-xl border border-border shadow-sm transition-opacity ${!day.isOpen ? 'opacity-50' : ''
               }`}
           >
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               {/* Day toggle */}
-              <div className="flex items-center gap-3 min-w-[140px]">
-                <Switch
-                  checked={day.isOpen}
-                  onCheckedChange={() => handleToggleDay(day.dayOfWeek)}
-                />
-                <span className={`font-medium ${day.isOpen ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {day.dayName}
-                </span>
+              <div className="flex items-center justify-between sm:justify-start gap-4 sm:min-w-[150px]">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={day.isOpen}
+                    onCheckedChange={() => handleToggleDay(day.dayOfWeek)}
+                  />
+                  <span className={`font-medium ${day.isOpen ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {day.dayName}
+                  </span>
+                </div>
+                {/* Mobile status indicator for closed days */}
+                {!day.isOpen && (
+                  <span className="sm:hidden text-xs text-muted-foreground italic">Cerrado</span>
+                )}
               </div>
 
               {/* Time selectors */}
-              {day.isOpen && (
-                <div className="flex items-center gap-2 flex-1">
-                  <Clock size={16} className="text-muted-foreground" />
-                  <select
-                    value={day.startTime}
-                    onChange={(e) => handleTimeChange(day.dayOfWeek, 'startTime', e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-secondary/30 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {timeOptions.map(time => (
-                      <option key={`start-${time}`} value={time}>{time}</option>
-                    ))}
-                  </select>
-                  <span className="text-muted-foreground">a</span>
-                  <select
-                    value={day.endTime}
-                    onChange={(e) => handleTimeChange(day.dayOfWeek, 'endTime', e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-secondary/30 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {timeOptions.map(time => (
-                      <option key={`end-${time}`} value={time}>{time}</option>
-                    ))}
-                  </select>
+              {day.isOpen ? (
+                <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
+                  <Clock size={16} className="text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={day.startTime}
+                      onChange={(e) => handleTimeChange(day.dayOfWeek, 'startTime', e.target.value)}
+                      className="px-2 sm:px-3 py-1.5 rounded-lg bg-secondary/30 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {timeOptions.map(time => (
+                        <option key={`start-${time}`} value={time}>{time}</option>
+                      ))}
+                    </select>
+                    <span className="text-muted-foreground text-sm">a</span>
+                    <select
+                      value={day.endTime}
+                      onChange={(e) => handleTimeChange(day.dayOfWeek, 'endTime', e.target.value)}
+                      className="px-2 sm:px-3 py-1.5 rounded-lg bg-secondary/30 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {timeOptions.map(time => (
+                        <option key={`end-${time}`} value={time}>{time}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              )}
-
-              {!day.isOpen && (
-                <span className="text-sm text-muted-foreground italic">Cerrado</span>
+              ) : (
+                <span className="hidden sm:inline-block text-sm text-muted-foreground italic">Cerrado</span>
               )}
             </div>
           </div>
