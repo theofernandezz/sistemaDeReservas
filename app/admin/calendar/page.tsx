@@ -1,6 +1,8 @@
 import { getAppointments } from '@/app/actions'
 import CalendarView from '@/components/admin/calendar-view'
 
+export const dynamic = 'force-dynamic'
+
 export default async function CalendarPage() {
   // Get appointments for the current month and a bit before/after
   const today = new Date()

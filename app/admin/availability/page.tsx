@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import AvailabilityManager from '@/components/admin/availability-manager'
 
+export const dynamic = 'force-dynamic'
+
 interface DaySchedule {
   dayOfWeek: number
   dayName: string

@@ -1,6 +1,9 @@
 import { getServices } from '@/app/actions'
+import { createClient } from '@/utils/supabase/server'
 
-export default async function TestPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function TestSupabase() {
   const result = await getServices()
 
   return (
@@ -13,7 +16,7 @@ export default async function TestPage() {
 
           <div className="mb-6">
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className={`w-3 h-3 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'} `} />
               <span className="font-semibold">
                 Estado: {result.success ? '✅ Conectado' : '❌ Error'}
               </span>
