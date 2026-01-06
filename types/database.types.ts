@@ -2,6 +2,39 @@
 // Database Table Types (matching Supabase schema)
 // ============================================
 
+export interface Business {
+  id: string;
+  owner_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logo: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  instagram: string | null;
+  settings: BusinessSettings;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BusinessSettings {
+  // Horarios de atención
+  businessHours?: {
+    dayOfWeek: number;
+    isOpen: boolean;
+    startTime: string;
+    endTime: string;
+  }[];
+  slotInterval?: number;
+  // Notificaciones
+  notificationEmail?: string;
+  googleRefreshToken?: string;
+  // Branding
+  primaryColor?: string;
+  accentColor?: string;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -11,6 +44,7 @@ export interface Service {
   created_at: string;
   description: string | null;
   image: string | null;
+  business_id: string;
 }
 
 export interface ServiceAddon {
@@ -21,6 +55,7 @@ export interface ServiceAddon {
   duration_minutes: number;
   is_active: boolean;
   created_at: string;
+  business_id: string;
 }
 
 export interface SelectedAddon {
@@ -41,6 +76,7 @@ export interface Appointment {
   status: string;
   service_id: string;
   addons: SelectedAddon[];
+  business_id: string;
 }
 
 export interface BlockedSlot {
@@ -49,6 +85,7 @@ export interface BlockedSlot {
   end_time: string;
   reason: string | null;
   created_at: string;
+  business_id: string;
 }
 
 // ============================================

@@ -31,20 +31,43 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Proteger rutas /admin
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  const pathname = request.nextUrl.pathname
+  const isSuperAdmin = user?.user_metadata?.is_super_admin === true
+
+  // Proteger rutas /super-admin (solo super admins)
+  if (pathname.startsWith('/super-admin')) {
     if (!user) {
-      // No autenticado, redirigir a login
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    if (!isSuperAdmin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Proteger rutas /dashboard
+  if (pathname.startsWith('/dashboard')) {
+    if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
   }
 
-  // Si está logueado y va a /login, redirigir a admin
-  if (request.nextUrl.pathname === '/login' && user) {
+  // Si está logueado y va a /login, redirigir según tipo de usuario
+  if (pathname === '/login' && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/admin/services'
+    url.pathname = isSuperAdmin ? '/super-admin' : '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // Legacy: redirigir /admin a /dashboard
+  if (pathname.startsWith('/admin')) {
+    const url = request.nextUrl.clone()
+    url.pathname = pathname.replace('/admin', '/dashboard')
     return NextResponse.redirect(url)
   }
 
@@ -53,7 +76,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/dashboard/:path*',
+    '/super-admin/:path*',
     '/admin/:path*',
     '/login',
   ],
 }
+

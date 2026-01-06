@@ -68,6 +68,29 @@ export async function getAllServices(): Promise<ServerActionResponse<Service[]>>
 }
 
 /**
+ * Get active services by business ID (for public booking)
+ */
+export async function getServicesByBusinessId(businessId: string): Promise<ServerActionResponse<Service[]>> {
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('name')
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error: any) {
+    console.error('Error fetching services by business:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Get service by ID
  */
 export async function getServiceById(id: string): Promise<ServerActionResponse<Service>> {
@@ -1073,3 +1096,100 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
   }
 }
 
+// ============================================
+// MERCADO PAGO INTEGRATION
+// ============================================
+
+interface MercadoPagoStatus {
+  isConnected: boolean
+  mpUserId?: string
+  connectedAt?: string
+  expiresAt?: string
+}
+
+/**
+ * Get Mercado Pago connection status for current business
+ */
+export async function getMercadoPagoStatus(): Promise<ServerActionResponse<MercadoPagoStatus>> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'No autenticado' }
+    }
+
+    // Get business
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (!business) {
+      return { success: true, data: { isConnected: false } }
+    }
+
+    // Check for MP integration
+    const { data: mpIntegration } = await supabase
+      .from('mp_integrations')
+      .select('mp_user_id, created_at, expires_at')
+      .eq('business_id', business.id)
+      .single()
+
+    if (!mpIntegration) {
+      return { success: true, data: { isConnected: false } }
+    }
+
+    return {
+      success: true,
+      data: {
+        isConnected: true,
+        mpUserId: mpIntegration.mp_user_id,
+        connectedAt: mpIntegration.created_at,
+        expiresAt: mpIntegration.expires_at,
+      }
+    }
+  } catch (error: any) {
+    console.error('Error getting MP status:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Disconnect Mercado Pago from current business
+ */
+export async function disconnectMercadoPago(): Promise<ServerActionResponse<void>> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'No autenticado' }
+    }
+
+    // Get business
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (!business) {
+      return { success: false, error: 'Negocio no encontrado' }
+    }
+
+    // Delete MP integration
+    const { error } = await supabase
+      .from('mp_integrations')
+      .delete()
+      .eq('business_id', business.id)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error disconnecting MP:', error)
+    return { success: false, error: error.message }
+  }
+}

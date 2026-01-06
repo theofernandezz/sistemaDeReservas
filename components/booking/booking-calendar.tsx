@@ -115,14 +115,14 @@ export default function BookingCalendar({
           <div className="flex-1 flex flex-col items-center">
             <div className="w-full">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 block">Seleccionar Fecha</span>
-              <div className="bg-background rounded-2xl p-4 shadow-sm border border-border/40">
+              <div className="bg-background rounded-2xl p-4 shadow-sm border border-border/40 w-fit mx-auto relative">
                 <Calendar
                   mode="single"
                   selected={date}
                   onSelect={handleDateSelect}
                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   initialFocus
-                  className="w-full"
+                  className="p-3"
                 />
               </div>
             </div>

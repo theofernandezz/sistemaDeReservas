@@ -5,18 +5,19 @@ import { Clock, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 
-interface ServiceCardProps {
+export interface ServiceCardProps {
   id: string
   title: string
   description: string
   price: number
   durationMin: number
   image?: string | null
+  bookingBasePath?: string // Optional: defaults to /booking
 }
 
-export function ServiceCard({ id, title, description, price, durationMin, image }: ServiceCardProps) {
+export function ServiceCard({ id, title, description, price, durationMin, image, bookingBasePath = '/booking' }: ServiceCardProps) {
   return (
-    <Link href={`/booking/${id}`} className="group block h-full">
+    <Link href={`${bookingBasePath}/${id}`} className="group block h-full">
       <Card className="h-full border-0 shadow-sm hover:shadow-xl bg-card transition-all duration-300 overflow-hidden flex flex-col hover:ring-2 hover:ring-primary/5">
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-secondary">
           {image ? (

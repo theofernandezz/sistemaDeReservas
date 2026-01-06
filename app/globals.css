@@ -37,6 +37,8 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-slide-up: slide-up 0.5s ease-out;
 
   @keyframes accordion-down {
     from {
@@ -57,6 +59,82 @@
       height: 0;
     }
   }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes cursor-float {
+
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+
+    25% {
+      transform: translate(120px, 80px);
+    }
+
+    50% {
+      transform: translate(200px, 40px);
+    }
+
+    75% {
+      transform: translate(60px, 150px);
+    }
+  }
+
+  @keyframes cursor-click {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(0.85);
+    }
+  }
+
+  @keyframes pop-in {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes shine-sweep {
+    0% {
+      transform: translateX(-100%) rotate(45deg);
+    }
+
+    100% {
+      transform: translateX(200%) rotate(45deg);
+    }
+  }
 }
 
 @utility container {
@@ -73,74 +151,68 @@
 }
 
 :root {
-  /* Siv Nails - Pink Palette */
-  --background: 350 50% 98%;
-  /* Soft Pink White */
-  --foreground: 240 5% 15%;
-  /* Soft Charcoal */
+  /* Luxe SaaS - Zinc/Slate Palette */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 4%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 5% 15%;
+  --card-foreground: 240 10% 4%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 5% 15%;
+  --popover-foreground: 240 10% 4%;
 
-  --primary: 330 85% 50%;
-  /* Vibrant Pink/Magenta */
-  --primary-foreground: 0 0% 100%;
+  --primary: 240 6% 10%;
+  /* Deep Zinc */
+  --primary-foreground: 0 0% 98%;
 
-  --secondary: 350 30% 95%;
-  /* Soft Pink */
-  --secondary-foreground: 240 5% 15%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 6% 10%;
 
-  --muted: 350 20% 94%;
+  --muted: 240 5% 96%;
   --muted-foreground: 240 4% 46%;
 
-  --accent: 330 70% 92%;
-  /* Light Pink Accent */
-  --accent-foreground: 330 85% 35%;
+  --accent: 240 5% 96%;
+  --accent-foreground: 240 6% 10%;
 
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 350 15% 90%;
-  --input: 350 15% 90%;
-  --ring: 330 85% 50%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 240 6% 10%;
 
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
 .dark {
-  /* Luxe Night Palette */
-  --background: 240 5% 10%;
-  /* Deep Gunmetal */
-  --foreground: 40 10% 96%;
-  /* Soft White */
+  /* Luxe Night - Deep Slate/Black */
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
 
-  --card: 240 5% 12%;
-  --card-foreground: 40 10% 96%;
+  --card: 240 10% 4%;
+  --card-foreground: 0 0% 98%;
 
-  --popover: 240 5% 12%;
-  --popover-foreground: 40 10% 96%;
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 98%;
 
-  --primary: 40 10% 96%;
-  --primary-foreground: 240 5% 10%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 6% 10%;
 
   --secondary: 240 4% 16%;
-  --secondary-foreground: 40 10% 96%;
+  --secondary-foreground: 0 0% 98%;
 
   --muted: 240 4% 16%;
   --muted-foreground: 240 5% 64%;
 
   --accent: 240 4% 16%;
-  --accent-foreground: 40 10% 96%;
+  --accent-foreground: 0 0% 98%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 40 10% 96%;
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 0 0% 98%;
 
   --border: 240 4% 16%;
   --input: 240 4% 16%;
-  --ring: 240 4% 83%;
+  --ring: 240 5% 84%;
 }
 
 @layer base {
@@ -149,7 +221,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground tracking-tight scroll-smooth;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 
   h1,
@@ -158,6 +231,20 @@
   h4,
   h5,
   h6 {
-    @apply font-serif;
+    @apply font-sans tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border-b border-white/10 supports-[backdrop-filter]:bg-background/60;
+  }
+
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl;
   }
 }
