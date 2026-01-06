@@ -98,16 +98,8 @@ export default function SettingsClient({
   }
 
   const handleConnectMP = () => {
-    // Abrir en nueva pestaña para mejor UX
-    const popup = window.open('/api/mercadopago/connect', '_blank', 'width=600,height=700')
-
-    // Polling para detectar cuando se cierra la ventana o vuelve
-    const checkPopup = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(checkPopup)
-        router.refresh()
-      }
-    }, 500)
+    // Usar redirect normal porque popup tiene problemas con cookies
+    window.location.href = '/api/mercadopago/connect'
   }
 
   const handleDisconnectMP = async () => {
