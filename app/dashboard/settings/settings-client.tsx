@@ -72,7 +72,7 @@ export default function SettingsClient({
         exception: 'Error inesperado'
       }
       setTimeout(() => {
-        showError('Error de Mercado Pago', mpErrorMessages[mpError] || 'Error desconocido')
+        showError('Error de Mercado Pago', mpErrorMessages[mpError] || `Error: ${mpError}`)
         router.replace('/dashboard/settings')
       }, 0)
     }
@@ -98,7 +98,16 @@ export default function SettingsClient({
   }
 
   const handleConnectMP = () => {
-    window.location.href = '/api/mercadopago/connect'
+    // Abrir en nueva pestaña para mejor UX
+    const popup = window.open('/api/mercadopago/connect', '_blank', 'width=600,height=700')
+
+    // Polling para detectar cuando se cierra la ventana o vuelve
+    const checkPopup = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(checkPopup)
+        router.refresh()
+      }
+    }, 500)
   }
 
   const handleDisconnectMP = async () => {

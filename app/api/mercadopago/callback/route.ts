@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
   // Si hay error, redirigir con mensaje
   if (error) {
     console.error('MP OAuth error:', error)
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_error=denied', request.url))
+    return closePopupWithResult('error', 'denied')
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_error=invalid', request.url))
+    return closePopupWithResult('error', 'invalid')
   }
 
   // Validar state contra cookie
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   if (!savedState || savedState !== state) {
     console.error('State mismatch:', { savedState, state })
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_error=invalid_state', request.url))
+    return closePopupWithResult('error', 'invalid_state')
   }
 
   // Limpiar cookie de state
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   if (!clientId || !clientSecret || !redirectUri) {
     console.error('Missing MP environment variables')
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_error=config', request.url))
+    return closePopupWithResult('error', 'config')
   }
 
   try {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json()
       console.error('MP token error:', errorData)
-      return NextResponse.redirect(new URL('/dashboard/settings?mp_error=token', request.url))
+      return closePopupWithResult('error', 'token')
     }
 
     const tokenData = await tokenResponse.json()
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     if (bizError || !business) {
       console.error('Business not found:', bizError)
-      return NextResponse.redirect(new URL('/dashboard/settings?mp_error=no_business', request.url))
+      return closePopupWithResult('error', 'no_business')
     }
 
     // Calcular fecha de expiración
@@ -111,14 +111,43 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error('Error saving MP integration:', upsertError)
-      return NextResponse.redirect(new URL('/dashboard/settings?mp_error=save', request.url))
+      return closePopupWithResult('error', 'save')
     }
 
     // Éxito!
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_success=true', request.url))
+    return closePopupWithResult('success')
 
   } catch (err) {
     console.error('MP OAuth exception:', err)
-    return NextResponse.redirect(new URL('/dashboard/settings?mp_error=exception', request.url))
+    return closePopupWithResult('error', 'exception')
   }
+}
+
+// Helper para cerrar popup y comunicar resultado
+function closePopupWithResult(status: 'success' | 'error', errorCode?: string) {
+  const params = status === 'success'
+    ? 'mp_success=true'
+    : `mp_error=${errorCode || 'unknown'}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><title>Conectando...</title></head>
+      <body>
+        <script>
+          if (window.opener) {
+            window.opener.location.href = '/dashboard/settings?${params}';
+            window.close();
+          } else {
+            window.location.href = '/dashboard/settings?${params}';
+          }
+        </script>
+        <p>Redirigiendo...</p>
+      </body>
+    </html>
+  `
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html' },
+  })
 }
