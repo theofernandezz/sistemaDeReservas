@@ -79,15 +79,40 @@ export async function GET(request: NextRequest) {
     // - user_id (ID del usuario en MP)
     // - public_key
 
-    // Obtener el business_id del usuario
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
+    // Obtener el business_id - primero verificar si hay uno activo (super admin visitando)
+    const cookieStore = await cookies()
+    const activeBusinessId = cookieStore.get('active_business_id')?.value
 
-    if (bizError || !business) {
-      console.error('Business not found:', bizError)
+    let businessId: string | null = null
+
+    if (activeBusinessId) {
+      // Verificar que el business existe
+      const { data: activeBiz } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('id', activeBusinessId)
+        .single()
+
+      if (activeBiz) {
+        businessId = activeBiz.id
+      }
+    }
+
+    // Si no hay business activo, buscar el del usuario
+    if (!businessId) {
+      const { data: ownBusiness } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single()
+
+      if (ownBusiness) {
+        businessId = ownBusiness.id
+      }
+    }
+
+    if (!businessId) {
+      console.error('Business not found for user:', user.id)
       return closePopupWithResult('error', 'no_business')
     }
 
@@ -98,7 +123,7 @@ export async function GET(request: NextRequest) {
     const { error: upsertError } = await supabase
       .from('mp_integrations')
       .upsert({
-        business_id: business.id,
+        business_id: businessId,
         mp_user_id: tokenData.user_id.toString(),
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
