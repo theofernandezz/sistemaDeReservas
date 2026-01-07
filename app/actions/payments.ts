@@ -102,7 +102,8 @@ export async function createBookingPaymentPreference(
       throw new Error('Reserva no encontrada')
     }
 
-    const businessId = appointment.service?.business_id
+    // @ts-ignore - Supabase types for nested selects
+    const businessId = (appointment.service as any)?.business_id
     if (!businessId) {
       throw new Error('Negocio no encontrado')
     }
@@ -126,19 +127,30 @@ export async function createBookingPaymentPreference(
 
     // Calculate deposit amount
     const depositPercentage = business?.deposit_percentage || 50
-    const totalPrice = appointment.service?.price || 0
+    // @ts-ignore
+    const totalPrice = (appointment.service as any)?.price || 0
     const depositAmount = Math.round(totalPrice * depositPercentage / 100)
 
     // Create MP preference
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const businessSlug = business?.slug || ''
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
+    const businessSlug = business?.slug || 'siv-nails'
+
+    // Build back URLs - ensure they are valid
+    const backUrls = {
+      success: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}`,
+      failure: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}&status=failure`,
+      pending: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}&status=pending`,
+    }
+
+    console.log('Creating MP preference with back_urls:', backUrls)
 
     const preference = await mpCreatePreference(
       mpIntegration.access_token,
       [
         {
           id: appointmentId,
-          title: `Seña - ${appointment.service?.name}`,
+          // @ts-ignore
+          title: `Seña - ${(appointment.service as any)?.name}`,
           description: `Reserva en ${business?.name}`,
           quantity: 1,
           unit_price: depositAmount,
@@ -148,11 +160,7 @@ export async function createBookingPaymentPreference(
         booking_id: appointmentId,
         business_id: businessId,
       },
-      {
-        success: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}`,
-        failure: `${appUrl}/${businessSlug}/booking/failed?appointment=${appointmentId}`,
-        pending: `${appUrl}/${businessSlug}/booking/pending?appointment=${appointmentId}`,
-      }
+      backUrls
     )
 
     // Save preference ID to appointment
