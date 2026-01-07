@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { ArrowLeft, Calendar, Clock, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Loader2, Plus, CreditCard, Banknote } from 'lucide-react'
 import { createAppointment, getServiceById } from '@/app/actions'
+import { getBusinessPaymentConfig, createBookingPaymentPreference } from '@/app/actions/payments'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,6 +29,7 @@ export default function ConfirmationPage() {
   const [loading, setLoading] = useState(false)
   const [fetchingService, setFetchingService] = useState(true)
   const [service, setService] = useState<any>(null)
+  const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,18 +47,26 @@ export default function ConfirmationPage() {
     }
   }, [addonsParam])
 
-  // Fetch Service Details
+  // Fetch Service Details and Payment Config
   useEffect(() => {
-    async function fetchService() {
+    async function fetchData() {
       if (serviceId) {
         const result = await getServiceById(serviceId)
         if (result.success && result.data) {
           setService(result.data)
+
+          // Get payment config for the business
+          if (result.data.business_id) {
+            const configResult = await getBusinessPaymentConfig(result.data.business_id)
+            if (configResult.success && configResult.data) {
+              setPaymentConfig(configResult.data)
+            }
+          }
         }
       }
       setFetchingService(false)
     }
-    fetchService()
+    fetchData()
   }, [serviceId])
 
   // Calculate totals
@@ -64,6 +74,13 @@ export default function ConfirmationPage() {
   const addonsDuration = selectedAddons.reduce((sum, a) => sum + a.duration_minutes, 0)
   const totalPrice = (service?.price || 0) + addonsTotal
   const totalDuration = (service?.duration_minutes || 60) + addonsDuration
+
+  // Calculate deposit
+  const depositPercentage = paymentConfig?.depositPercentage || 50
+  const depositAmount = paymentConfig?.hasMPConnected
+    ? Math.round(totalPrice * depositPercentage / 100)
+    : 0
+  const remainingAmount = totalPrice - depositAmount
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -102,16 +119,33 @@ export default function ConfirmationPage() {
       client_name: formData.name,
       client_phone: formData.phone,
       client_email: formData.email,
-      status: 'pending',
+      status: paymentConfig?.hasMPConnected ? 'pending' : 'pending',
       addons: selectedAddons
     })
 
-    if (result.success) {
-      router.push(`/booking/success?id=${result.data?.id}`)
-    } else {
+    if (!result.success || !result.data) {
       showError('Error al reservar', result.error || 'Intenta nuevamente')
+      setLoading(false)
+      return
     }
 
+    // If MP is connected, create payment preference and redirect
+    if (paymentConfig?.hasMPConnected && depositAmount > 0) {
+      const preferenceResult = await createBookingPaymentPreference(result.data.id)
+
+      if (preferenceResult.success && preferenceResult.data?.initPoint) {
+        // Redirect to Mercado Pago
+        window.location.href = preferenceResult.data.initPoint
+        return
+      } else {
+        showError('Error al crear pago', preferenceResult.error || 'Intenta nuevamente')
+        setLoading(false)
+        return
+      }
+    }
+
+    // No payment required, go to success page
+    router.push(`/booking/success?id=${result.data.id}`)
     setLoading(false)
   }
 
@@ -195,6 +229,36 @@ export default function ConfirmationPage() {
           </CardContent>
         </Card>
 
+        {/* Payment Info Card - Only show if MP connected */}
+        {paymentConfig?.hasMPConnected && depositAmount > 0 && (
+          <Card className="border-2 border-primary/20 bg-primary/5">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center gap-3 text-primary">
+                <CreditCard className="h-5 w-5" />
+                <span className="font-semibold">Pago para reservar</span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Seña ({depositPercentage}%)</span>
+                  <span className="font-bold text-lg text-primary">{formatPrice(depositAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Banknote className="h-4 w-4" />
+                    Resto a pagar en el local
+                  </span>
+                  <span className="font-medium">{formatPrice(remainingAmount)}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                El pago se realiza a través de Mercado Pago de forma segura.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
@@ -238,9 +302,17 @@ export default function ConfirmationPage() {
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {paymentConfig?.hasMPConnected ? 'Procesando...' : 'Confirmando...'}
               </>
-            ) : 'Confirmar Reserva'}
+            ) : paymentConfig?.hasMPConnected && depositAmount > 0 ? (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pagar {formatPrice(depositAmount)} y Reservar
+              </>
+            ) : (
+              'Confirmar Reserva'
+            )}
           </Button>
         </form>
 

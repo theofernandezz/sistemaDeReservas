@@ -2,30 +2,37 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Calendar, Check, X, Loader2, ExternalLink, Mail, CreditCard } from 'lucide-react'
+import { Calendar, Check, X, Loader2, ExternalLink, Mail, CreditCard, Percent } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
 import { disconnectGoogleCalendar, disconnectMercadoPago } from '@/app/actions'
+import { updateBusinessPaymentConfig } from '@/app/actions/payments'
 
 interface SettingsClientProps {
   isGoogleConnected: boolean
   initialAdminEmail: string
   isMPConnected: boolean
   mpUserId?: string
+  depositPercentage: number
+  businessId?: string
 }
 
 export default function SettingsClient({
   isGoogleConnected,
   initialAdminEmail,
   isMPConnected,
-  mpUserId
+  mpUserId,
+  depositPercentage: initialDeposit,
+  businessId
 }: SettingsClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { success: showSuccess, error: showError } = useToast()
   const [disconnecting, setDisconnecting] = useState(false)
   const [disconnectingMP, setDisconnectingMP] = useState(false)
+  const [depositPercent, setDepositPercent] = useState(initialDeposit)
+  const [savingDeposit, setSavingDeposit] = useState(false)
 
   // Check for success/error from OAuth callback
   const successParam = searchParams.get('success')
@@ -160,6 +167,51 @@ export default function SettingsClient({
                 </Button>
               )}
             </div>
+
+            {/* Deposit Config - Only show if MP connected */}
+            {isMPConnected && businessId && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Percent className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium">Porcentaje de seña</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Este es el porcentaje del total que el cliente paga al reservar.
+                </p>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min="10"
+                    max="100"
+                    step="5"
+                    value={depositPercent}
+                    onChange={(e) => setDepositPercent(Number(e.target.value))}
+                    className="w-24 text-center"
+                  />
+                  <span className="text-muted-foreground">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setSavingDeposit(true)
+                      const result = await updateBusinessPaymentConfig(businessId, depositPercent)
+                      if (result.success) {
+                        showSuccess('Guardado', 'Porcentaje de seña actualizado')
+                      } else {
+                        showError('Error', result.error || 'No se pudo guardar')
+                      }
+                      setSavingDeposit(false)
+                    }}
+                    disabled={savingDeposit || depositPercent === initialDeposit}
+                  >
+                    {savingDeposit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Ejemplo: Si el servicio cuesta $10,000 y la seña es {depositPercent}%, el cliente paga ${Math.round(10000 * depositPercent / 100).toLocaleString()} para reservar.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

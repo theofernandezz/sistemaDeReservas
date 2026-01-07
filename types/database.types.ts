@@ -14,6 +14,7 @@ export interface Business {
   address: string | null;
   instagram: string | null;
   settings: BusinessSettings;
+  deposit_percentage: number;
   created_at: string;
   updated_at: string;
 }

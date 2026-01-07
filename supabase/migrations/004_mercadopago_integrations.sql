@@ -29,16 +29,21 @@ CREATE TRIGGER update_mp_integrations_updated_at
 -- 4. RLS
 ALTER TABLE public.mp_integrations ENABLE ROW LEVEL SECURITY;
 
--- Los dueños pueden gestionar su integración de MP
-CREATE POLICY "Owners can manage their MP integration" ON public.mp_integrations
-  FOR ALL USING (
-    business_id IN (SELECT id FROM public.businesses WHERE owner_id = auth.uid())
-  );
-
--- Super admins pueden ver todas las integraciones
-CREATE POLICY "Super admins can view all MP integrations" ON public.mp_integrations
-  FOR SELECT USING (
-    (SELECT (raw_user_meta_data->>'is_super_admin')::boolean 
-     FROM auth.users 
-     WHERE id = auth.uid()) = true
+-- Business owners can manage their MP integration
+CREATE POLICY "Business owners can manage their MP integration" ON public.mp_integrations
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM businesses 
+      WHERE businesses.id = mp_integrations.business_id 
+      AND businesses.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM businesses 
+      WHERE businesses.id = mp_integrations.business_id 
+      AND businesses.owner_id = auth.uid()
+    )
   );
