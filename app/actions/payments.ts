@@ -177,17 +177,3 @@ export async function createBookingPaymentPreference(
     return { success: false, error: error.message }
   }
 }
-
-/**
- * Calculate deposit amount for display (before creating booking)
- */
-export function calculateDeposit(totalPrice: number, depositPercentage: number): {
-  depositAmount: number
-  remainingAmount: number
-} {
-  const depositAmount = Math.round(totalPrice * depositPercentage / 100)
-  return {
-    depositAmount,
-    remainingAmount: totalPrice - depositAmount,
-  }
-}
