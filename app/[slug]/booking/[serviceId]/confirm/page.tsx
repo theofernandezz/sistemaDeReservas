@@ -2,91 +2,84 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { ArrowLeft, Calendar, Clock, Loader2, Plus, CreditCard, Banknote, CircleDollarSign, Store } from 'lucide-react'
-import { createAppointment, getServiceById } from '@/app/actions'
+import {
+  ArrowLeft, Calendar, Clock, Loader2, CreditCard,
+  ChevronDown, ChevronUp, Check, Store, Sparkles
+} from 'lucide-react'
+import { createAppointment, getServiceById, getServiceAddons } from '@/app/actions'
 import { getBusinessPaymentConfig, createBookingPaymentPreference } from '@/app/actions/payments'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
-import { SelectedAddon } from '@/types/database.types'
+import { SelectedAddon, ServiceAddon } from '@/types/database.types'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 type PaymentMethod = 'full' | 'deposit'
 
-export default function ConfirmationPage() {
+export default function CompactConfirmPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
   const { error: showError } = useToast()
 
   const serviceId = params.serviceId as string
+  const slug = params.slug as string
   const date = searchParams.get('date')
   const time = searchParams.get('time')
-  const addonsParam = searchParams.get('addons')
 
   const [loading, setLoading] = useState(false)
-  const [fetchingService, setFetchingService] = useState(true)
+  const [fetchingData, setFetchingData] = useState(true)
   const [service, setService] = useState<any>(null)
+  const [addons, setAddons] = useState<ServiceAddon[]>([])
   const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
+
+  const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([])
+  const [showAddons, setShowAddons] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('full')
 
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: ''
-  })
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
 
-  // Parse addons from URL
-  const selectedAddons: SelectedAddon[] = useMemo(() => {
-    if (!addonsParam) return []
-    try {
-      return JSON.parse(decodeURIComponent(addonsParam))
-    } catch {
-      return []
-    }
-  }, [addonsParam])
-
-  // Fetch Service Details and Payment Config
   useEffect(() => {
     async function fetchData() {
       if (serviceId) {
-        const result = await getServiceById(serviceId)
-        if (result.success && result.data) {
-          setService(result.data)
+        const [serviceResult, addonsResult] = await Promise.all([
+          getServiceById(serviceId),
+          getServiceAddons()
+        ])
 
-          // Get payment config for the business
-          if (result.data.business_id) {
-            const configResult = await getBusinessPaymentConfig(result.data.business_id)
+        if (serviceResult.success && serviceResult.data) {
+          setService(serviceResult.data)
+
+          if (serviceResult.data.business_id) {
+            const configResult = await getBusinessPaymentConfig(serviceResult.data.business_id)
             if (configResult.success && configResult.data) {
               setPaymentConfig(configResult.data)
             }
           }
         }
+
+        if (addonsResult.success && addonsResult.data) {
+          setAddons(addonsResult.data)
+        }
       }
-      setFetchingService(false)
+      setFetchingData(false)
     }
     fetchData()
   }, [serviceId])
 
-  // Calculate totals
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0)
   const addonsDuration = selectedAddons.reduce((sum, a) => sum + a.duration_minutes, 0)
   const totalPrice = (service?.price || 0) + addonsTotal
-  const totalDuration = (service?.duration_minutes || 60) + addonsDuration
+  const totalDuration = (service?.duration_minutes || 0) + addonsDuration
 
-  // Deposit percentage for cash payments (minimum deposit)
   const depositPercentage = paymentConfig?.depositPercentage || 30
   const depositAmount = Math.round(totalPrice * depositPercentage / 100)
-
-  // Calculate actual amount to pay based on selected method
   const amountToPay = paymentConfig?.hasMPConnected
     ? (paymentMethod === 'full' ? totalPrice : depositAmount)
     : 0
-  const remainingAmount = totalPrice - amountToPay
+  const remainingInLocal = totalPrice - amountToPay
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -96,24 +89,40 @@ export default function ConfirmationPage() {
     }).format(price)
   }
 
-  // Format date for display
   const formattedDate = useMemo(() => {
+    if (!date) return ''
+    const dateObj = parseISO(date)
+    const formatted = format(dateObj, "EEE d MMM", { locale: es })
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  }, [date])
+
+  const formattedDateLong = useMemo(() => {
     if (!date) return ''
     const dateObj = parseISO(date)
     const formatted = format(dateObj, "EEEE d 'de' MMMM", { locale: es })
     return formatted.charAt(0).toUpperCase() + formatted.slice(1)
   }, [date])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleToggleAddon = (addon: ServiceAddon) => {
+    setSelectedAddons(prev => {
+      const exists = prev.find(a => a.id === addon.id)
+      if (exists) {
+        return prev.filter(a => a.id !== addon.id)
+      }
+      return [...prev, {
+        id: addon.id,
+        name: addon.name,
+        price: addon.price,
+        duration_minutes: addon.duration_minutes
+      }]
+    })
+  }
+
+  const handleSubmit = async () => {
+    if (!service || !date || !time || !name || !phone) return
+
     setLoading(true)
 
-    if (!service || !date || !time) {
-      setLoading(false)
-      return
-    }
-
-    // Create appointment with total duration (service + addons)
     const startDateTime = `${date}T${time}:00`
     const endDateTime = new Date(startDateTime)
     endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
@@ -122,25 +131,22 @@ export default function ConfirmationPage() {
       service_id: serviceId,
       start_time: new Date(startDateTime).toISOString(),
       end_time: endDateTime.toISOString(),
-      client_name: formData.name,
-      client_phone: formData.phone,
-      client_email: formData.email,
-      status: paymentConfig?.hasMPConnected ? 'pending' : 'pending',
+      client_name: name,
+      client_phone: phone,
+      status: 'pending',
       addons: selectedAddons
     })
 
     if (!result.success || !result.data) {
-      showError('Error al reservar', result.error || 'Intenta nuevamente')
+      showError('Error', result.error || 'Intenta nuevamente')
       setLoading(false)
       return
     }
 
-    // If MP is connected, create payment preference and redirect
     if (paymentConfig?.hasMPConnected && amountToPay > 0) {
       const preferenceResult = await createBookingPaymentPreference(result.data.id, amountToPay)
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
-        // Redirect to Mercado Pago
         window.location.href = preferenceResult.data.initPoint
         return
       } else {
@@ -150,14 +156,12 @@ export default function ConfirmationPage() {
       }
     }
 
-    // No payment required, go to success page
-    router.push(`/booking/success?id=${result.data.id}`)
-    setLoading(false)
+    router.push(`/${slug}/booking/success?id=${result.data.id}`)
   }
 
-  if (fetchingService) {
+  if (fetchingData) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     )
@@ -165,204 +169,274 @@ export default function ConfirmationPage() {
 
   if (!service) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <h1 className="text-xl font-bold">Servicio No Encontrado</h1>
-          <Button onClick={() => router.push('/')} className="mt-4">Ir al Inicio</Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Servicio no encontrado</p>
       </div>
     )
   }
 
+  // Componentes de addons reutilizables
+  const AddonsSection = ({ compact = false }: { compact?: boolean }) => (
+    addons.length > 0 ? (
+      <div className={`${compact ? 'bg-background/50' : 'bg-card'} border rounded-xl overflow-hidden`}>
+        <button
+          type="button"
+          onClick={() => setShowAddons(!showAddons)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary/50"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="font-medium text-sm">{compact ? 'Agregar extras' : 'Extras opcionales'}</span>
+            {selectedAddons.length > 0 && (
+              <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                {selectedAddons.length}
+              </span>
+            )}
+          </div>
+          {showAddons ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {showAddons && (
+          <div className={`border-t p-2 space-y-1 ${compact ? 'max-h-48 overflow-y-auto' : ''}`}>
+            {addons.map(addon => {
+              const isSelected = selectedAddons.some(a => a.id === addon.id)
+              return (
+                <button
+                  type="button"
+                  key={addon.id}
+                  onClick={() => handleToggleAddon(addon)}
+                  className={`w-full p-3 rounded-lg flex items-center justify-between ${isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-secondary'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'
+                      }`}>
+                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium text-sm">{addon.name}</div>
+                      <div className="text-xs text-muted-foreground">+{addon.duration_minutes} min</div>
+                    </div>
+                  </div>
+                  <span className="font-semibold text-sm">+{formatPrice(addon.price)}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    ) : null
+  )
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b">
-        <div className="container max-w-lg px-4 h-16 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="-ml-2">
+    <>
+      {/* MOBILE LAYOUT */}
+      <div className="lg:hidden min-h-screen bg-background flex flex-col">
+        <header className="bg-card border-b px-4 py-3 flex items-center gap-3">
+          <button type="button" onClick={() => router.back()} className="p-1 -ml-1 hover:bg-secondary rounded-lg">
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="font-semibold text-lg">Confirmar Reserva</h1>
-        </div>
-      </header>
-
-      <main className="flex-1 container max-w-lg px-4 py-8 space-y-6">
-
-        {/* Summary Card */}
-        <Card className="bg-secondary/20 border-0 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-xl">{service.name}</CardTitle>
-            <CardDescription>
-              Resumen de tu cita
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Fecha</span>
-              <span className="font-medium">{formattedDate}</span>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-semibold truncate">{service.name}</h1>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              <span>{formattedDate}</span>
+              <span>•</span>
+              <Clock className="h-3 w-3" />
+              <span>{time}</span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Hora</span>
-              <span className="font-medium">{time}</span>
+          </div>
+          <div className="text-right">
+            <div className="font-bold text-primary">{formatPrice(totalPrice)}</div>
+            <div className="text-xs text-muted-foreground">{totalDuration} min</div>
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 space-y-4 pb-28">
+          <AddonsSection />
+
+          {/* Form */}
+          <div className="bg-card border rounded-xl p-4 space-y-3">
+            <div className="text-sm font-medium">Tus datos</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                placeholder="Nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-11"
+              />
+              <Input
+                placeholder="Teléfono"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-11"
+              />
             </div>
+          </div>
 
-            <Separator className="my-2" />
-
-            {/* Price Breakdown */}
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{service.name}</span>
-                <span>{formatPrice(service.price)}</span>
-              </div>
-
-              {selectedAddons.map(addon => (
-                <div key={addon.id} className="flex items-center justify-between text-primary">
-                  <span className="flex items-center gap-1">
-                    <Plus className="h-3 w-3" />
-                    {addon.name}
-                  </span>
-                  <span>{formatPrice(addon.price)}</span>
-                </div>
-              ))}
-            </div>
-
-            <Separator className="my-2" />
-
-            <div className="flex items-center justify-between font-semibold">
-              <span>Total ({totalDuration} min)</span>
-              <span className="text-lg">{formatPrice(totalPrice)}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Method Selection - Only show if MP connected */}
-        {paymentConfig?.hasMPConnected && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CircleDollarSign className="h-4 w-4" />
-              ¿Cómo querés pagar?
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              {/* Option 1: Full Payment */}
+          {/* Payment */}
+          {paymentConfig?.hasMPConnected && (
+            <div className="bg-card border rounded-xl p-4 space-y-3">
+              <div className="text-sm font-medium">¿Cómo pagás?</div>
               <button
                 type="button"
                 onClick={() => setPaymentMethod('full')}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${paymentMethod === 'full'
-                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                  : 'border-border hover:border-primary/50'
+                className={`w-full p-3 rounded-lg border-2 flex items-center justify-between ${paymentMethod === 'full' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
                   }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${paymentMethod === 'full' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    }`}>
-                    {paymentMethod === 'full' && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Pagar todo ahora
-                      </span>
-                      <span className="font-bold text-primary">{formatPrice(totalPrice)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Tarjeta de crédito, débito o dinero en cuenta
-                    </p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full border-2 ${paymentMethod === 'full' ? 'border-primary bg-primary' : 'border-muted-foreground'}`} />
+                  <div className="text-left">
+                    <div className="font-medium text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" /> Pagar todo</div>
+                    <div className="text-xs text-muted-foreground">Tarjeta o débito</div>
                   </div>
                 </div>
+                <span className="font-bold text-primary">{formatPrice(totalPrice)}</span>
               </button>
-
-              {/* Option 2: Deposit for Cash */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod('deposit')}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${paymentMethod === 'deposit'
-                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                  : 'border-border hover:border-primary/50'
+                className={`w-full p-3 rounded-lg border-2 flex items-center justify-between ${paymentMethod === 'deposit' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
                   }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${paymentMethod === 'deposit' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    }`}>
-                    {paymentMethod === 'deposit' && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold flex items-center gap-2">
-                        <Store className="h-4 w-4" />
-                        Seña + pagar en local
-                      </span>
-                      <span className="font-bold text-primary">{formatPrice(depositAmount)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pagá {formatPrice(depositAmount)} ahora (Rapipago/Pago Fácil) y {formatPrice(remainingAmount)} en el local
-                    </p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full border-2 ${paymentMethod === 'deposit' ? 'border-primary bg-primary' : 'border-muted-foreground'}`} />
+                  <div className="text-left">
+                    <div className="font-medium text-sm flex items-center gap-2"><Store className="h-4 w-4" /> Seña + local</div>
+                    <div className="text-xs text-muted-foreground">{formatPrice(depositAmount)} ahora, {formatPrice(remainingInLocal)} después</div>
                   </div>
                 </div>
+                <span className="font-bold text-primary">{formatPrice(depositAmount)}</span>
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </main>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nombre Completo *</Label>
-              <Input
-                id="name"
-                required
-                placeholder="María García"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                required
-                placeholder="+54 11 1234 5678"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email (Opcional)</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="maria@ejemplo.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full h-12 text-base"
-            disabled={loading || !formData.name || !formData.phone}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {paymentConfig?.hasMPConnected ? 'Procesando...' : 'Confirmando...'}
-              </>
-            ) : paymentConfig?.hasMPConnected && amountToPay > 0 ? (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pagar {formatPrice(amountToPay)} y Reservar
-              </>
-            ) : (
-              'Confirmar Reserva'
-            )}
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
+          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !phone} className="w-full h-12 text-base">
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
+              : paymentConfig?.hasMPConnected ? <><CreditCard className="mr-2 h-4 w-4" />Pagar {formatPrice(amountToPay)} y reservar</>
+                : 'Confirmar reserva'}
           </Button>
-        </form>
+        </div>
+      </div>
 
-      </main>
-    </div>
+      {/* DESKTOP LAYOUT */}
+      <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 items-center justify-center p-8">
+        <div className="w-full max-w-4xl bg-card rounded-3xl shadow-2xl overflow-hidden border flex">
+
+          {/* Left Column */}
+          <div className="w-[380px] bg-secondary/30 p-8 flex flex-col">
+            <button type="button" onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm">
+              <ArrowLeft className="h-4 w-4" /> Volver
+            </button>
+
+            <div className="flex-1">
+              <h1 className="font-serif text-2xl font-bold text-primary mb-2">{service.name}</h1>
+
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+                <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {formattedDateLong}</span>
+                <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {time}</span>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span>{service.name}</span>
+                  <span>{formatPrice(service.price)}</span>
+                </div>
+                {selectedAddons.map(addon => (
+                  <div key={addon.id} className="flex justify-between text-sm text-primary">
+                    <span>+ {addon.name}</span>
+                    <span>+{formatPrice(addon.price)}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-3 flex justify-between font-semibold">
+                  <span>Total ({totalDuration} min)</span>
+                  <span className="text-lg">{formatPrice(totalPrice)}</span>
+                </div>
+              </div>
+
+              <AddonsSection compact />
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="flex-1 p-8 flex flex-col">
+            <h2 className="text-xl font-semibold mb-6">Completá tu reserva</h2>
+
+            <div className="space-y-6 flex-1">
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-muted-foreground">Tus datos</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    placeholder="Nombre"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12"
+                  />
+                  <Input
+                    placeholder="Teléfono"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+              </div>
+
+              {paymentConfig?.hasMPConnected && (
+                <div className="space-y-4">
+                  <div className="text-sm font-medium text-muted-foreground">Método de pago</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('full')}
+                      className={`p-4 rounded-xl border-2 text-left ${paymentMethod === 'full' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Pagar todo</span>
+                      </div>
+                      <div className="text-2xl font-bold text-primary">{formatPrice(totalPrice)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Tarjeta de crédito o débito</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('deposit')}
+                      className={`p-4 rounded-xl border-2 text-left ${paymentMethod === 'deposit' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Store className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Seña + local</span>
+                      </div>
+                      <div className="text-2xl font-bold text-primary">{formatPrice(depositAmount)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Resto: {formatPrice(remainingInLocal)} en el local</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !name || !phone}
+              className="w-full h-14 text-base mt-8 rounded-xl"
+              size="lg"
+            >
+              {loading ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Procesando...</>
+              ) : paymentConfig?.hasMPConnected ? (
+                <><CreditCard className="mr-2 h-5 w-5" />Pagar {formatPrice(amountToPay)} y reservar</>
+              ) : (
+                'Confirmar reserva'
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

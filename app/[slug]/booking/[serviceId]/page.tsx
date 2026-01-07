@@ -31,15 +31,11 @@ export default async function BookingPage({
   const initialSlots = slotsResult.success ? slotsResult.data : []
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 md:p-8">
-      <div className="w-full max-w-5xl mx-auto">
-        <BookingCalendar
-          service={service}
-          serviceId={serviceId}
-          initialDate={today}
-          initialSlots={initialSlots || []}
-        />
-      </div>
-    </div>
+    <BookingCalendar
+      service={service}
+      serviceId={serviceId}
+      initialDate={today}
+      initialSlots={initialSlots || []}
+    />
   )
 }

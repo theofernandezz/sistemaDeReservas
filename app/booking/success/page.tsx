@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check, CalendarCheck, Calendar, ExternalLink } from 'lucide-react'
+import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -8,7 +8,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 interface SuccessPageProps {
-  searchParams: Promise<{ id?: string }>
+  searchParams: Promise<{ id?: string; appointment?: string; status?: string }>
+  params: Promise<{ slug: string }>
 }
 
 function generateGoogleCalendarUrl(
@@ -17,7 +18,7 @@ function generateGoogleCalendarUrl(
   endDate: Date,
   description: string
 ): string {
-  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\\d{3}/, '')
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -35,7 +36,7 @@ function generateIcsContent(
   endDate: Date,
   description: string
 ): string {
-  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '').replace('Z', '')
+  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\\d{3}/, '').replace('Z', '')
 
   return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -48,36 +49,49 @@ END:VEVENT
 END:VCALENDAR`
 }
 
-export default async function SuccessPage({ searchParams }: SuccessPageProps) {
-  const { id } = await searchParams
+export default async function SuccessPage({ searchParams, params }: SuccessPageProps) {
+  const { id, appointment: appointmentId, status: urlStatus } = await searchParams
+  const { slug } = await params
+
+  const bookingId = id || appointmentId
 
   let appointment = null
-  if (id) {
-    const result = await getAppointmentById(id)
+  if (bookingId) {
+    const result = await getAppointmentById(bookingId)
     if (result.success && result.data) {
       appointment = result.data
     }
   }
 
+  // Determine payment status
+  // @ts-ignore - payment_status may exist
+  const paymentStatus = appointment?.payment_status as string | undefined
+  const appointmentStatus = appointment?.status
+
+  // Check if this was a failed/pending redirect from MP
+  const isPaymentPending = paymentStatus === 'pending' || urlStatus === 'pending'
+  const isPaymentFailed = urlStatus === 'failure'
+  const isConfirmed = paymentStatus === 'paid' || appointmentStatus === 'confirmed'
+
   const startDate = appointment ? new Date(appointment.start_time) : null
   const endDate = appointment ? new Date(appointment.end_time) : null
-  const serviceName = appointment?.service?.name || 'Cita en Siv Nails'
+  const serviceName = appointment?.service?.name || 'Cita'
 
-  const googleCalendarUrl = startDate && endDate
+  const googleCalendarUrl = startDate && endDate && isConfirmed
     ? generateGoogleCalendarUrl(
-      `${serviceName} - Siv Nails`,
+      `${serviceName}`,
       startDate,
       endDate,
-      `Tu cita de ${serviceName} en Siv Nails Studio`
+      `Tu cita de ${serviceName}`
     )
     : null
 
-  const icsContent = startDate && endDate
+  const icsContent = startDate && endDate && isConfirmed
     ? generateIcsContent(
-      `${serviceName} - Siv Nails`,
+      `${serviceName}`,
       startDate,
       endDate,
-      `Tu cita de ${serviceName} en Siv Nails Studio`
+      `Tu cita de ${serviceName}`
     )
     : null
 
@@ -85,6 +99,103 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
     ? `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`
     : null
 
+  // PENDING PAYMENT STATE
+  if (isPaymentPending && !isConfirmed) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardContent className="pt-12 pb-8 px-8 text-center space-y-6">
+            <div className="relative mx-auto w-24 h-24">
+              <div className="absolute inset-0 bg-amber-100 dark:bg-amber-900/30 rounded-full animate-pulse" />
+              <div className="relative flex items-center justify-center w-full h-full rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                <Clock className="w-10 h-10" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tight">Pago Pendiente</h1>
+              <p className="text-muted-foreground text-sm">
+                Tu reserva está guardada pero necesita confirmación de pago.
+              </p>
+            </div>
+
+            {appointment && startDate && (
+              <div className="bg-secondary/30 rounded-xl p-4 text-left space-y-3">
+                <h3 className="font-semibold text-lg">{serviceName}</h3>
+                <Separator />
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fecha</span>
+                    <span className="font-medium">
+                      {format(startDate, "EEEE d 'de' MMMM", { locale: es })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Hora</span>
+                    <span className="font-medium">{format(startDate, 'HH:mm')} hs</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-left">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-800 dark:text-amber-300">¿Qué debo hacer?</p>
+                  <p className="text-amber-700 dark:text-amber-400 mt-1">
+                    Si elegiste pagar en efectivo (Rapipago/Pago Fácil), tenés hasta 3 días para completar el pago. Si no, la reserva se cancelará automáticamente.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button asChild className="w-full h-11">
+                <Link href={`/${slug}`}>
+                  Volver al Inicio
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // FAILED PAYMENT STATE
+  if (isPaymentFailed) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <Card className="max-w-md w-full border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardContent className="pt-12 pb-8 px-8 text-center space-y-6">
+            <div className="relative mx-auto w-24 h-24">
+              <div className="relative flex items-center justify-center w-full h-full rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                <XCircle className="w-10 h-10" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tight">Pago Rechazado</h1>
+              <p className="text-muted-foreground text-sm">
+                No pudimos procesar tu pago. Por favor, intenta nuevamente.
+              </p>
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <Button asChild className="w-full h-11">
+                <Link href={`/${slug}`}>
+                  Intentar de Nuevo
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // SUCCESS STATE (payment confirmed)
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <Card className="max-w-md w-full border-0 shadow-lg bg-card/50 backdrop-blur-sm">
@@ -140,22 +251,20 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
           )}
 
           {/* Calendar Buttons */}
-          {startDate && (
+          {startDate && googleCalendarUrl && (
             <div className="space-y-3 pt-2">
               <p className="text-xs text-muted-foreground">Agregar a tu calendario:</p>
               <div className="flex gap-2">
-                {googleCalendarUrl && (
-                  <Button asChild variant="outline" className="flex-1 h-11" size="sm">
-                    <a href={googleCalendarUrl} target="_blank" rel="noopener noreferrer">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Google
-                      <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
-                    </a>
-                  </Button>
-                )}
+                <Button asChild variant="outline" className="flex-1 h-11" size="sm">
+                  <a href={googleCalendarUrl} target="_blank" rel="noopener noreferrer">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Google
+                    <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
+                  </a>
+                </Button>
                 {icsDataUrl && (
                   <Button asChild variant="outline" className="flex-1 h-11" size="sm">
-                    <a href={icsDataUrl} download="cita-sivnails.ics">
+                    <a href={icsDataUrl} download="cita.ics">
                       <Calendar className="w-4 h-4 mr-2" />
                       Apple / Outlook
                     </a>
@@ -168,7 +277,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
           {/* Home Button */}
           <div className="pt-4">
             <Button asChild className="w-full h-11">
-              <Link href="/">
+              <Link href={`/${slug}`}>
                 Volver al Inicio
               </Link>
             </Button>

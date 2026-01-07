@@ -45,12 +45,12 @@ export default async function PublicBookingLayout({
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-0 lg:px-0 lg:max-w-none">
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="py-6 border-t mt-auto px-4 bg-secondary/30">
+        {/* Footer - hidden on desktop for booking pages */}
+        <footer className="py-6 border-t mt-auto px-4 bg-secondary/30 lg:hidden">
           <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
               {business.address && <span>{business.address}</span>}

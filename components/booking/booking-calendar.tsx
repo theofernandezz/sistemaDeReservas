@@ -1,18 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import { useRouter, useParams } from 'next/navigation'
+import { format, addMonths, subMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, Clock, CalendarIcon, Check, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowLeft, Clock, Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
 import { TimeSlot } from '@/types/database.types'
 import { getAvailableSlots } from '@/app/actions'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 interface BookingCalendarProps {
@@ -29,20 +26,21 @@ export default function BookingCalendar({
   initialSlots
 }: BookingCalendarProps) {
   const router = useRouter()
-  // Always start with today's date
+  const params = useParams()
+  const slug = params.slug as string | undefined
+
   const [date, setDate] = useState<Date | undefined>(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return today
   })
+  const [month, setMonth] = useState<Date>(new Date())
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [loading, setLoading] = useState(false)
 
-  // Helper to capitalize first letter
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
-  // Function to get business hours from localStorage
   const getBusinessHours = (): string | undefined => {
     if (typeof window === 'undefined') return undefined
     try {
@@ -54,15 +52,12 @@ export default function BookingCalendar({
 
   const handleDateSelect = async (newDate: Date | undefined) => {
     if (!newDate) return
-
     setDate(newDate)
     setSelectedTime(null)
     setLoading(true)
-
     const dateStr = format(newDate, 'yyyy-MM-dd')
     const businessHours = getBusinessHours()
     const result = await getAvailableSlots(serviceId, dateStr, businessHours)
-
     if (result.success && result.data) {
       setSlots(result.data)
     }
@@ -72,159 +67,259 @@ export default function BookingCalendar({
   const handleContinue = () => {
     if (selectedTime && date) {
       const dateStr = format(date, 'yyyy-MM-dd')
-      // Go to addons page first (then to confirm)
-      router.push(`/booking/${serviceId}/addons?date=${dateStr}&time=${selectedTime}`)
+      // Use slug if available (multi-tenant route), otherwise fallback
+      const basePath = slug ? `/${slug}/booking` : '/booking'
+      router.push(`${basePath}/${serviceId}/confirm?date=${dateStr}&time=${selectedTime}`)
     }
   }
 
   const morningSlots = slots.filter(s => parseInt(s.time.split(':')[0]) < 12)
   const afternoonSlots = slots.filter(s => parseInt(s.time.split(':')[0]) >= 12)
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+    }).format(price)
+  }
+
+  const formattedDate = date
+    ? capitalize(format(date, "EEE d", { locale: es }))
+    : ''
+
+  const formattedDateLong = date
+    ? `${capitalize(format(date, "EEEE", { locale: es }))}, ${format(date, "d", { locale: es })} de ${capitalize(format(date, "MMMM", { locale: es }))}`
+    : 'Selecciona una fecha'
+
+  // Time slot button component
+  const TimeSlotBtn = ({ slot }: { slot: TimeSlot }) => (
+    <button
+      onClick={() => slot.available && setSelectedTime(slot.time)}
+      disabled={!slot.available}
+      className={cn(
+        "h-11 px-4 rounded-xl text-sm font-medium transition-all duration-200 relative",
+        selectedTime === slot.time
+          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-[1.02] ring-2 ring-primary/20"
+          : slot.available
+            ? "bg-card border border-border/60 hover:border-primary/40 hover:shadow-md hover:bg-secondary/20"
+            : "opacity-40 cursor-not-allowed bg-muted/50 text-muted-foreground"
+      )}
+    >
+      {slot.time}
+      {selectedTime === slot.time && (
+        <span className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-md border-2 border-background">
+          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        </span>
+      )}
+    </button>
+  )
+
   return (
-    <Card className="border-none shadow-2xl shadow-stone-200/50 dark:shadow-none overflow-hidden bg-card/50 backdrop-blur-sm">
-      <div className="flex flex-col lg:flex-row">
-
-        {/* Left Panel: Service Info & Calendar (Fixed Width) */}
-        <div className="w-full lg:w-[400px] bg-secondary/30 p-6 md:p-8 flex flex-col gap-6 border-b lg:border-b-0 lg:border-r border-border/50">
-
-          {/* Back & Title */}
-          <div className="space-y-4">
-            <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-3 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-            </Button>
-
-            <div>
-              <Badge variant="outline" className="mb-2 border-primary/20 bg-primary/5 text-primary">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Servicio Premium
-              </Badge>
-              <h1 className="font-serif font-bold text-3xl text-primary leading-tight">
-                {service.title}
-              </h1>
-              <div className="flex items-center gap-3 mt-2 text-sm text-foreground/80">
-                <span className="font-semibold">${service.price}</span>
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <span>{service.durationMin} minutos</span>
-              </div>
+    <>
+      {/* MOBILE LAYOUT */}
+      <div className="lg:hidden min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <header className="bg-card border-b px-4 py-3 flex items-center gap-3">
+          <button onClick={() => router.back()} className="p-1 -ml-1 hover:bg-secondary rounded-lg">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-semibold truncate">{service.title}</h1>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{formatPrice(service.price)}</span>
+              <span>•</span>
+              <Clock className="h-3 w-3" />
+              <span>{service.durationMin} min</span>
             </div>
           </div>
+        </header>
 
-          <Separator className="bg-border/50" />
-
-          {/* Calendar */}
-          <div className="flex-1 flex flex-col items-center">
-            <div className="w-full">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 block">Seleccionar Fecha</span>
-              <div className="bg-background rounded-2xl p-4 shadow-sm border border-border/40 w-fit mx-auto relative">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={handleDateSelect}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  initialFocus
-                  className="p-3"
-                />
-              </div>
-            </div>
+        {/* Calendar with custom navigation */}
+        <div className="p-4 flex flex-col items-center border-b bg-secondary/20">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between w-full max-w-[280px] mb-3">
+            <button
+              type="button"
+              onClick={() => setMonth(subMonths(month, 1))}
+              className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="font-medium capitalize">
+              {format(month, 'MMMM yyyy', { locale: es })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMonth(addMonths(month, 1))}
+              className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleDateSelect}
+            month={month}
+            onMonthChange={setMonth}
+            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+            className="rounded-xl border bg-card p-3 shadow-sm"
+            hideNavigation
+          />
         </div>
 
-        {/* Right Panel: Time Selection (Flexible) */}
-        <div className="flex-1 p-6 md:p-10 bg-background flex flex-col min-h-[500px]">
+        {/* Time Slots */}
+        <div className="flex-1 p-4 pb-28 overflow-y-auto">
+          <div className="text-sm font-medium mb-3">{formattedDateLong}</div>
 
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="font-serif font-bold text-2xl text-primary capitalize">
-              {date ? `${capitalize(format(date, "EEEE", { locale: es }))}, ${format(date, "d", { locale: es })} de ${capitalize(format(date, "MMMM", { locale: es }))}` : 'Selecciona una fecha'}
-            </h2>
-            {loading && <span className="text-xs text-muted-foreground animate-pulse font-medium">Actualizando...</span>}
-          </div>
-
-          {slots.length === 0 && !loading ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-secondary rounded-xl opacity-60">
-              <Clock className="h-10 w-10 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">Sin horarios disponibles.</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : slots.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Sin horarios disponibles
             </div>
           ) : (
-            <div className="space-y-8 animate-fade-in">
-              {/* Morning */}
+            <div className="space-y-4">
               {morningSlots.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    Mañana <span className="h-px w-full bg-border flex-1 inline-block opacity-50" />
-                  </h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {morningSlots.map(slot => (
-                      <TimeSlotButton
-                        key={slot.time}
-                        slot={slot}
-                        selected={selectedTime === slot.time}
-                        onClick={() => setSelectedTime(slot.time)}
-                      />
-                    ))}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Mañana</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {morningSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
                   </div>
                 </div>
               )}
-
-              {/* Afternoon */}
               {afternoonSlots.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    Tarde <span className="h-px w-full bg-border flex-1 inline-block opacity-50" />
-                  </h3>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {afternoonSlots.map(slot => (
-                      <TimeSlotButton
-                        key={slot.time}
-                        slot={slot}
-                        selected={selectedTime === slot.time}
-                        onClick={() => setSelectedTime(slot.time)}
-                      />
-                    ))}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-2">Tarde</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {afternoonSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
                   </div>
                 </div>
               )}
             </div>
           )}
+        </div>
 
-          {/* Continue Action */}
-          <div className="mt-auto pt-10 flex justify-end">
-            <Button
-              size="lg"
-              className={cn(
-                "rounded-full px-8 h-12 text-base shadow-lg transition-all duration-300",
-                selectedTime ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-              )}
-              onClick={handleContinue}
-            >
-              Confirmar Reserva <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-
+        {/* Sticky Button */}
+        <div className={cn(
+          "fixed bottom-0 left-0 right-0 bg-card border-t p-4 transition-all duration-300",
+          selectedTime ? "translate-y-0" : "translate-y-full"
+        )}>
+          <Button onClick={handleContinue} className="w-full h-12 text-base">
+            Continuar <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
       </div>
-    </Card>
-  )
-}
 
-function TimeSlotButton({ slot, selected, onClick }: { slot: TimeSlot, selected: boolean, onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!slot.available}
-      className={cn(
-        "relative h-12 w-full rounded-xl border text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected
-          ? "bg-primary text-primary-foreground border-primary shadow-lg scale-[1.05] z-10"
-          : "bg-background text-foreground border-border hover:border-primary/50 hover:bg-secondary/30",
-        !slot.available && "opacity-30 cursor-not-allowed bg-secondary/50 border-transparent hover:border-transparent hover:bg-secondary/50"
-      )}
-    >
-      {slot.time}
-      {selected && (
-        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white shadow-sm">
-          <Check className="h-2.5 w-2.5" />
-        </span>
-      )}
-    </button>
+      {/* DESKTOP LAYOUT */}
+      <div className="hidden lg:flex h-screen overflow-hidden bg-gradient-to-br from-background via-background to-secondary/20 items-start justify-center pt-20 px-4">
+        <div className="w-full max-w-5xl bg-card rounded-2xl shadow-2xl overflow-hidden border flex flex-col max-h-[calc(100vh-2rem)]">
+
+          {/* Header */}
+          <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-4">
+              <button onClick={() => router.back()} className="p-2 hover:bg-secondary rounded-lg">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold">{service.title}</h1>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="font-semibold text-primary">{formatPrice(service.price)}</span>
+                  <span>•</span>
+                  <span>{service.durationMin} minutos</span>
+                </div>
+              </div>
+            </div>
+            {selectedTime && (
+              <Button onClick={handleContinue} size="lg" className="rounded-full px-8">
+                Continuar <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left: Calendar */}
+            <div className="w-[320px] p-4 border-r bg-secondary/20 flex flex-col items-center shrink-0">
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between w-full max-w-[280px] mb-2">
+                <button
+                  type="button"
+                  onClick={() => setMonth(subMonths(month, 1))}
+                  className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="font-medium capitalize">
+                  {format(month, 'MMMM yyyy', { locale: es })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMonth(addMonths(month, 1))}
+                  className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={handleDateSelect}
+                month={month}
+                onMonthChange={setMonth}
+                disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                className="rounded-xl border bg-card p-4 shadow-sm"
+                hideNavigation
+              />
+            </div>
+
+            {/* Right: Time Slots */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="text-lg font-semibold mb-4">{formattedDateLong}</div>
+
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : slots.length === 0 ? (
+                <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  <div className="text-center">
+                    <Clock className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p>Sin horarios disponibles</p>
+                    <p className="text-sm">Probá otra fecha</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {morningSlots.length > 0 && (
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                        Mañana <span className="h-px flex-1 bg-border" />
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {morningSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                      </div>
+                    </div>
+                  )}
+                  {afternoonSlots.length > 0 && (
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                        Tarde <span className="h-px flex-1 bg-border" />
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {afternoonSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
