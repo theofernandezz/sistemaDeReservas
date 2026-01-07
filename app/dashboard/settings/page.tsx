@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         initialAdminEmail={adminEmail}
         isMPConnected={isMPConnected || false}
         mpUserId={mpUserId}
-        depositPercentage={business?.deposit_percentage || 50}
+        depositPercentage={business?.deposit_percentage || 100}
         businessId={business?.id}
       />
     </div>

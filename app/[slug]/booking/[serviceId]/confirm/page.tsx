@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { ArrowLeft, Calendar, Clock, Loader2, Plus, CreditCard, Banknote } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Loader2, Plus, CreditCard, Banknote, CircleDollarSign, Store } from 'lucide-react'
 import { createAppointment, getServiceById } from '@/app/actions'
 import { getBusinessPaymentConfig, createBookingPaymentPreference } from '@/app/actions/payments'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -14,6 +14,8 @@ import { useToast } from '@/components/ui/toast'
 import { SelectedAddon } from '@/types/database.types'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+type PaymentMethod = 'full' | 'deposit'
 
 export default function ConfirmationPage() {
   const router = useRouter()
@@ -30,6 +32,7 @@ export default function ConfirmationPage() {
   const [fetchingService, setFetchingService] = useState(true)
   const [service, setService] = useState<any>(null)
   const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('full')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -75,12 +78,15 @@ export default function ConfirmationPage() {
   const totalPrice = (service?.price || 0) + addonsTotal
   const totalDuration = (service?.duration_minutes || 60) + addonsDuration
 
-  // Calculate deposit
-  const depositPercentage = paymentConfig?.depositPercentage || 50
-  const depositAmount = paymentConfig?.hasMPConnected
-    ? Math.round(totalPrice * depositPercentage / 100)
+  // Deposit percentage for cash payments (minimum deposit)
+  const depositPercentage = paymentConfig?.depositPercentage || 30
+  const depositAmount = Math.round(totalPrice * depositPercentage / 100)
+
+  // Calculate actual amount to pay based on selected method
+  const amountToPay = paymentConfig?.hasMPConnected
+    ? (paymentMethod === 'full' ? totalPrice : depositAmount)
     : 0
-  const remainingAmount = totalPrice - depositAmount
+  const remainingAmount = totalPrice - amountToPay
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -130,8 +136,8 @@ export default function ConfirmationPage() {
     }
 
     // If MP is connected, create payment preference and redirect
-    if (paymentConfig?.hasMPConnected && depositAmount > 0) {
-      const preferenceResult = await createBookingPaymentPreference(result.data.id)
+    if (paymentConfig?.hasMPConnected && amountToPay > 0) {
+      const preferenceResult = await createBookingPaymentPreference(result.data.id, amountToPay)
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
         // Redirect to Mercado Pago
@@ -229,34 +235,74 @@ export default function ConfirmationPage() {
           </CardContent>
         </Card>
 
-        {/* Payment Info Card - Only show if MP connected */}
-        {paymentConfig?.hasMPConnected && depositAmount > 0 && (
-          <Card className="border-2 border-primary/20 bg-primary/5">
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex items-center gap-3 text-primary">
-                <CreditCard className="h-5 w-5" />
-                <span className="font-semibold">Pago para reservar</span>
-              </div>
+        {/* Payment Method Selection - Only show if MP connected */}
+        {paymentConfig?.hasMPConnected && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CircleDollarSign className="h-4 w-4" />
+              ¿Cómo querés pagar?
+            </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Seña ({depositPercentage}%)</span>
-                  <span className="font-bold text-lg text-primary">{formatPrice(depositAmount)}</span>
+            <div className="grid grid-cols-1 gap-3">
+              {/* Option 1: Full Payment */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('full')}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${paymentMethod === 'full'
+                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                  : 'border-border hover:border-primary/50'
+                  }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${paymentMethod === 'full' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                    }`}>
+                    {paymentMethod === 'full' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Pagar todo ahora
+                      </span>
+                      <span className="font-bold text-primary">{formatPrice(totalPrice)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tarjeta de crédito, débito o dinero en cuenta
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Banknote className="h-4 w-4" />
-                    Resto a pagar en el local
-                  </span>
-                  <span className="font-medium">{formatPrice(remainingAmount)}</span>
-                </div>
-              </div>
+              </button>
 
-              <p className="text-xs text-muted-foreground">
-                El pago se realiza a través de Mercado Pago de forma segura.
-              </p>
-            </CardContent>
-          </Card>
+              {/* Option 2: Deposit for Cash */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('deposit')}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${paymentMethod === 'deposit'
+                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                  : 'border-border hover:border-primary/50'
+                  }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${paymentMethod === 'deposit' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                    }`}>
+                    {paymentMethod === 'deposit' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        Seña + pagar en local
+                      </span>
+                      <span className="font-bold text-primary">{formatPrice(depositAmount)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pagá {formatPrice(depositAmount)} ahora (Rapipago/Pago Fácil) y {formatPrice(remainingAmount)} en el local
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Form */}
@@ -305,10 +351,10 @@ export default function ConfirmationPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {paymentConfig?.hasMPConnected ? 'Procesando...' : 'Confirmando...'}
               </>
-            ) : paymentConfig?.hasMPConnected && depositAmount > 0 ? (
+            ) : paymentConfig?.hasMPConnected && amountToPay > 0 ? (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Pagar {formatPrice(depositAmount)} y Reservar
+                Pagar {formatPrice(amountToPay)} y Reservar
               </>
             ) : (
               'Confirmar Reserva'

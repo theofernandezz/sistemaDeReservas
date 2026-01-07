@@ -40,7 +40,7 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
     return {
       success: true,
       data: {
-        depositPercentage: business?.deposit_percentage || 50,
+        depositPercentage: business?.deposit_percentage || 100,
         hasMPConnected: !!mpIntegration,
       }
     }
@@ -81,9 +81,12 @@ export async function updateBusinessPaymentConfig(
 
 /**
  * Create a Mercado Pago payment preference for a booking
+ * @param appointmentId - The appointment ID
+ * @param customAmount - Optional custom amount to charge (if not provided, uses deposit percentage)
  */
 export async function createBookingPaymentPreference(
-  appointmentId: string
+  appointmentId: string,
+  customAmount?: number
 ): Promise<ServerActionResponse<PaymentPreferenceResult>> {
   try {
     const supabase = await createClient()
@@ -125,11 +128,11 @@ export async function createBookingPaymentPreference(
       throw new Error('El negocio no tiene Mercado Pago conectado')
     }
 
-    // Calculate deposit amount
-    const depositPercentage = business?.deposit_percentage || 50
+    // Calculate amount - use customAmount if provided, otherwise calculate deposit
     // @ts-ignore
     const totalPrice = (appointment.service as any)?.price || 0
-    const depositAmount = Math.round(totalPrice * depositPercentage / 100)
+    const depositPercentage = business?.deposit_percentage || 30
+    const paymentAmount = customAmount || Math.round(totalPrice * depositPercentage / 100)
 
     // Create MP preference
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
@@ -150,10 +153,10 @@ export async function createBookingPaymentPreference(
         {
           id: appointmentId,
           // @ts-ignore
-          title: `Seña - ${(appointment.service as any)?.name}`,
+          title: `Pago - ${(appointment.service as any)?.name}`,
           description: `Reserva en ${business?.name}`,
           quantity: 1,
-          unit_price: depositAmount,
+          unit_price: paymentAmount,
         }
       ],
       {
@@ -168,7 +171,7 @@ export async function createBookingPaymentPreference(
       .from('appointments')
       .update({
         mp_preference_id: preference.id,
-        payment_amount: depositAmount,
+        payment_amount: paymentAmount,
         payment_status: 'pending',
       })
       .eq('id', appointmentId)
