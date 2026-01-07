@@ -32,6 +32,8 @@ export async function createPaymentPreference(
   const client = createMPClient(accessToken)
   const preference = new Preference(client)
 
+  console.log('MP Preference backUrls:', JSON.stringify(backUrls))
+
   const result = await preference.create({
     body: {
       items: items.map(item => ({
@@ -43,8 +45,13 @@ export async function createPaymentPreference(
         currency_id: item.currency_id || 'ARS',
       })),
       metadata: metadata,
-      back_urls: backUrls,
-      auto_return: 'approved',
+      back_urls: {
+        success: backUrls.success,
+        failure: backUrls.failure,
+        pending: backUrls.pending,
+      },
+      // auto_return solo funciona si back_urls está bien definido
+      // auto_return: 'approved',
       notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/webhook`,
     },
   })
