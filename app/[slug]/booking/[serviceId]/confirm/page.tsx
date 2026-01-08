@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronUp, Check, Store, Sparkles
 } from 'lucide-react'
 import { createAppointment, getServiceById, getServiceAddons } from '@/app/actions'
-import { getBusinessPaymentConfig, createBookingPaymentPreference } from '@/app/actions/payments'
+import { getBusinessPaymentConfig, createPendingBookingPreference } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
@@ -49,14 +49,21 @@ export default function CompactConfirmPage() {
           getServiceAddons()
         ])
 
+        console.log('[DEBUG] serviceResult:', serviceResult)
+
         if (serviceResult.success && serviceResult.data) {
           setService(serviceResult.data)
 
+          console.log('[DEBUG] service.business_id:', serviceResult.data.business_id)
+
           if (serviceResult.data.business_id) {
             const configResult = await getBusinessPaymentConfig(serviceResult.data.business_id)
+            console.log('[DEBUG] paymentConfig result:', configResult)
             if (configResult.success && configResult.data) {
               setPaymentConfig(configResult.data)
             }
+          } else {
+            console.log('[DEBUG] No business_id found on service')
           }
         }
 
@@ -127,24 +134,18 @@ export default function CompactConfirmPage() {
     const endDateTime = new Date(startDateTime)
     endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
 
-    const result = await createAppointment({
-      service_id: serviceId,
-      start_time: new Date(startDateTime).toISOString(),
-      end_time: endDateTime.toISOString(),
-      client_name: name,
-      client_phone: phone,
-      status: 'pending',
-      addons: selectedAddons
-    })
-
-    if (!result.success || !result.data) {
-      showError('Error', result.error || 'Intenta nuevamente')
-      setLoading(false)
-      return
-    }
-
+    // If MP is connected, use deferred flow (create appointment AFTER payment)
     if (paymentConfig?.hasMPConnected && amountToPay > 0) {
-      const preferenceResult = await createBookingPaymentPreference(result.data.id, amountToPay)
+      const preferenceResult = await createPendingBookingPreference({
+        serviceId,
+        startTime: new Date(startDateTime).toISOString(),
+        endTime: endDateTime.toISOString(),
+        clientName: name,
+        clientPhone: phone,
+        addons: selectedAddons,
+        paymentAmount: amountToPay,
+        paymentMethod,
+      })
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
         window.location.href = preferenceResult.data.initPoint
@@ -154,6 +155,23 @@ export default function CompactConfirmPage() {
         setLoading(false)
         return
       }
+    }
+
+    // No MP connected - create appointment directly
+    const result = await createAppointment({
+      service_id: serviceId,
+      start_time: new Date(startDateTime).toISOString(),
+      end_time: endDateTime.toISOString(),
+      client_name: name,
+      client_phone: phone,
+      status: 'confirmed',
+      addons: selectedAddons
+    })
+
+    if (!result.success || !result.data) {
+      showError('Error', result.error || 'Intenta nuevamente')
+      setLoading(false)
+      return
     }
 
     router.push(`/${slug}/booking/success?id=${result.data.id}`)

@@ -20,7 +20,8 @@ export async function createPaymentPreference(
   accessToken: string,
   items: PreferenceItem[],
   metadata: {
-    booking_id: string
+    booking_id?: string
+    pending_booking_id?: string
     business_id: string
   },
   backUrls: {

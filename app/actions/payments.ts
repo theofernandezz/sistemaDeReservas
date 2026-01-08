@@ -188,3 +188,133 @@ export async function createBookingPaymentPreference(
     return { success: false, error: error.message }
   }
 }
+
+// Booking data structure for deferred creation
+export interface PendingBookingData {
+  serviceId: string
+  startTime: string
+  endTime: string
+  clientName: string
+  clientPhone: string
+  addons?: { id: string; name: string; price: number; duration_minutes: number }[]
+  paymentAmount: number
+  paymentMethod: 'full' | 'deposit'
+}
+
+/**
+ * Create a Mercado Pago payment preference for a PENDING booking
+ * The appointment will be created AFTER payment confirmation via webhook
+ */
+export async function createPendingBookingPreference(
+  bookingData: PendingBookingData
+): Promise<ServerActionResponse<PaymentPreferenceResult & { pendingBookingId: string }>> {
+  try {
+    const supabase = await createClient()
+
+    // Get service to find business_id
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('id, name, price, business_id')
+      .eq('id', bookingData.serviceId)
+      .single()
+
+    if (serviceError || !service) {
+      throw new Error('Servicio no encontrado')
+    }
+
+    const businessId = service.business_id
+    if (!businessId) {
+      throw new Error('Negocio no encontrado')
+    }
+
+    // Get business config and MP integration
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('name, slug')
+      .eq('id', businessId)
+      .single()
+
+    const { data: mpIntegration } = await supabase
+      .from('mp_integrations')
+      .select('access_token')
+      .eq('business_id', businessId)
+      .single()
+
+    if (!mpIntegration?.access_token) {
+      throw new Error('El negocio no tiene Mercado Pago conectado')
+    }
+
+    // Create a pending_bookings record to store the booking data temporarily
+    const pendingBookingId = crypto.randomUUID()
+
+    // Store in database (we'll create this table)
+    const { error: insertError } = await supabase
+      .from('pending_bookings')
+      .insert({
+        id: pendingBookingId,
+        service_id: bookingData.serviceId,
+        start_time: bookingData.startTime,
+        end_time: bookingData.endTime,
+        client_name: bookingData.clientName,
+        client_phone: bookingData.clientPhone,
+        addons: bookingData.addons || [],
+        payment_amount: bookingData.paymentAmount,
+        payment_method: bookingData.paymentMethod,
+        status: 'pending_payment',
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min expiry
+      })
+
+    if (insertError) {
+      console.error('Error creating pending booking:', insertError)
+      throw new Error('Error al crear reserva pendiente')
+    }
+
+    // Create MP preference
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
+    const businessSlug = business?.slug || 'siv-nails'
+
+    const backUrls = {
+      success: `${appUrl}/${businessSlug}/booking/success?pending=${pendingBookingId}`,
+      failure: `${appUrl}/${businessSlug}/booking/success?pending=${pendingBookingId}&status=failure`,
+      pending: `${appUrl}/${businessSlug}/booking/success?pending=${pendingBookingId}&status=pending`,
+    }
+
+    const preference = await mpCreatePreference(
+      mpIntegration.access_token,
+      [
+        {
+          id: pendingBookingId,
+          title: `Pago - ${service.name}`,
+          description: `Reserva en ${business?.name}`,
+          quantity: 1,
+          unit_price: bookingData.paymentAmount,
+        }
+      ],
+      {
+        pending_booking_id: pendingBookingId,
+        business_id: businessId,
+      },
+      backUrls
+    )
+
+    // Update pending booking with preference ID
+    await supabase
+      .from('pending_bookings')
+      .update({ mp_preference_id: preference.id })
+      .eq('id', pendingBookingId)
+
+    return {
+      success: true,
+      data: {
+        preferenceId: preference.id!,
+        initPoint: preference.init_point!,
+        pendingBookingId,
+      }
+    }
+  } catch (error: any) {
+    console.error('Error creating pending booking preference:', error)
+    return { success: false, error: error.message }
+  }
+}
+

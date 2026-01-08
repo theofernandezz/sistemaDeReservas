@@ -1,14 +1,15 @@
 import Link from 'next/link'
-import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle } from 'lucide-react'
+import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { getAppointmentById } from '@/app/actions'
+import { createClient } from '@/utils/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 interface SuccessPageProps {
-  searchParams: Promise<{ id?: string; appointment?: string; status?: string }>
+  searchParams: Promise<{ id?: string; appointment?: string; pending?: string; status?: string }>
   params: Promise<{ slug: string }>
 }
 
@@ -18,7 +19,7 @@ function generateGoogleCalendarUrl(
   endDate: Date,
   description: string
 ): string {
-  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\\d{3}/, '')
+  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '')
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -36,7 +37,7 @@ function generateIcsContent(
   endDate: Date,
   description: string
 ): string {
-  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\\d{3}/, '').replace('Z', '')
+  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '').replace('Z', '')
 
   return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -50,12 +51,14 @@ END:VCALENDAR`
 }
 
 export default async function SuccessPage({ searchParams, params }: SuccessPageProps) {
-  const { id, appointment: appointmentId, status: urlStatus } = await searchParams
+  const { id, appointment: appointmentId, pending: pendingId, status: urlStatus } = await searchParams
   const { slug } = await params
 
-  const bookingId = id || appointmentId
-
   let appointment = null
+  let pendingBooking = null
+
+  // First try to get appointment by ID
+  const bookingId = id || appointmentId
   if (bookingId) {
     const result = await getAppointmentById(bookingId)
     if (result.success && result.data) {
@@ -63,19 +66,44 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
     }
   }
 
+  // If pending ID provided, check pending_bookings table
+  if (pendingId) {
+    const supabase = await createClient()
+
+    // First check if payment was completed (converted_appointment_id exists)
+    const { data: pending } = await supabase
+      .from('pending_bookings')
+      .select('*, service:services(name)')
+      .eq('id', pendingId)
+      .single()
+
+    if (pending) {
+      pendingBooking = pending
+
+      // If converted, get the actual appointment
+      if (pending.converted_appointment_id) {
+        const result = await getAppointmentById(pending.converted_appointment_id)
+        if (result.success && result.data) {
+          appointment = result.data
+        }
+      }
+    }
+  }
+
   // Determine payment status
   // @ts-ignore - payment_status may exist
   const paymentStatus = appointment?.payment_status as string | undefined
   const appointmentStatus = appointment?.status
+  const pendingStatus = pendingBooking?.status
 
   // Check if this was a failed/pending redirect from MP
-  const isPaymentPending = paymentStatus === 'pending' || urlStatus === 'pending'
+  const isPaymentPending = paymentStatus === 'pending' || urlStatus === 'pending' || pendingStatus === 'pending_payment'
   const isPaymentFailed = urlStatus === 'failure'
-  const isConfirmed = paymentStatus === 'paid' || appointmentStatus === 'confirmed'
+  const isConfirmed = paymentStatus === 'paid' || appointmentStatus === 'confirmed' || pendingStatus === 'paid'
 
-  const startDate = appointment ? new Date(appointment.start_time) : null
-  const endDate = appointment ? new Date(appointment.end_time) : null
-  const serviceName = appointment?.service?.name || 'Cita'
+  const startDate = appointment ? new Date(appointment.start_time) : (pendingBooking ? new Date(pendingBooking.start_time) : null)
+  const endDate = appointment ? new Date(appointment.end_time) : (pendingBooking ? new Date(pendingBooking.end_time) : null)
+  const serviceName = appointment?.service?.name || (pendingBooking?.service as any)?.name || 'Cita'
 
   const googleCalendarUrl = startDate && endDate && isConfirmed
     ? generateGoogleCalendarUrl(
