@@ -209,6 +209,28 @@ export async function createPendingBookingPreference(
   bookingData: PendingBookingData
 ): Promise<ServerActionResponse<PaymentPreferenceResult & { pendingBookingId: string }>> {
   try {
+    // Validaciones de entrada
+    if (!bookingData.paymentMethod || !['full', 'deposit'].includes(bookingData.paymentMethod)) {
+      return { 
+        success: false, 
+        error: 'Método de pago inválido. Por favor selecciona una opción de pago.' 
+      }
+    }
+    
+    if (!bookingData.paymentAmount || bookingData.paymentAmount <= 0) {
+      return { 
+        success: false, 
+        error: 'Monto de pago inválido.' 
+      }
+    }
+    
+    if (!bookingData.serviceId || !bookingData.clientName || !bookingData.clientPhone) {
+      return {
+        success: false,
+        error: 'Faltan datos requeridos para la reserva.'
+      }
+    }
+
     const supabase = await createClient()
 
     // Get service to find business_id

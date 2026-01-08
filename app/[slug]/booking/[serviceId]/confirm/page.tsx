@@ -30,6 +30,7 @@ export default function CompactConfirmPage() {
 
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(true)
+  const [fetchingPaymentConfig, setFetchingPaymentConfig] = useState(true)
   const [service, setService] = useState<any>(null)
   const [addons, setAddons] = useState<ServiceAddon[]>([])
   const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
@@ -43,6 +44,9 @@ export default function CompactConfirmPage() {
 
   useEffect(() => {
     async function fetchData() {
+      const startTime = Date.now()
+      setFetchingPaymentConfig(true)
+      
       if (serviceId) {
         const [serviceResult, addonsResult] = await Promise.all([
           getServiceById(serviceId),
@@ -58,12 +62,28 @@ export default function CompactConfirmPage() {
 
           if (serviceResult.data.business_id) {
             const configResult = await getBusinessPaymentConfig(serviceResult.data.business_id)
+            const loadTime = Date.now() - startTime
             console.log('[DEBUG] paymentConfig result:', configResult)
+            
             if (configResult.success && configResult.data) {
               setPaymentConfig(configResult.data)
+              console.log('[INFO] Payment config loaded:', {
+                hasMPConnected: configResult.data.hasMPConnected,
+                depositPercentage: configResult.data.depositPercentage,
+                loadTime: `${loadTime}ms`
+              })
+            } else {
+              // Fallback en caso de error
+              console.error('[ERROR] Payment config failed - using fallback:', {
+                error: configResult.error,
+                loadTime: `${loadTime}ms`
+              })
+              setPaymentConfig({ depositPercentage: 30, hasMPConnected: false })
             }
           } else {
-            console.log('[DEBUG] No business_id found on service')
+            // Fallback si no hay business_id
+            console.log('[DEBUG] No business_id found on service - using fallback')
+            setPaymentConfig({ depositPercentage: 30, hasMPConnected: false })
           }
         }
 
@@ -71,7 +91,9 @@ export default function CompactConfirmPage() {
           setAddons(addonsResult.data)
         }
       }
+      
       setFetchingData(false)
+      setFetchingPaymentConfig(false)
     }
     fetchData()
   }, [serviceId])
@@ -128,6 +150,18 @@ export default function CompactConfirmPage() {
   const handleSubmit = async () => {
     if (!service || !date || !time || !name || !phone) return
 
+    // Validar que paymentConfig esté cargado
+    if (paymentConfig === null) {
+      showError('Error', 'Cargando configuración de pago. Por favor espera un momento.')
+      return
+    }
+    
+    // Si MP está conectado, validar método de pago
+    if (paymentConfig.hasMPConnected && !paymentMethod) {
+      showError('Error', 'Selecciona un método de pago')
+      return
+    }
+
     setLoading(true)
 
     const startDateTime = `${date}T${time}:00`
@@ -177,7 +211,7 @@ export default function CompactConfirmPage() {
     router.push(`/${slug}/booking/success?id=${result.data.id}`)
   }
 
-  if (fetchingData) {
+  if (fetchingData || fetchingPaymentConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin h-8 w-8 text-primary" />
@@ -331,7 +365,7 @@ export default function CompactConfirmPage() {
         </main>
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
-          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !phone} className="w-full h-12 text-base">
+          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !phone || fetchingPaymentConfig} className="w-full h-12 text-base">
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
               : paymentConfig?.hasMPConnected ? <><CreditCard className="mr-2 h-4 w-4" />Pagar {formatPrice(amountToPay)} y reservar</>
                 : 'Confirmar reserva'}
@@ -440,7 +474,7 @@ export default function CompactConfirmPage() {
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !name || !phone}
+              disabled={loading || !name || !phone || fetchingPaymentConfig}
               className="w-full h-14 text-base mt-8 rounded-xl"
               size="lg"
             >
