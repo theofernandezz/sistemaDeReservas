@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import {
   ArrowLeft, Calendar, Clock, Loader2, CreditCard,
@@ -42,74 +42,124 @@ export default function CompactConfirmPage() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
 
+  // Ref para prevenir race conditions en mobile
+  const isMountedRef = useRef(true)
+  const paymentConfigLoadedRef = useRef(false)
+
   useEffect(() => {
+    isMountedRef.current = true
+    paymentConfigLoadedRef.current = false
+
     async function fetchData() {
       const startTime = Date.now()
+      const sessionId = Math.random().toString(36).substring(7)
+
+      console.log(`[${sessionId}] 🔄 START fetchData - mounted: ${isMountedRef.current}`)
+
+      if (!isMountedRef.current) {
+        console.log(`[${sessionId}] ⚠️ Component unmounted before fetch started`)
+        return
+      }
+
       setFetchingPaymentConfig(true)
-      
+
       if (serviceId) {
+        console.log(`[${sessionId}] 📡 Fetching service and addons...`)
         const [serviceResult, addonsResult] = await Promise.all([
           getServiceById(serviceId),
           getServiceAddons()
         ])
 
-        console.log('[DEBUG] serviceResult:', serviceResult)
+        if (!isMountedRef.current) {
+          console.log(`[${sessionId}] ⚠️ Component unmounted after service fetch`)
+          return
+        }
+
+        console.log(`[${sessionId}] [DEBUG] serviceResult:`, serviceResult)
 
         if (serviceResult.success && serviceResult.data) {
           setService(serviceResult.data)
 
-          console.log('[DEBUG] service.business_id:', serviceResult.data.business_id)
+          console.log(`[${sessionId}] [DEBUG] service.business_id:`, serviceResult.data.business_id)
 
           if (serviceResult.data.business_id) {
+            console.log(`[${sessionId}] 💳 Fetching payment config for business:`, serviceResult.data.business_id)
+
             const configResult = await getBusinessPaymentConfig(serviceResult.data.business_id)
             const loadTime = Date.now() - startTime
-            console.log('[DEBUG] paymentConfig result:', configResult)
-            
+
+            if (!isMountedRef.current) {
+              console.log(`[${sessionId}] ⚠️ Component unmounted after payment config fetch`)
+              return
+            }
+
+            console.log(`[${sessionId}] [DEBUG] paymentConfig result:`, configResult)
+
             if (configResult.success && configResult.data) {
+              paymentConfigLoadedRef.current = true
               setPaymentConfig(configResult.data)
-              console.log('[INFO] Payment config loaded:', {
+
+              console.log(`[${sessionId}] ✅ [INFO] Payment config loaded:`, {
                 hasMPConnected: configResult.data.hasMPConnected,
                 depositPercentage: configResult.data.depositPercentage,
-                loadTime: `${loadTime}ms`
+                loadTime: `${loadTime}ms`,
+                mounted: isMountedRef.current
               })
+
               // DEBUG ALERT - Remover después
               if (typeof window !== 'undefined') {
-                alert(`✅ Config OK: MP=${configResult.data.hasMPConnected}, Deposit=${configResult.data.depositPercentage}%`)
+                alert(`✅ [${sessionId}] Config OK: MP=${configResult.data.hasMPConnected}, Deposit=${configResult.data.depositPercentage}%`)
               }
             } else {
               // CRÍTICO: Si falla la carga, NO usar fallback
-              // Esto previene que se creen appointments sin pago
-              console.error('[ERROR] Payment config failed - NOT using fallback:', {
+              console.error(`[${sessionId}] ❌ [ERROR] Payment config failed:`, {
                 error: configResult.error,
-                loadTime: `${loadTime}ms`
+                loadTime: `${loadTime}ms`,
+                mounted: isMountedRef.current
               })
+
               // DEBUG ALERT - Remover después
               if (typeof window !== 'undefined') {
-                alert(`❌ Config FAILED: ${configResult.error}`)
+                alert(`❌ [${sessionId}] Config FAILED: ${configResult.error}`)
               }
               // Dejar paymentConfig en null para que las validaciones bloqueen el submit
             }
           } else {
             // Si no hay business_id, es un servicio legacy sin negocio asociado
-            // En este caso SÍ es correcto usar fallback sin MP
-            console.log('[DEBUG] No business_id found on service - using fallback without MP')
-            // DEBUG ALERT - Remover después
+            console.log(`[${sessionId}] ⚠️ [DEBUG] No business_id found on service - using fallback without MP`)
+
             if (typeof window !== 'undefined') {
-              alert(`⚠️ No business_id en servicio`)
+              alert(`⚠️ [${sessionId}] No business_id en servicio`)
             }
-            setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
+
+            if (isMountedRef.current) {
+              setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
+            }
           }
         }
 
         if (addonsResult.success && addonsResult.data) {
-          setAddons(addonsResult.data)
+          if (isMountedRef.current) {
+            setAddons(addonsResult.data)
+          }
         }
       }
-      
-      setFetchingData(false)
-      setFetchingPaymentConfig(false)
+
+      if (isMountedRef.current) {
+        setFetchingData(false)
+        setFetchingPaymentConfig(false)
+      }
+
+      console.log(`[${sessionId}] ✅ END fetchData - paymentConfigLoaded: ${paymentConfigLoadedRef.current}`)
     }
+
     fetchData()
+
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleanup: Setting isMountedRef to false')
+      isMountedRef.current = false
+    }
   }, [serviceId])
 
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0)
@@ -166,14 +216,25 @@ export default function CompactConfirmPage() {
 
     // Validar que paymentConfig esté cargado
     if (paymentConfig === null) {
+      console.error('🚫 Submit blocked: paymentConfig is NULL', {
+        paymentConfigLoadedRef: paymentConfigLoadedRef.current,
+        isMountedRef: isMountedRef.current,
+        fetchingPaymentConfig
+      })
       alert('🚫 DEBUG: paymentConfig es NULL')
       showError('Error', 'Cargando configuración de pago. Por favor espera un momento.')
       return
     }
-    
-    // DEBUG: Mostrar paymentConfig actual
-    alert(`💳 PaymentConfig: MP=${paymentConfig.hasMPConnected}, Amount=${amountToPay}`)
-    
+
+    // DEBUG: Mostrar paymentConfig actual con más detalles
+    console.log('💳 Submit - Current State:', {
+      paymentConfig,
+      amountToPay,
+      paymentMethod,
+      paymentConfigLoadedRef: paymentConfigLoadedRef.current
+    })
+    alert(`💳 PaymentConfig: MP=${paymentConfig.hasMPConnected}, Amount=${amountToPay}, Method=${paymentMethod}`)
+
     // Si MP está conectado, validar método de pago
     if (paymentConfig.hasMPConnected && !paymentMethod) {
       showError('Error', 'Selecciona un método de pago')
