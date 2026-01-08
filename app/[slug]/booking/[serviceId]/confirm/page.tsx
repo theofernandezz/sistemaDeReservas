@@ -72,18 +72,32 @@ export default function CompactConfirmPage() {
                 depositPercentage: configResult.data.depositPercentage,
                 loadTime: `${loadTime}ms`
               })
+              // DEBUG ALERT - Remover después
+              if (typeof window !== 'undefined') {
+                alert(`✅ Config OK: MP=${configResult.data.hasMPConnected}, Deposit=${configResult.data.depositPercentage}%`)
+              }
             } else {
-              // Fallback en caso de error
-              console.error('[ERROR] Payment config failed - using fallback:', {
+              // CRÍTICO: Si falla la carga, NO usar fallback
+              // Esto previene que se creen appointments sin pago
+              console.error('[ERROR] Payment config failed - NOT using fallback:', {
                 error: configResult.error,
                 loadTime: `${loadTime}ms`
               })
-              setPaymentConfig({ depositPercentage: 30, hasMPConnected: false })
+              // DEBUG ALERT - Remover después
+              if (typeof window !== 'undefined') {
+                alert(`❌ Config FAILED: ${configResult.error}`)
+              }
+              // Dejar paymentConfig en null para que las validaciones bloqueen el submit
             }
           } else {
-            // Fallback si no hay business_id
-            console.log('[DEBUG] No business_id found on service - using fallback')
-            setPaymentConfig({ depositPercentage: 30, hasMPConnected: false })
+            // Si no hay business_id, es un servicio legacy sin negocio asociado
+            // En este caso SÍ es correcto usar fallback sin MP
+            console.log('[DEBUG] No business_id found on service - using fallback without MP')
+            // DEBUG ALERT - Remover después
+            if (typeof window !== 'undefined') {
+              alert(`⚠️ No business_id en servicio`)
+            }
+            setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
           }
         }
 
@@ -152,9 +166,13 @@ export default function CompactConfirmPage() {
 
     // Validar que paymentConfig esté cargado
     if (paymentConfig === null) {
+      alert('🚫 DEBUG: paymentConfig es NULL')
       showError('Error', 'Cargando configuración de pago. Por favor espera un momento.')
       return
     }
+    
+    // DEBUG: Mostrar paymentConfig actual
+    alert(`💳 PaymentConfig: MP=${paymentConfig.hasMPConnected}, Amount=${amountToPay}`)
     
     // Si MP está conectado, validar método de pago
     if (paymentConfig.hasMPConnected && !paymentMethod) {
