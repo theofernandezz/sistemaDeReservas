@@ -85,14 +85,6 @@ export default function CompactConfirmPage() {
           if (serviceResult.data.business_id) {
             const businessId = serviceResult.data.business_id
             console.log(`[${sessionId}] 💳 Fetching payment config for business:`, businessId)
-            console.log(`[${sessionId}] 📊 BusinessId type:`, typeof businessId)
-            console.log(`[${sessionId}] 📊 BusinessId length:`, businessId?.length)
-
-            // CRÍTICO: Loggear antes del fetch
-            if (typeof window !== 'undefined') {
-              alert(`[${sessionId}] 🔍 PRE-FETCH\nBusiness ID: ${businessId}\nType: ${typeof businessId}`)
-            }
-
             const configResult = await getBusinessPaymentConfig(businessId)
             const loadTime = Date.now() - startTime
 
@@ -119,44 +111,13 @@ export default function CompactConfirmPage() {
               paymentConfigLoadedRef.current = true
               setPaymentConfig(configResult.data)
 
-              console.log(`[${sessionId}] ✅ [INFO] Payment config loaded:`, {
-                hasMPConnected: configResult.data.hasMPConnected,
-                depositPercentage: configResult.data.depositPercentage,
-                loadTime: `${loadTime}ms`,
-                mounted: isMountedRef.current
-              })
-
-              // DEBUG ALERT - Con TODA la info
-              if (typeof window !== 'undefined') {
-                const alertMsg = `✅ [${sessionId}] Config OK\n\n` +
-                  `MP: ${configResult.data.hasMPConnected} (${typeof configResult.data.hasMPConnected})\n` +
-                  `Deposit: ${configResult.data.depositPercentage}%\n` +
-                  `Business ID: ${businessId.substring(0, 8)}...\n` +
-                  `Load time: ${loadTime}ms`
-                alert(alertMsg)
-              }
             } else {
               // CRÍTICO: Si falla la carga, NO usar fallback
-              console.error(`[${sessionId}] ❌ [ERROR] Payment config failed:`, {
-                error: configResult.error,
-                loadTime: `${loadTime}ms`,
-                mounted: isMountedRef.current
-              })
-
-              // DEBUG ALERT - Remover después
-              if (typeof window !== 'undefined') {
-                alert(`❌ [${sessionId}] Config FAILED: ${configResult.error}`)
-              }
+              console.error('Payment config failed:', configResult.error)
               // Dejar paymentConfig en null para que las validaciones bloqueen el submit
             }
           } else {
             // Si no hay business_id, es un servicio legacy sin negocio asociado
-            console.log(`[${sessionId}] ⚠️ [DEBUG] No business_id found on service - using fallback without MP`)
-
-            if (typeof window !== 'undefined') {
-              alert(`⚠️ [${sessionId}] No business_id en servicio`)
-            }
-
             if (isMountedRef.current) {
               setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
             }
@@ -241,24 +202,9 @@ export default function CompactConfirmPage() {
 
     // Validar que paymentConfig esté cargado
     if (paymentConfig === null) {
-      console.error('🚫 Submit blocked: paymentConfig is NULL', {
-        paymentConfigLoadedRef: paymentConfigLoadedRef.current,
-        isMountedRef: isMountedRef.current,
-        fetchingPaymentConfig
-      })
-      alert('🚫 DEBUG: paymentConfig es NULL')
       showError('Error', 'Cargando configuración de pago. Por favor espera un momento.')
       return
     }
-
-    // DEBUG: Mostrar paymentConfig actual con más detalles
-    console.log('💳 Submit - Current State:', {
-      paymentConfig,
-      amountToPay,
-      paymentMethod,
-      paymentConfigLoadedRef: paymentConfigLoadedRef.current
-    })
-    alert(`💳 PaymentConfig: MP=${paymentConfig.hasMPConnected}, Amount=${amountToPay}, Method=${paymentMethod}`)
 
     // Si MP está conectado, validar método de pago
     if (paymentConfig.hasMPConnected && !paymentMethod) {
