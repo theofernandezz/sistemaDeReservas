@@ -83,10 +83,30 @@ export default function CompactConfirmPage() {
           console.log(`[${sessionId}] [DEBUG] service.business_id:`, serviceResult.data.business_id)
 
           if (serviceResult.data.business_id) {
-            console.log(`[${sessionId}] 💳 Fetching payment config for business:`, serviceResult.data.business_id)
+            const businessId = serviceResult.data.business_id
+            console.log(`[${sessionId}] 💳 Fetching payment config for business:`, businessId)
+            console.log(`[${sessionId}] 📊 BusinessId type:`, typeof businessId)
+            console.log(`[${sessionId}] 📊 BusinessId length:`, businessId?.length)
 
-            const configResult = await getBusinessPaymentConfig(serviceResult.data.business_id)
+            // CRÍTICO: Loggear antes del fetch
+            if (typeof window !== 'undefined') {
+              alert(`[${sessionId}] 🔍 PRE-FETCH\nBusiness ID: ${businessId}\nType: ${typeof businessId}`)
+            }
+
+            const configResult = await getBusinessPaymentConfig(businessId)
             const loadTime = Date.now() - startTime
+
+            // CRÍTICO: Loggear la RAW response completa
+            console.log(`[${sessionId}] 📦 RAW configResult:`, JSON.stringify(configResult, null, 2))
+            console.log(`[${sessionId}] 🔍 configResult.success type:`, typeof configResult.success)
+            console.log(`[${sessionId}] 🔍 configResult.data:`, configResult.data)
+
+            if (configResult.data) {
+              console.log(`[${sessionId}] 🔍 hasMPConnected value:`, configResult.data.hasMPConnected)
+              console.log(`[${sessionId}] 🔍 hasMPConnected type:`, typeof configResult.data.hasMPConnected)
+              console.log(`[${sessionId}] 🔍 depositPercentage value:`, configResult.data.depositPercentage)
+              console.log(`[${sessionId}] 🔍 depositPercentage type:`, typeof configResult.data.depositPercentage)
+            }
 
             if (!isMountedRef.current) {
               console.log(`[${sessionId}] ⚠️ Component unmounted after payment config fetch`)
@@ -106,9 +126,14 @@ export default function CompactConfirmPage() {
                 mounted: isMountedRef.current
               })
 
-              // DEBUG ALERT - Remover después
+              // DEBUG ALERT - Con TODA la info
               if (typeof window !== 'undefined') {
-                alert(`✅ [${sessionId}] Config OK: MP=${configResult.data.hasMPConnected}, Deposit=${configResult.data.depositPercentage}%`)
+                const alertMsg = `✅ [${sessionId}] Config OK\n\n` +
+                  `MP: ${configResult.data.hasMPConnected} (${typeof configResult.data.hasMPConnected})\n` +
+                  `Deposit: ${configResult.data.depositPercentage}%\n` +
+                  `Business ID: ${businessId.substring(0, 8)}...\n` +
+                  `Load time: ${loadTime}ms`
+                alert(alertMsg)
               }
             } else {
               // CRÍTICO: Si falla la carga, NO usar fallback
