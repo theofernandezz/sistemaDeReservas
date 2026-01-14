@@ -1,90 +1,112 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight } from 'lucide-react'
-import { HeroAnimation } from '@/components/marketing/hero-animation'
+import { ArrowRight, Star } from 'lucide-react'
+import { ContainerScroll } from '@/components/ui/container-scroll-animation'
+import { FlipWords } from '@/components/ui/flip-words'
 import { InteractiveFeatureCards } from '@/components/marketing/feature-cards'
+import { HeroDashboardMockup } from '@/components/marketing/hero-dashboard-mockup'
+import { AuroraBackground } from '@/components/ui/aurora-background'
 
 export default function HomePage() {
+  const words = ["Inteligente", "Rápida", "Elegante", "Sin\u00A0Estrés"]
+
   return (
-    <div className="flex flex-col gap-24 pb-24">
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-16 md:pt-48 md:pb-32 overflow-hidden">
-        {/* Abstract Background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-[100%] blur-3xl -z-10 opacity-50 pointer-events-none" />
+    <div className="flex flex-col overflow-x-hidden">
+      
+      {/* 3D Scroll Hero Section with Aurora */}
+      <AuroraBackground className="min-h-0 h-auto bg-background dark:bg-background pt-24">
+        {/* Fade to background at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-75 bg-linear-to-t from-background to-transparent z-10 pointer-events-none" />
+        
+        <div className="relative z-20 flex flex-col overflow-hidden w-full pt-12 md:pt-8" style={{ position: "relative" }}>
+          <ContainerScroll
+            titleComponent={
+              <div className="flex flex-col items-center justify-center space-y-8 mb-10 md:mb-20">
+                <h1 className="text-4xl md:text-7xl font-bold text-foreground leading-tight text-center max-w-4xl">
+                  Gestiona tu negocio de forma <br />
+                  <span className="text-primary inline-block min-w-[200px] md:min-w-[400px]">
+                     <FlipWords words={words} className="text-indigo-600 dark:text-indigo-400" />
+                  </span>
+                </h1>
+                
+                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl text-center leading-relaxed">
+                  La plataforma todo-en-uno para profesionales que valoran su tiempo. 
+                  Automatiza citas, pagos y recordatorios mientras duermes.
+                </p>
 
-        <div className="container px-4 text-center max-w-4xl mx-auto space-y-8 animate-[fade-in_0.6s_ease-out_forwards]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-secondary text-secondary-foreground text-sm font-medium backdrop-blur-sm">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            V2.0 ahora disponible
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter text-balance">
-            Tu tiempo vale oro. <br />
-            <span className="text-muted-foreground">Gestionalo con estilo.</span>
-          </h1>
-
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed text-balance">
-            La plataforma de reservas diseñada para profesionales que valoran la estética y la eficiencia. Sin fricción. Sin complicaciones.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button size="lg" className="h-12 px-8 rounded-full text-base font-semibold shadow-xl shadow-primary/10 hover:shadow-primary/20 transition-all" asChild>
-              <Link href="/signup">
-                Empezar Ahora <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" className="h-12 px-8 rounded-full text-base bg-background/50 backdrop-blur-sm hover:bg-muted/50" asChild>
-              <Link href="/pricing">Ver Demo</Link>
-            </Button>
-          </div>
+                <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 w-full sm:w-auto px-4">
+                  <Button size="lg" className="h-14 px-8 rounded-full text-base font-semibold shadow-xl shadow-primary/20 w-full sm:w-auto" asChild>
+                    <Link href="/signup">
+                      Comenzar Gratis <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button size="lg" variant="outline" className="h-14 px-8 rounded-full text-base bg-background/50 backdrop-blur-sm hover:bg-muted/50 w-full sm:w-auto" asChild>
+                    <Link href="/pricing">Ver Demo en Vivo</Link>
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                    <div className="flex -space-x-2">
+                        {[1,2,3].map(i => (
+                            <div key={i} className="w-6 h-6 rounded-full border-2 border-background bg-zinc-300 dark:bg-zinc-700" />
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="flex text-amber-400"><Star className="w-3 h-3 fill-current" /><Star className="w-3 h-3 fill-current" /><Star className="w-3 h-3 fill-current" /><Star className="w-3 h-3 fill-current" /><Star className="w-3 h-3 fill-current" /></div>
+                        <span className="font-medium text-foreground">4.9/5</span>
+                        <span className="opacity-60">(2k+ reseñas)</span>
+                    </div>
+                </div>
+              </div>
+            }
+          >
+            {/* The Actual Dashboard Mockup inside the 3D Card */}
+            <HeroDashboardMockup />
+          </ContainerScroll>
         </div>
+      </AuroraBackground>
 
-        {/* Hero Visual Mockup (Interactive) */}
-        <div className="container mt-16 md:mt-24 px-4 relative">
-          <div className="max-w-5xl mx-auto animate-[slide-up_0.8s_ease-out_forwards_0.2s] opacity-0">
-            <HeroAnimation />
-          </div>
-        </div>
+      {/* Features Grid */}
+      <section className="container px-4 py-24 md:py-32 relative bg-background">
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[1000px] bg-primary/5 blur-[120px] rounded-full -z-10" />
+         
+         <div className="text-center max-w-2xl mx-auto mb-20 space-y-4">
+           <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Todo lo que necesitas. <br/><span className="text-muted-foreground font-normal">Nada que sobre.</span></h2>
+           <p className="text-muted-foreground text-lg">Una suite completa diseñada obsesivamente para ser simple.</p>
+         </div>
+
+         <InteractiveFeatureCards />
       </section>
 
-      {/* Social Proof */}
-      <section className="container px-4 text-center">
-        <p className="text-sm font-medium text-muted-foreground mb-8">CONFIADO POR MÁS DE 10,000 PROFESIONALES</p>
-        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-          {['Acme Inc', 'Vertex', 'Novus', 'Global', 'Starlight'].map((brand) => (
-            <div key={brand} className="text-xl font-bold font-serif">{brand}</div>
-          ))}
-        </div>
-      </section>
-
-      {/* Interactive Bento Grid Features */}
-      <section className="container px-4">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">Todo lo que necesitas.</h2>
-          <p className="text-muted-foreground text-lg">Una suite completa de herramientas poderosas, empaquetadas en una interfaz simple.</p>
-        </div>
-
-        <InteractiveFeatureCards />
-
-      </section>
-
-      {/* CTA Section */}
-      <section className="container px-4 pt-16">
-        <div className="bg-primary text-primary-foreground rounded-[2.5rem] p-12 md:p-24 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-
-          <div className="relative z-10 max-w-3xl mx-auto space-y-8">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tight">Recupera el control de tu agenda.</h2>
-            <p className="text-primary-foreground/80 text-xl leading-relaxed">
-              Únete a los profesionales que han simplificado su vida con Reserva.
+      {/* CTA Final */}
+      <section className="container px-4 py-24 md:py-32">
+        <div className="relative">
+          {/* Subtle gradient background */}
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-linear-to-b from-transparent via-primary/5 to-transparent" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 blur-[100px] rounded-full" />
+          </div>
+          
+          <div className="text-center max-w-2xl mx-auto space-y-6">
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              ¿Listo para empezar?
+            </h2>
+            <p className="text-muted-foreground text-lg md:text-xl leading-relaxed">
+              Crea tu página de reservas en minutos. Sin complicaciones, sin tarjeta de crédito.
             </p>
-            <div className="flex justify-center pt-4">
-              <Button size="lg" variant="secondary" className="h-14 px-8 rounded-full text-lg shadow-2xl" asChild>
-                <Link href="/signup">Crear cuenta gratuita</Link>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-4">
+              <Button size="lg" className="h-12 px-8 rounded-full text-base font-medium" asChild>
+                <Link href="/signup">
+                  Crear cuenta gratis
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 px-8 rounded-full text-base" asChild>
+                <Link href="/pricing">Ver precios</Link>
               </Button>
             </div>
-            <p className="text-sm opacity-60">No se requiere tarjeta de crédito</p>
           </div>
         </div>
       </section>
