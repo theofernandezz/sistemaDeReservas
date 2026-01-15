@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { getCurrentBusiness } from '@/app/actions/auth'
 import {
   Service,
   Appointment,
@@ -17,23 +18,115 @@ import {
   TimeSlot,
   ServiceAddon,
   CreateServiceAddonInput,
-  UpdateServiceAddonInput
+  UpdateServiceAddonInput,
+  UpdateBusinessInput,
+  Business,
+  BusinessSettings
 } from '@/types/database.types'
+
+// Helper to get current business ID for data isolation
+async function requireBusinessId(): Promise<string> {
+  const result = await getCurrentBusiness()
+  if (!result.success || !result.data) {
+    throw new Error('No business found for current user')
+  }
+  return result.data.id
+}
+
+// ============================================
+// BUSINESS - Update Operations
+// ============================================
+
+/**
+ * Update business profile information
+ */
+export async function updateBusiness(input: UpdateBusinessInput): Promise<ServerActionResponse<Business>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    // If updating slug, check uniqueness
+    if (input.slug) {
+      const { data: existingBusiness } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('slug', input.slug)
+        .neq('id', businessId)
+        .single()
+
+      if (existingBusiness) {
+        return { success: false, error: 'Esta URL ya está en uso' }
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('businesses')
+      .update({
+        ...input,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', businessId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { success: true, data }
+  } catch (error: unknown) {
+    console.error('Error updating business:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error actualizando negocio' }
+  }
+}
+
+/**
+ * Update business settings (reservation config, etc.)
+ */
+export async function updateBusinessSettings(settings: Partial<BusinessSettings>): Promise<ServerActionResponse<Business>> {
+  try {
+    const supabase = await createClient()
+    const businessResult = await getCurrentBusiness()
+    
+    if (!businessResult.success || !businessResult.data) {
+      throw new Error('No business found')
+    }
+
+    const currentSettings = businessResult.data.settings || {}
+
+    const { data, error } = await supabase
+      .from('businesses')
+      .update({
+        settings: { ...currentSettings, ...settings },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', businessResult.data.id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { success: true, data }
+  } catch (error: unknown) {
+    console.error('Error updating business settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error actualizando configuración' }
+  }
+}
 
 // ============================================
 // SERVICES - CRUD Operations
 // ============================================
 
 /**
- * Get all active services
+ * Get all active services for current business
  */
 export async function getServices(): Promise<ServerActionResponse<Service[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('services')
       .select('*')
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name')
 
@@ -47,15 +140,17 @@ export async function getServices(): Promise<ServerActionResponse<Service[]>> {
 }
 
 /**
- * Get all services (including inactive)
+ * Get all services (including inactive) for current business
  */
 export async function getAllServices(): Promise<ServerActionResponse<Service[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('services')
       .select('*')
+      .eq('business_id', businessId)
       .order('name')
 
     if (error) throw error
@@ -229,11 +324,12 @@ export async function deleteService(id: string): Promise<ServerActionResponse<vo
 // ============================================
 
 /**
- * Get appointments with optional filters
+ * Get appointments with optional filters for current business
  */
 export async function getAppointments(filters?: AppointmentFilters): Promise<ServerActionResponse<AppointmentWithService[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     let query = supabase
       .from('appointments')
@@ -241,6 +337,7 @@ export async function getAppointments(filters?: AppointmentFilters): Promise<Ser
         *,
         service:services(*)
       `)
+      .eq('business_id', businessId)
       .order('start_time', { ascending: true })
 
     // Apply filters
@@ -634,7 +731,7 @@ export async function getAvailableSlots(
 // ============================================
 
 /**
- * Get blocked slots in a date range
+ * Get blocked slots in a date range for current business
  */
 export async function getBlockedSlots(
   startDate?: string,
@@ -642,10 +739,12 @@ export async function getBlockedSlots(
 ): Promise<ServerActionResponse<BlockedSlot[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     let query = supabase
       .from('blocked_slots')
       .select('*')
+      .eq('business_id', businessId)
       .order('start_time', { ascending: true })
 
     if (startDate) {
@@ -742,15 +841,17 @@ export async function deleteBlockedSlot(id: string): Promise<ServerActionRespons
 // ============================================
 
 /**
- * Get all active service add-ons
+ * Get all active service add-ons for current business
  */
 export async function getServiceAddons(): Promise<ServerActionResponse<ServiceAddon[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('service_addons')
       .select('*')
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name')
 
@@ -764,15 +865,17 @@ export async function getServiceAddons(): Promise<ServerActionResponse<ServiceAd
 }
 
 /**
- * Get all service add-ons (including inactive) - for admin
+ * Get all service add-ons (including inactive) for current business - for admin
  */
 export async function getAllServiceAddons(): Promise<ServerActionResponse<ServiceAddon[]>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('service_addons')
       .select('*')
+      .eq('business_id', businessId)
       .order('name')
 
     if (error) throw error

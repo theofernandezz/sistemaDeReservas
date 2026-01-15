@@ -1,21 +1,20 @@
-import { getAllServices } from '@/app/actions'
+import { getAllServices, getAllServiceAddons } from '@/app/actions'
 import { dbServiceToFrontend } from '@/lib/adapters'
-import ServiceManager from '@/components/admin/service-manager'
+import ServicesAndAddons from '@/components/dashboard/services-addons'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ServicesPage() {
-  const result = await getAllServices()
-  const services = result.success && result.data ? result.data.map(dbServiceToFrontend) : []
+  const [servicesResult, addonsResult] = await Promise.all([
+    getAllServices(),
+    getAllServiceAddons()
+  ])
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Mis Servicios</h1>
-        <p className="text-sm text-muted-foreground">{services.length} servicios en total</p>
-      </div>
+  const services = servicesResult.success && servicesResult.data
+    ? servicesResult.data.map(dbServiceToFrontend)
+    : []
 
-      <ServiceManager initialServices={services} />
-    </div>
-  )
+  const addons = addonsResult.success ? addonsResult.data || [] : []
+
+  return <ServicesAndAddons initialServices={services} initialAddons={addons} />
 }

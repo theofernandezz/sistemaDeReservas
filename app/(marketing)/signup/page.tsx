@@ -1,78 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Store, Link2, Check } from 'lucide-react'
+import { Mail, Loader2, AlertCircle, Check } from 'lucide-react'
 import Link from 'next/link'
-import { signUpWithBusiness } from '@/app/actions/auth'
-
-// Función para generar slug desde nombre
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remover acentos
-    .replace(/[^a-z0-9\s-]/g, '') // Solo letras, números, espacios y guiones
-    .trim()
-    .replace(/\s+/g, '-') // Espacios a guiones
-    .replace(/-+/g, '-') // Múltiples guiones a uno
-}
+import { signUp } from '@/app/actions/auth'
 
 export default function SignupPage() {
-  const router = useRouter()
-  const [step, setStep] = useState<1 | 2>(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Form data
+  const [emailSent, setEmailSent] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [businessName, setBusinessName] = useState('')
-  const [slug, setSlug] = useState('')
-  const [slugTouched, setSlugTouched] = useState(false)
 
-  // Auto-generate slug when business name changes (if user hasn't manually edited it)
-  const handleBusinessNameChange = (value: string) => {
-    setBusinessName(value)
-    if (!slugTouched) {
-      setSlug(generateSlug(value))
-    }
-  }
-
-  const handleSlugChange = (value: string) => {
-    setSlugTouched(true)
-    // Sanitize al escribir
-    setSlug(value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
-  }
-
-  const handleStep1Submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (email && password.length >= 6) {
-      setStep(2)
-    }
-  }
-
-  const handleStep2Submit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      const result = await signUpWithBusiness({
-        email,
-        password,
-        businessName,
-        slug
-      })
+      const result = await signUp({ email, password })
 
       if (result.error) {
         setError(result.error)
       } else {
-        // Éxito - redirigir al dashboard
-        router.push('/dashboard')
+        setEmailSent(true)
       }
     } catch (err) {
       setError('Ocurrió un error. Por favor intenta de nuevo.')
@@ -87,23 +41,43 @@ export default function SignupPage() {
       <div className="flex items-center justify-center p-8 md:p-12 lg:p-24 bg-background">
         <div className="w-full max-w-sm space-y-8 animate-[fade-in_0.5s_ease-out]">
 
-          {/* Progress Steps */}
-          <div className="flex items-center gap-2 mb-8">
-            <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-            <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-          </div>
-
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight">
-              {step === 1 ? 'Crea tu cuenta' : 'Configura tu negocio'}
+              {emailSent ? '¡Revisa tu email!' : 'Crea tu cuenta'}
             </h1>
             <p className="text-muted-foreground">
-              {step === 1 ? 'Empieza gratis hoy.' : 'Ya casi terminamos.'}
+              {emailSent
+                ? 'Te enviamos un link para verificar tu cuenta.'
+                : 'Empieza gratis hoy.'}
             </p>
           </div>
 
-          {step === 1 ? (
-            <form onSubmit={handleStep1Submit} className="space-y-6">
+          {emailSent ? (
+            <div className="space-y-6 text-center py-8">
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Enviamos un email a <strong>{email}</strong>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Haz clic en el link para verificar tu cuenta y configurar tu negocio.
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => window.location.href = 'https://mail.google.com'} className="w-full">
+                Abrir Gmail
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 text-red-600 rounded-lg text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -129,64 +103,16 @@ export default function SignupPage() {
                   className="h-11 bg-muted/30"
                 />
               </div>
-              <Button type="submit" className="w-full h-11">
-                Continuar <ArrowRight className="ml-2 h-4 w-4" />
+              <Button type="submit" disabled={loading} className="w-full h-11">
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creando cuenta...
+                  </>
+                ) : (
+                  'Crear cuenta'
+                )}
               </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleStep2Submit} className="space-y-6 animate-[slide-up_0.3s_ease-out]">
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 text-red-600 rounded-lg text-sm">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="businessName">Nombre del negocio</Label>
-                <Input
-                  id="businessName"
-                  placeholder="Ej: Estudio Creativo"
-                  required
-                  value={businessName}
-                  onChange={(e) => handleBusinessNameChange(e.target.value)}
-                  className="h-11 bg-muted/30"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="slug">Link personalizado</Label>
-                <div className="flex items-center">
-                  <span className="bg-muted border border-r-0 rounded-l-md px-3 h-11 flex items-center text-muted-foreground text-sm">
-                    reserva.com/
-                  </span>
-                  <Input
-                    id="slug"
-                    placeholder="mi-negocio"
-                    required
-                    pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    className="h-11 rounded-l-none bg-muted/30"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => setStep(1)} className="h-11">
-                  Atrás
-                </Button>
-                <Button type="submit" disabled={loading} className="h-11 flex-1">
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creando...
-                    </>
-                  ) : (
-                    'Comenzar'
-                  )}
-                </Button>
-              </div>
             </form>
           )}
 

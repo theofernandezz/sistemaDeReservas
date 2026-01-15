@@ -45,11 +45,11 @@ export default function BlockedDatesManager() {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-8 md:grid-cols-2">
       <Card>
-        <CardContent className="p-4">
-          <h3 className="font-medium mb-4 flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4" />
+        <CardContent className="p-6">
+          <h3 className="font-medium mb-5 flex items-center gap-2 text-lg">
+            <CalendarIcon className="h-5 w-5" />
             Seleccionar Fecha
           </h3>
           <div className="flex justify-center">
@@ -61,11 +61,11 @@ export default function BlockedDatesManager() {
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
             />
           </div>
-          <div className="mt-4">
+          <div className="mt-6">
             <Button
               onClick={handleBlockDate}
               disabled={!selectedDate}
-              className="w-full"
+              className="w-full h-11"
             >
               <Plus className="mr-2 h-4 w-4" />
               Bloquear Fecha
@@ -75,18 +75,18 @@ export default function BlockedDatesManager() {
       </Card>
 
       <Card>
-        <CardContent className="p-4">
-          <h3 className="font-medium mb-4">Fechas Bloqueadas</h3>
+        <CardContent className="p-6">
+          <h3 className="font-medium mb-5 text-lg">Fechas Bloqueadas</h3>
           {blockedDates.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
+            <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
               No hay fechas bloqueadas
             </div>
           ) : (
-            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+            <div className="space-y-3 max-h-[350px] overflow-y-auto">
               {blockedDates.sort((a, b) => a.date.getTime() - b.date.getTime()).map((bd) => (
                 <div
                   key={bd.id}
-                  className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg border text-sm"
+                  className="flex items-center justify-between p-4 bg-secondary/20 rounded-lg border text-sm"
                 >
                   <div className="flex items-center gap-3">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -97,7 +97,7 @@ export default function BlockedDatesManager() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    className="h-9 w-9 text-destructive hover:bg-destructive/10"
                     onClick={() => handleRemoveDate(bd.id)}
                   >
                     <Trash2 className="h-4 w-4" />

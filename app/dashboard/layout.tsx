@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentBusiness, isSuperAdmin, getAllBusinesses } from '@/app/actions/auth'
 import { BusinessProvider } from '@/lib/business-context'
-import { DashboardSidebar } from '@/components/dashboard/sidebar'
+import { DashboardNavbar } from '@/components/dashboard/navbar'
 import { ConfirmProvider } from '@/components/ui/confirm-dialog'
 
 export default async function DashboardLayout({
@@ -17,8 +17,8 @@ export default async function DashboardLayout({
     if (isAdmin) {
       redirect('/super-admin')
     }
-    // Usuario normal sin negocio, redirigir a crear uno
-    redirect('/signup')
+    // Usuario normal sin negocio, redirigir a onboarding
+    redirect('/onboarding')
   }
 
   const business = result.data
@@ -34,22 +34,19 @@ export default async function DashboardLayout({
 
   return (
     <BusinessProvider business={business}>
-      <div className="min-h-[100dvh] bg-secondary/30 flex flex-col md:flex-row text-foreground font-sans">
-        <DashboardSidebar
+      <div className="min-h-[100dvh] bg-background flex flex-col">
+        <DashboardNavbar
           business={business}
           allBusinesses={allBusinesses}
           isSuperAdmin={isAdmin}
         />
 
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
-          <div className="max-w-4xl mx-auto">
-            <ConfirmProvider>
-              {children}
-            </ConfirmProvider>
-          </div>
+        <main className="flex-1 w-full">
+          <ConfirmProvider>
+            {children}
+          </ConfirmProvider>
         </main>
       </div>
     </BusinessProvider>
   )
 }
-

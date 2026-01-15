@@ -1,10 +1,10 @@
 import { getGoogleCalendarSettings, getAdminNotificationEmail, getMercadoPagoStatus } from '@/app/actions'
 import { getCurrentBusiness } from '@/app/actions/auth'
-import SettingsClient from './settings-client'
+import SettingsPage from './settings-client'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SettingsPage() {
+export default async function SettingsServerPage() {
   const [calendarResult, adminEmail, mpResult, businessResult] = await Promise.all([
     getGoogleCalendarSettings(),
     getAdminNotificationEmail(),
@@ -18,22 +18,23 @@ export default async function SettingsPage() {
   const business = businessResult.success ? businessResult.data : null
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Configuración</h2>
-        <p className="text-muted-foreground text-sm">
-          Integraciones y ajustes del sistema
-        </p>
-      </div>
-
-      <SettingsClient
-        isGoogleConnected={isConnected || false}
-        initialAdminEmail={adminEmail}
-        isMPConnected={isMPConnected || false}
-        mpUserId={mpUserId}
-        depositPercentage={business?.deposit_percentage || 100}
-        businessId={business?.id}
-      />
-    </div>
+    <SettingsPage
+      isGoogleConnected={isConnected || false}
+      initialAdminEmail={adminEmail}
+      isMPConnected={isMPConnected || false}
+      mpUserId={mpUserId}
+      depositPercentage={business?.deposit_percentage || 100}
+      businessId={business?.id}
+      business={business ? {
+        id: business.id,
+        name: business.name || '',
+        slug: business.slug || '',
+        description: business.description || '',
+        phone: business.phone || '',
+        email: business.email || '',
+        instagram: business.instagram || '',
+        address: business.address || ''
+      } : undefined}
+    />
   )
 }

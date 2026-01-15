@@ -26,8 +26,13 @@ export interface BusinessSettings {
     isOpen: boolean;
     startTime: string;
     endTime: string;
+    breaks?: { name: string; start: string; end: string }[];
   }[];
   slotInterval?: number;
+  bufferTime?: number;
+  // Configuración de reservas
+  minAdvanceHours?: number;
+  cancellationHours?: number;
   // Notificaciones
   notificationEmail?: string;
   googleRefreshToken?: string;
@@ -100,6 +105,18 @@ export interface AppointmentWithService extends Appointment {
 // ============================================
 // Input Types for CRUD Operations
 // ============================================
+
+export interface UpdateBusinessInput {
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  instagram?: string | null;
+  address?: string | null;
+  logo?: string | null;
+  settings?: Partial<BusinessSettings>;
+}
 
 export interface CreateServiceInput {
   name: string;
@@ -178,7 +195,7 @@ export enum AppointmentStatus {
 // Server Action Response Types
 // ============================================
 
-export interface ServerActionResponse<T = any> {
+export interface ServerActionResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -203,5 +220,68 @@ export interface TimeSlot {
   time: string;
   available: boolean;
   reason?: string; // If unavailable, why (e.g., "booked", "blocked")
+}
+
+// ============================================
+// Team Member Types
+// ============================================
+
+export interface DayBreak {
+  name: string;
+  start: string; // HH:mm format
+  end: string;   // HH:mm format
+}
+
+export interface DaySchedule {
+  isOpen: boolean;
+  startTime: string; // HH:mm format
+  endTime: string;   // HH:mm format
+  breaks: DayBreak[];
+}
+
+export interface WeeklySchedule {
+  [dayOfWeek: string]: DaySchedule; // "0" = Sunday, "1" = Monday, etc.
+}
+
+export interface TeamMember {
+  id: string;
+  business_id: string;
+  name: string;
+  role: string | null;
+  avatar_color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  slot_interval: number;
+  buffer_time: number;
+  weekly_schedule: WeeklySchedule;
+}
+
+export interface CreateTeamMemberInput {
+  name: string;
+  role?: string | null;
+  avatar_color?: string;
+  is_active?: boolean;
+  slot_interval?: number;
+  buffer_time?: number;
+  weekly_schedule?: WeeklySchedule;
+}
+
+export interface UpdateTeamMemberInput {
+  name?: string;
+  role?: string | null;
+  avatar_color?: string;
+  is_active?: boolean;
+  slot_interval?: number;
+  buffer_time?: number;
+  weekly_schedule?: WeeklySchedule;
+}
+
+// Helper type for availability stats
+export interface TeamMemberStats {
+  activeDays: number;
+  slotsPerDay: number;
+  weeklyCapacity: number;
+  weeklyHours: number;
 }
 

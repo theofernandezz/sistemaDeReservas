@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { ServerActionResponse, Business } from '@/types/database.types'
@@ -40,6 +40,54 @@ export async function getUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user
+}
+
+// Simple signup - only creates auth user, business created after email verification
+export async function signUp(data: {
+  email: string
+  password: string
+}): Promise<ServerActionResponse<null>> {
+  const supabase = await createClient()
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+  const { error: authError } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      emailRedirectTo: `${origin}/auth/callback`,
+    },
+  })
+
+  if (authError) {
+    if (authError.message.includes('already registered')) {
+      return { success: false, error: 'Este email ya está registrado.' }
+    }
+    return { success: false, error: authError.message }
+  }
+
+  return { success: true, data: null }
+}
+
+// Send password reset email
+export async function sendPasswordResetEmail(): Promise<ServerActionResponse<null>> {
+  const supabase = await createClient()
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user?.email) {
+    return { success: false, error: 'No se encontró el email del usuario' }
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: `${origin}/auth/callback?next=/dashboard/settings`,
+  })
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, data: null }
 }
 
 // Verificar si el usuario actual es super admin
@@ -123,9 +171,13 @@ export async function signUpWithBusiness(data: {
   }
 
   // 2. Crear usuario en Supabase Auth
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
+    options: {
+      emailRedirectTo: `${origin}/auth/callback`,
+    },
   })
 
   if (authError) {
@@ -139,8 +191,16 @@ export async function signUpWithBusiness(data: {
     return { success: false, error: 'Error al crear la cuenta.' }
   }
 
-  // 3. Crear el negocio asociado al usuario
-  const { data: business, error: businessError } = await supabase
+  // 3. Crear el negocio asociado al usuario (using service client to bypass RLS)
+  const serviceClient = createServiceClient()
+
+  console.log('Creating business with:', {
+    owner_id: authData.user.id,
+    name: data.businessName,
+    slug: data.slug,
+  })
+
+  const { data: business, error: businessError } = await serviceClient
     .from('businesses')
     .insert({
       owner_id: authData.user.id,
@@ -151,9 +211,11 @@ export async function signUpWithBusiness(data: {
     .single()
 
   if (businessError) {
-    console.error('Error creating business:', businessError)
-    return { success: false, error: 'Error al crear el negocio. Por favor intenta de nuevo.' }
+    console.error('Error creating business:', businessError.message, businessError.details, businessError.code)
+    return { success: false, error: `Error al crear el negocio: ${businessError.message}` }
   }
+
+  console.log('Business created successfully:', business?.id)
 
   return { success: true, data: business }
 }
@@ -210,7 +272,8 @@ export async function getCurrentBusiness(): Promise<ServerActionResponse<Busines
     }
   }
 
-  return { success: false, error: 'Negocio no encontrado' }
+  // Usuario normal sin negocio - necesita completar onboarding
+  return { success: false, error: 'No tienes un negocio configurado. Completa el proceso de registro.' }
 }
 
 export async function getBusinessBySlug(slug: string): Promise<ServerActionResponse<Business>> {

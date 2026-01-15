@@ -1,5 +1,5 @@
-import { getAppointments } from '@/app/actions'
-import CalendarView from '@/components/admin/calendar-view'
+import { getAppointments, getBlockedSlots } from '@/app/actions'
+import CustomCalendar from '@/components/dashboard/custom-calendar'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,16 +16,5 @@ export default async function CalendarPage() {
 
   const appointments = result.success ? result.data || [] : []
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Calendario</h2>
-        <p className="text-muted-foreground text-sm">
-          Vista general de todas las citas
-        </p>
-      </div>
-
-      <CalendarView initialAppointments={appointments} />
-    </div>
-  )
+  return <CustomCalendar initialAppointments={appointments} />
 }

@@ -32,6 +32,14 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
+
+  // Handle auth callback code at root - redirect to proper callback route
+  if (pathname === '/' && request.nextUrl.searchParams.has('code')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/callback'
+    return NextResponse.redirect(url)
+  }
+
   const isSuperAdmin = user?.user_metadata?.is_super_admin === true
 
   // Proteger rutas /super-admin (solo super admins)
@@ -76,6 +84,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/dashboard/:path*',
     '/super-admin/:path*',
     '/admin/:path*',

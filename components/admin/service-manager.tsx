@@ -129,11 +129,13 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
               }`}
           >
             {/* Image */}
-            <div className="w-20 h-20 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-lg overflow-hidden flex-shrink-0">
               {service.image ? (
                 <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl">💅</div>
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="w-8 h-8 text-primary/40" />
+                </div>
               )}
             </div>
 
