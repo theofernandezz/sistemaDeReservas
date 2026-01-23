@@ -83,7 +83,7 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
             <div className="flex items-start justify-between p-5 pb-0">
               <div className="flex items-center gap-3">
                 {options.variant === 'danger' && (
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <div className="shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-destructive" />
                   </div>
                 )}

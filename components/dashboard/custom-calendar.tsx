@@ -1,15 +1,18 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, Ban } from 'lucide-react'
-import { AppointmentWithService } from '@/types/database.types'
+import { ChevronLeft, ChevronRight, Plus, X, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, Ban, CalendarPlus } from 'lucide-react'
+import { AppointmentWithService, BlockedSlot } from '@/types/database.types'
 import { Button } from '@/components/ui/button'
 import { updateAppointmentStatus } from '@/app/actions'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { AddAppointmentDialog } from './add-appointment-dialog'
+import { cn } from '@/lib/utils'
 
 interface CustomCalendarProps {
   initialAppointments: AppointmentWithService[]
+  initialBlockedSlots: BlockedSlot[]
 }
 
 // Status color mapping
@@ -63,7 +66,13 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelado',
 }
 
-export default function CustomCalendar({ initialAppointments }: CustomCalendarProps) {
+const blockedStyles = {
+  bg: 'bg-destructive/10',
+  border: 'border-l-destructive',
+  badge: 'bg-destructive/10 text-destructive'
+}
+
+export default function CustomCalendar({ initialAppointments, initialBlockedSlots }: CustomCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<'day' | 'week' | 'month'>('week')
@@ -71,8 +80,16 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithService | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [showFabMenu, setShowFabMenu] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
   const [appointments, setAppointments] = useState(initialAppointments)
+  const [blockedSlots] = useState(initialBlockedSlots)
   const router = useRouter()
+
+  // Handle new appointment created
+  const handleAppointmentCreated = (newAppointment: AppointmentWithService) => {
+    setAppointments(prev => [...prev, newAppointment])
+    router.refresh() // Refresh server data
+  }
 
   // Check for mobile
   useEffect(() => {
@@ -84,6 +101,11 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
 
   // Week days
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
+
+  const blockedForSelectedDay = useMemo(
+    () => getBlockedSlotsForDay(selectedDate),
+    [blockedSlots, selectedDate]
+  )
 
   // Display days for mobile (5 days from selected)
   const mobileDays = useMemo(() => {
@@ -105,6 +127,26 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
   }
 
+  function getDayBounds(date: Date) {
+    const start = new Date(date)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(date)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+  }
+
+  function getBlockedSlotsForDay(date: Date) {
+    const { start, end } = getDayBounds(date)
+    const startTime = start.getTime()
+    const endTime = end.getTime()
+
+    return blockedSlots.filter(slot => {
+      const slotStart = new Date(slot.start_time).getTime()
+      const slotEnd = new Date(slot.end_time).getTime()
+      return slotStart <= endTime && slotEnd >= startTime
+    })
+  }
+
   // Handle status change
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     setUpdatingStatus(newStatus)
@@ -112,7 +154,7 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
       const result = await updateAppointmentStatus(appointmentId, newStatus)
       if (result.success && result.data) {
         // Update local state
-        setAppointments(prev => prev.map(apt => 
+        setAppointments(prev => prev.map(apt =>
           apt.id === appointmentId ? { ...apt, status: newStatus } : apt
         ))
         setSelectedAppointment(prev => prev ? { ...prev, status: newStatus } : null)
@@ -124,17 +166,33 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
     }
   }
 
-  // Navigate weeks
-  const prevWeek = () => {
-    const d = new Date(currentDate)
-    d.setDate(d.getDate() - 7)
-    setCurrentDate(d)
+  // Navigate based on current view
+  const navigatePrev = () => {
+    const d = new Date(view === 'day' ? selectedDate : currentDate)
+    if (view === 'day') {
+      d.setDate(d.getDate() - 1)
+      setSelectedDate(d)
+    } else if (view === 'week') {
+      d.setDate(d.getDate() - 7)
+      setCurrentDate(d)
+    } else {
+      d.setMonth(d.getMonth() - 1)
+      setCurrentDate(d)
+    }
   }
 
-  const nextWeek = () => {
-    const d = new Date(currentDate)
-    d.setDate(d.getDate() + 7)
-    setCurrentDate(d)
+  const navigateNext = () => {
+    const d = new Date(view === 'day' ? selectedDate : currentDate)
+    if (view === 'day') {
+      d.setDate(d.getDate() + 1)
+      setSelectedDate(d)
+    } else if (view === 'week') {
+      d.setDate(d.getDate() + 7)
+      setCurrentDate(d)
+    } else {
+      d.setMonth(d.getMonth() + 1)
+      setCurrentDate(d)
+    }
   }
 
   const goToToday = () => {
@@ -158,13 +216,13 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
         {/* Left: Navigation */}
         <div className="flex items-center gap-2">
           <button
-            onClick={prevWeek}
+            onClick={navigatePrev}
             className="p-2 rounded-lg hover:bg-secondary transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
           <button
-            onClick={nextWeek}
+            onClick={navigateNext}
             className="p-2 rounded-lg hover:bg-secondary transition-colors"
           >
             <ChevronRight size={20} />
@@ -197,10 +255,21 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
           </button>
         </div>
 
-        {/* Right: Today Button */}
-        <Button variant="outline" size="sm" onClick={goToToday}>
-          Hoy
-        </Button>
+        {/* Right: Today Button + Add Appointment Button */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goToToday}>
+            Hoy
+          </Button>
+          {/* Desktop: Add Appointment Button */}
+          <Button 
+            size="sm" 
+            onClick={() => setShowAddDialog(true)}
+            className="hidden md:inline-flex"
+          >
+            <Plus size={16} className="mr-1" />
+            Nuevo turno
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Date Picker */}
@@ -231,8 +300,19 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
         </div>
       )}
 
+      {/* Desktop Day Header */}
+      {!isMobile && view === 'day' && (
+        <div className="border-b border-border mb-1 pb-2">
+          <div className="text-center">
+            <span className="text-lg font-semibold">
+              {selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Desktop Week Header */}
-      {!isMobile && (
+      {!isMobile && view === 'week' && (
         <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border mb-1">
           <div /> {/* Time column spacer */}
           {weekDays.map((day, idx) => {
@@ -264,6 +344,10 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
                 const h = new Date(apt.start_time).getHours()
                 return h === hour
               })
+              const blockedForHour = blockedForSelectedDay.filter(slot => {
+                const h = new Date(slot.start_time).getHours()
+                return h === hour
+              })
 
               return (
                 <div key={hour} className="flex min-h-20">
@@ -271,6 +355,26 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
                     {String(hour).padStart(2, '0')}:00
                   </div>
                   <div className="flex-1 border-t border-border/50 pl-2 pt-2 space-y-2">
+                    {blockedForHour.map(slot => (
+                      <div
+                        key={slot.id}
+                        className={cn(
+                          'w-full text-left p-3 rounded-xl border-l-4 flex items-start justify-between gap-2',
+                          blockedStyles.bg,
+                          blockedStyles.border
+                        )}
+                      >
+                        <div>
+                          <p className="font-semibold text-foreground">Bloqueado</p>
+                          <p className="text-xs text-muted-foreground">
+                            {slot.reason || 'Horario no disponible'}
+                          </p>
+                        </div>
+                        <span className={cn('px-2 py-0.5 rounded text-xs font-medium', blockedStyles.badge)}>
+                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                        </span>
+                      </div>
+                    ))}
                     {appointments.map(apt => {
                       const colors = statusColors[apt.status] || statusColors.pending
                       return (
@@ -317,8 +421,102 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
           </div>
         )}
 
+        {/* Desktop Day Grid */}
+        {!isMobile && view === 'day' && (
+          <div className="grid grid-cols-[60px_1fr]">
+            {HOURS.map(hour => {
+              const dayAppointments = getAppointmentsForDay(selectedDate).filter(apt => {
+                const h = new Date(apt.start_time).getHours()
+                return h === hour
+              })
+              const dayBlockedSlots = getBlockedSlotsForDay(selectedDate).filter(slot => {
+                const h = new Date(slot.start_time).getHours()
+                return h === hour
+              })
+              const isToday = isSameDay(selectedDate, new Date())
+
+              return (
+                <div key={hour} className="contents">
+                  <div className="h-20 text-xs text-muted-foreground text-right pr-2 pt-1">
+                    {String(hour).padStart(2, '0')}:00
+                  </div>
+                  <div
+                    className={`h-20 border-t border-l border-border/30 p-0.5 relative ${isToday ? 'bg-primary/5' : ''}`}
+                  >
+                    {dayBlockedSlots.map(slot => {
+                      const startMinutes = new Date(slot.start_time).getMinutes()
+                      const duration =
+                        (new Date(slot.end_time).getTime() - new Date(slot.start_time).getTime()) / 60000
+                      const height = Math.min((duration / 60) * 80, 160)
+
+                      return (
+                        <div
+                          key={slot.id}
+                          className={cn(
+                            'absolute left-0.5 right-0.5 p-2 rounded-lg border-l-3 overflow-hidden text-left pointer-events-none',
+                            blockedStyles.bg,
+                            blockedStyles.border
+                          )}
+                          style={{
+                            top: `${(startMinutes / 60) * 80}px`,
+                            height: `${height}px`,
+                            minHeight: '44px'
+                          }}
+                        >
+                          <p className="text-sm font-medium text-foreground truncate">Bloqueado</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                          </p>
+                        </div>
+                      )
+                    })}
+                    {dayAppointments.map(apt => {
+                      const colors = statusColors[apt.status] || statusColors.pending
+                      const startMinutes = new Date(apt.start_time).getMinutes()
+                      const duration =
+                        (new Date(apt.end_time).getTime() - new Date(apt.start_time).getTime()) / 60000
+                      const height = Math.min(duration / 60 * 80, 160)
+
+                      return (
+                        <button
+                          key={apt.id}
+                          onClick={() => setSelectedAppointment(apt)}
+                          className={`absolute left-0.5 right-0.5 p-2 rounded-lg border-l-3 ${colors.bg} ${colors.border} overflow-hidden cursor-pointer hover:brightness-110 transition-all text-left`}
+                          style={{
+                            top: `${(startMinutes / 60) * 80}px`,
+                            height: `${height}px`,
+                            minHeight: '44px'
+                          }}
+                        >
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {apt.client_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {formatTime(apt.start_time)} - {formatTime(apt.end_time)} • {apt.service?.name}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Current time indicator for day view */}
+            {isSameDay(selectedDate, new Date()) && currentHour >= 8 && currentHour < 18 && (
+              <div
+                className="absolute left-15 right-0 flex items-center pointer-events-none z-10"
+                style={{ top: `${((currentHour - 8) * 80) + (currentMinute / 60 * 80)}px` }}
+              >
+                <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                <div className="flex-1 h-0.5 bg-red-500" />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Desktop Week Grid */}
-        {!isMobile && (
+        {!isMobile && view === 'week' && (
           <div className="grid grid-cols-[60px_repeat(7,1fr)]">
             {HOURS.map(hour => (
               <div key={hour} className="contents">
@@ -326,8 +524,12 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
                   {String(hour).padStart(2, '0')}:00
                 </div>
                 {weekDays.map((day, dayIdx) => {
-                  const appointments = getAppointmentsForDay(day).filter(apt => {
+                  const dayAppointments = getAppointmentsForDay(day).filter(apt => {
                     const h = new Date(apt.start_time).getHours()
+                    return h === hour
+                  })
+                  const dayBlockedSlots = getBlockedSlotsForDay(day).filter(slot => {
+                    const h = new Date(slot.start_time).getHours()
                     return h === hour
                   })
                   const isToday = isSameDay(day, new Date())
@@ -338,7 +540,34 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
                       className={`h-20 border-t border-l border-border/30 p-0.5 relative ${isToday ? 'bg-primary/5' : ''
                         }`}
                     >
-                      {appointments.map(apt => {
+                      {dayBlockedSlots.map(slot => {
+                        const startMinutes = new Date(slot.start_time).getMinutes()
+                        const duration =
+                          (new Date(slot.end_time).getTime() - new Date(slot.start_time).getTime()) / 60000
+                        const height = Math.min((duration / 60) * 80, 160)
+
+                        return (
+                          <div
+                            key={slot.id}
+                            className={cn(
+                              'absolute left-0.5 right-0.5 p-1.5 rounded-lg border-l-3 overflow-hidden text-left pointer-events-none',
+                              blockedStyles.bg,
+                              blockedStyles.border
+                            )}
+                            style={{
+                              top: `${(startMinutes / 60) * 80}px`,
+                              height: `${height}px`,
+                              minHeight: '40px'
+                            }}
+                          >
+                            <p className="text-[10px] font-medium text-foreground truncate">Bloqueado</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {formatTime(slot.start_time)}
+                            </p>
+                          </div>
+                        )
+                      })}
+                      {dayAppointments.map(apt => {
                         const colors = statusColors[apt.status] || statusColors.pending
                         const startMinutes = new Date(apt.start_time).getMinutes()
                         const duration =
@@ -383,6 +612,19 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
             )}
           </div>
         )}
+
+        {/* Desktop Month Grid */}
+        {!isMobile && view === 'month' && (
+          <MonthView
+            currentDate={currentDate}
+            appointments={appointments}
+            blockedSlots={blockedSlots}
+            onSelectDate={(date) => {
+              setSelectedDate(date)
+              setView('day')
+            }}
+          />
+        )}
       </div>
 
       {/* Mobile FAB */}
@@ -399,6 +641,16 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
             {/* FAB Menu */}
             {showFabMenu && (
               <div className="absolute bottom-16 right-0 bg-card border border-border rounded-xl shadow-xl py-2 min-w-45 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <button
+                  onClick={() => {
+                    setShowFabMenu(false)
+                    setShowAddDialog(true)
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary transition-colors w-full text-left"
+                >
+                  <CalendarPlus size={18} className="text-primary" />
+                  <span className="text-sm font-medium">Agregar turno</span>
+                </button>
                 <Link
                   href="/dashboard/availability"
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary transition-colors"
@@ -557,6 +809,128 @@ export default function CustomCalendar({ initialAppointments }: CustomCalendarPr
           </div>
         </div>
       )}
+
+      {/* Add Appointment Dialog */}
+      <AddAppointmentDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onAppointmentCreated={handleAppointmentCreated}
+        selectedDate={selectedDate}
+      />
+    </div>
+  )
+}
+
+// Month View Component
+function MonthView({
+  currentDate,
+  appointments,
+  blockedSlots,
+  onSelectDate
+}: {
+  currentDate: Date
+  appointments: AppointmentWithService[]
+  blockedSlots: BlockedSlot[]
+  onSelectDate: (date: Date) => void
+}) {
+  // Get first day of the month
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+
+  // Get the day of week the month starts on (0 = Sunday)
+  const startDayOfWeek = firstDayOfMonth.getDay()
+
+  // Build array of days to show (including padding for previous month)
+  const days: (Date | null)[] = []
+
+  // Add padding days from previous month
+  for (let i = 0; i < startDayOfWeek; i++) {
+    days.push(null)
+  }
+
+  // Add all days of the current month
+  for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
+    days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), i))
+  }
+
+  // Get appointments count for a specific day
+  const getAppointmentCount = (date: Date) => {
+    return appointments.filter(apt =>
+      isSameDay(new Date(apt.start_time), date) && apt.status !== 'cancelled'
+    ).length
+  }
+
+  const getBlockedCount = (date: Date) => {
+    const dayStart = new Date(date)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(date)
+    dayEnd.setHours(23, 59, 59, 999)
+    const startTime = dayStart.getTime()
+    const endTime = dayEnd.getTime()
+
+    return blockedSlots.filter(slot => {
+      const slotStart = new Date(slot.start_time).getTime()
+      const slotEnd = new Date(slot.end_time).getTime()
+      return slotStart <= endTime && slotEnd >= startTime
+    }).length
+  }
+
+  const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+  return (
+    <div className="p-2">
+      {/* Week day headers */}
+      <div className="grid grid-cols-7 mb-2">
+        {weekDays.map(day => (
+          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day, idx) => {
+          if (!day) {
+            return <div key={idx} className="h-24 rounded-lg bg-secondary/20" />
+          }
+
+          const isToday = isSameDay(day, new Date())
+          const appointmentCount = getAppointmentCount(day)
+          const blockedCount = getBlockedCount(day)
+          const hasAppointments = appointmentCount > 0
+          const hasBlocked = blockedCount > 0
+
+          return (
+            <button
+              key={idx}
+              onClick={() => onSelectDate(day)}
+              className={`h-24 rounded-lg border text-left p-2 transition-all hover:border-primary/50 hover:bg-secondary/50 ${isToday
+                ? 'border-primary bg-primary/5'
+                : 'border-border/50 bg-card'
+                }`}
+            >
+              <div className={`text-sm font-semibold ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                {day.getDate()}
+              </div>
+              {hasAppointments && (
+                <div className="mt-1">
+                  <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                    {appointmentCount} cita{appointmentCount > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              {hasBlocked && (
+                <div className="mt-1">
+                  <span className={cn('text-xs px-1.5 py-0.5 rounded', blockedStyles.badge)}>
+                    {blockedCount} bloqueado{blockedCount > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

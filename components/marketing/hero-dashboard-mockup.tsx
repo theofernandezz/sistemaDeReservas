@@ -1,6 +1,6 @@
 'use client'
 
-import { Calendar, ChevronLeft, ChevronRight, Clock, MoreHorizontal, Search, Bell, Plus, Users, TrendingUp, CreditCard } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, Bell, Plus, CalendarCheck, CheckCircle2 } from 'lucide-react'
 import { HeroAnimation } from '@/components/marketing/hero-animation'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
@@ -10,16 +10,24 @@ export function HeroDashboardMockup() {
     <div className="w-full h-full bg-background flex flex-col overflow-hidden relative select-none">
       {/* Top Navigation Bar */}
       <div className="h-14 border-b flex items-center justify-between px-4 lg:px-6 bg-card/50 backdrop-blur-sm z-10">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 flex items-center justify-center">
-            <Image src="/logo/icon.jpg" alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
+        <div className="flex items-center gap-6">
+          {/* Logo + Business Name */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <Image src="/logo/icon.png" alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
+            </div>
+            <span className="font-semibold text-sm hidden sm:inline">Mi Negocio</span>
           </div>
-          <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md">
-            <Search className="w-4 h-4" />
-            <span>Buscar cita...</span>
-            <span className="ml-4 text-xs opacity-50">⌘K</span>
-          </div>
+          
+          {/* Navigation Items */}
+          <nav className="hidden md:flex items-center gap-1">
+            <NavItem label="Inicio" active />
+            <NavItem label="Calendario" />
+            <NavItem label="Servicios" />
+            <NavItem label="Disponibilidad" />
+          </nav>
         </div>
+        
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 text-sm font-medium bg-green-500/10 text-green-600 px-3 py-1 rounded-full border border-green-500/20">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -30,55 +38,68 @@ export function HeroDashboardMockup() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar (Simplified) */}
-        <div className="w-16 lg:w-64 border-r bg-card/30 flex-shrink-0 hidden md:flex flex-col justify-between p-4">
-          <div className="space-y-2">
-            <SidebarItem active icon={Calendar} label="Calendario" />
-            <SidebarItem icon={Users} label="Clientes" />
-            <SidebarItem icon={CreditCard} label="Pagos" />
-            <SidebarItem icon={TrendingUp} label="Reportes" />
-          </div>
-          <div className="p-3 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/10">
-             <div className="text-xs font-semibold mb-1 text-primary">Pro Plan</div>
-             <div className="h-1.5 w-full bg-primary/20 rounded-full overflow-hidden">
-                <div className="h-full w-[70%] bg-primary rounded-full" />
-             </div>
-          </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 bg-secondary/10 p-4 lg:p-6 overflow-hidden flex flex-col gap-6">
+      {/* Main Content Area (No Sidebar) */}
+      <div className="flex-1 bg-secondary/10 p-4 lg:p-8 overflow-auto">
+        <div className="max-w-5xl mx-auto space-y-6">
           
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Ingresos (Mes)" value="$1.2M" trend="+12%" />
-            <StatCard label="Citas Totales" value="142" trend="+5%" />
-            <StatCard label="Nuevos Clientes" value="28" trend="+18%" />
-            <StatCard label="Pendientes" value="3" neutral />
+          {/* Greeting */}
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              Buenos días 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Lunes 20 de enero
+            </p>
           </div>
 
-          {/* Calendar Area (The real animation lives here) */}
-          <div className="flex-1 bg-background rounded-xl border shadow-sm relative overflow-hidden flex flex-col">
+          {/* Stats Row - Aligned with Real Dashboard */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <StatCard 
+              icon={CalendarCheck} 
+              iconColor="text-primary" 
+              iconBg="bg-primary/10"
+              label="Citas hoy" 
+              value="8" 
+            />
+            <StatCard 
+              icon={Clock} 
+              iconColor="text-emerald-500" 
+              iconBg="bg-emerald-500/10"
+              label="Por atender" 
+              value="5" 
+            />
+            <StatCard 
+              icon={CheckCircle2} 
+              iconColor="text-blue-500" 
+              iconBg="bg-blue-500/10"
+              label="Completadas" 
+              value="3" 
+            />
+          </div>
+
+          {/* Agenda Card with Animation */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 border-b flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Agenda de Hoy</h3>
-                <div className="flex gap-1">
-                    <ButtonIcon icon={ChevronLeft} size="sm" />
-                    <ButtonIcon icon={ChevronRight} size="sm" />
-                    <div className="ml-2 px-3 py-1 bg-primary text-primary-foreground text-xs rounded-md font-medium flex items-center gap-1">
-                        <Plus className="w-3 h-3" /> Nueva
-                    </div>
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <CalendarCheck size={18} className="text-primary" />
+                Agenda de hoy
+              </h2>
+              <div className="flex gap-2">
+                <ButtonIcon icon={ChevronLeft} size="sm" />
+                <ButtonIcon icon={ChevronRight} size="sm" />
+                <div className="ml-2 px-3 py-2 bg-primary text-primary-foreground text-xs rounded-xl font-medium flex items-center gap-1.5 shadow-lg shadow-primary/25 transition-all hover:bg-primary/90">
+                  <Plus className="w-3.5 h-3.5" /> Nueva
                 </div>
+              </div>
             </div>
             
-            {/* We embed the HeroAnimation but scaled to fit naturally */}
-            <div className="flex-1 relative bg-secondary/5">
-                <div className="absolute inset-0 p-4 overflow-hidden">
-                   {/* Abstract representation of calendar grid */}
-                   <div className="w-full h-full border rounded-lg bg-background shadow-inner opacity-80 scale-[0.98] origin-top">
-                        <HeroAnimation />
-                   </div>
+            {/* Animation Area */}
+            <div className="h-[400px] md:h-[500px] relative bg-secondary/5">
+              <div className="absolute inset-0 p-4">
+                <div className="w-full h-full border rounded-lg bg-background shadow-inner overflow-hidden">
+                  <HeroAnimation />
                 </div>
+              </div>
             </div>
           </div>
 
@@ -88,41 +109,55 @@ export function HeroDashboardMockup() {
   )
 }
 
-function SidebarItem({ icon: Icon, label, active }: { icon: any, label: string, active?: boolean }) {
-    return (
-        <div className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-            active ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-secondary"
-        )}>
-            <Icon className="w-4 h-4" />
-            <span className="hidden lg:inline">{label}</span>
-        </div>
-    )
+interface NavItemProps {
+  label: string
+  active?: boolean
 }
 
-function StatCard({ label, value, trend, neutral }: { label: string, value: string, trend?: string, neutral?: boolean }) {
-    return (
-        <div className="bg-background p-4 rounded-xl border shadow-sm flex flex-col justify-between gap-2">
-            <div className="text-xs text-muted-foreground font-medium">{label}</div>
-            <div className="flex items-end justify-between">
-                <div className="text-lg lg:text-2xl font-bold tracking-tight">{value}</div>
-                {trend && (
-                    <div className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", neutral ? "bg-secondary text-foreground" : "bg-green-500/10 text-green-600")}>
-                        {trend}
-                    </div>
-                )}
-            </div>
-        </div>
-    )
+function NavItem({ label, active }: NavItemProps) {
+  return (
+    <div className={cn(
+      "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+      active 
+        ? "text-foreground bg-secondary" 
+        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+    )}>
+      {label}
+    </div>
+  )
 }
 
-function ButtonIcon({ icon: Icon, size = "md" }: { icon: any, size?: "sm" | "md" }) {
-    return (
-        <div className={cn(
-            "rounded-md border bg-background flex items-center justify-center hover:bg-secondary cursor-pointer transition-colors",
-            size === "sm" ? "w-7 h-7" : "w-9 h-9"
-        )}>
-            <Icon className={cn("text-muted-foreground", size === "sm" ? "w-3 h-3" : "w-4 h-4")} />
+interface StatCardProps {
+  icon: React.ComponentType<{ className?: string }>
+  iconColor: string
+  iconBg: string
+  label: string
+  value: string
+}
+
+function StatCard({ icon: Icon, iconColor, iconBg, label, value }: StatCardProps) {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4">
+      <div className="flex items-center gap-3">
+        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", iconBg)}>
+          <Icon className={cn("h-5 w-5", iconColor)} />
         </div>
-    )
+        <div>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ButtonIcon({ icon: Icon, size = "md" }: { icon: React.ComponentType<{ className?: string }>, size?: "sm" | "md" }) {
+  return (
+    <div className={cn(
+      "rounded-md border bg-background flex items-center justify-center hover:bg-secondary cursor-pointer transition-colors",
+      size === "sm" ? "w-7 h-7" : "w-9 h-9"
+    )}>
+      <Icon className={cn("text-muted-foreground", size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4")} />
+    </div>
+  )
 }

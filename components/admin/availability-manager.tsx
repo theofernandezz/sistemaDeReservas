@@ -123,7 +123,7 @@ export default function AvailabilityManager({ initialSchedule, initialInterval =
           >
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               {/* Day toggle */}
-              <div className="flex items-center justify-between sm:justify-start gap-4 sm:min-w-[150px]">
+              <div className="flex items-center justify-between sm:justify-start gap-4 sm:min-w-37.5">
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={day.isOpen}
@@ -141,7 +141,7 @@ export default function AvailabilityManager({ initialSchedule, initialInterval =
 
               {/* Time selectors */}
               {day.isOpen ? (
-                <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
+                <div className="flex items-center gap-2 pl-13 sm:pl-0">
                   <Clock size={16} className="text-muted-foreground shrink-0" />
                   <div className="flex items-center gap-2">
                     <select
@@ -178,7 +178,7 @@ export default function AvailabilityManager({ initialSchedule, initialInterval =
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="min-w-[140px]"
+          className="min-w-35"
         >
           {saving ? (
             <>

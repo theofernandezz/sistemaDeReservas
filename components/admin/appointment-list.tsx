@@ -127,7 +127,7 @@ export default function AppointmentList({ initialAppointments }: AppointmentList
             >
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 {/* Date/Time Block */}
-                <div className="flex-shrink-0 bg-secondary/50 rounded-lg p-3 text-center min-w-[80px]">
+                <div className="shrink-0 bg-secondary/50 rounded-lg p-3 text-center min-w-[80px]">
                   <div className="text-2xl font-bold text-primary">
                     {format(startDate, 'd')}
                   </div>

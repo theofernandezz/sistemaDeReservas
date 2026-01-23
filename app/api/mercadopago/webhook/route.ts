@@ -108,6 +108,7 @@ async function processPendingBookingPayment(supabase: any, paymentId: string) {
       const { data: newAppointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert({
+          business_id: businessId,
           service_id: pending.service_id,
           start_time: pending.start_time,
           end_time: pending.end_time,

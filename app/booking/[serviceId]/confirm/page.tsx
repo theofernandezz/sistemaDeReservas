@@ -322,7 +322,7 @@ export default function CompactConfirmPage() {
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 items-center justify-center p-8">
+      <div className="hidden lg:flex min-h-screen bg-linear-to-br from-background via-background to-secondary/20 items-center justify-center p-8">
         <div className="w-full max-w-4xl bg-card rounded-3xl shadow-2xl overflow-hidden border flex">
 
           {/* Left Column */}

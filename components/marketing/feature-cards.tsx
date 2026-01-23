@@ -11,7 +11,7 @@ export function InteractiveFeatureCards() {
     <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
       
       {/* 1. CALENDARIO INTELIGENTE (Wide Card) */}
-      <div className="md:col-span-2 relative group overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 via-card to-card border border-violet-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
+      <div className="md:col-span-2 relative group overflow-hidden rounded-3xl bg-linear-to-br from-violet-500/10 via-card to-card border border-violet-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
         <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         
         <div className="relative z-10 grid md:grid-cols-2 gap-6 items-center">
@@ -53,7 +53,7 @@ export function InteractiveFeatureCards() {
       </div>
 
       {/* 3. PAGOS Y SEÑAS (Small Card) */}
-      <div className="relative group overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-card to-card border border-emerald-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500 flex flex-col">
+      <div className="relative group overflow-hidden rounded-3xl bg-linear-to-br from-emerald-500/10 via-card to-card border border-emerald-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500 flex flex-col">
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
         
         <div className="relative z-10 flex-1">
@@ -72,7 +72,7 @@ export function InteractiveFeatureCards() {
       </div>
 
        {/* 4. RECORDATORIOS (Small Card) */}
-       <div className="relative group overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/10 via-card to-card border border-blue-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500 flex flex-col">
+       <div className="relative group overflow-hidden rounded-3xl bg-linear-to-br from-blue-500/10 via-card to-card border border-blue-500/20 p-8 shadow-lg hover:shadow-xl transition-all duration-500 flex flex-col">
         <div className="absolute top-0 left-1/2 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2" />
         
         <div className="relative z-10 flex-1">
@@ -189,7 +189,7 @@ function IntegrationsOrbit() {
     return (
         <div className="relative w-64 h-64 flex items-center justify-center">
             {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-transparent to-blue-500/20 rounded-full blur-2xl animate-pulse" />
+            <div className="absolute inset-0 bg-linear-to-r from-violet-500/20 via-transparent to-blue-500/20 rounded-full blur-2xl animate-pulse" />
             
             {/* Center Hub */}
             <div className="relative z-20 w-20 h-20 rounded-2xl bg-white flex items-center justify-center shadow-[0_0_60px_-10px_rgba(255,255,255,0.4)]">

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Plus, Edit2, DollarSign, Clock, Loader2, ImageIcon, X, Upload, Camera } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Edit2, DollarSign, Clock, Loader2, ImageIcon } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
 import { createService, updateService, toggleServiceActive } from '@/app/actions'
 import { frontendServiceToDB } from '@/lib/adapters'
@@ -9,9 +9,18 @@ import { useRouter } from 'next/navigation'
 import Switch from '@/components/ui/switch'
 import { useToast } from '@/components/ui/toast'
 import ImageCropper from '@/components/ui/image-cropper'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { ImageUpload } from '@/components/ui/image-upload'
+import { cn } from '@/lib/utils'
 
 interface ServiceManagerProps {
   initialServices: FrontendService[]
+}
+
+interface UploadResponse {
+  url: string
+  error?: string
 }
 
 export default function ServiceManager({ initialServices }: ServiceManagerProps) {
@@ -23,7 +32,6 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState<Partial<FrontendService>>({
     title: '',
@@ -129,7 +137,7 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
               }`}
           >
             {/* Image */}
-            <div className="w-20 h-20 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-lg overflow-hidden flex-shrink-0">
+            <div className="w-20 h-20 bg-linear-to-br from-primary/20 via-primary/10 to-transparent rounded-lg overflow-hidden shrink-0">
               {service.image ? (
                 <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
               ) : (
@@ -198,110 +206,97 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
 
             <div className="p-4 space-y-4 overflow-y-auto">
               {/* Image Upload Section */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Imagen</label>
-                <div className="space-y-2">
-                  {formData.image ? (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden bg-secondary">
-                      <img
-                        src={formData.image}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                      <button
-                        onClick={() => setFormData({ ...formData, image: '' })}
-                        className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingImage}
-                      className="w-full h-28 border-2 border-dashed border-primary/30 rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
-                    >
-                      {uploadingImage ? (
-                        <>
-                          <Loader2 size={24} className="animate-spin text-primary" />
-                          <span className="text-sm">Subiendo...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera size={24} className="text-primary" />
-                          <span className="text-sm font-medium">Subir foto</span>
-                          <span className="text-xs text-muted-foreground">Tocá para abrir la galería</span>
-                        </>
-                      )}
-                    </button>
-                  )}
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          showError('Imagen muy grande', 'El archivo debe ser menor a 5MB')
-                          return
-                        }
-                        const reader = new FileReader()
-                        reader.onload = (event) => {
-                          setImageToCrop(event.target?.result as string)
-                        }
-                        reader.readAsDataURL(file)
-                      }
-                      e.target.value = '' // Reset to allow same file selection
-                    }}
-                  />
-                </div>
-              </div>
+              <ImageUpload
+                id="service-image"
+                label="Imagen del servicio"
+                value={formData.image}
+                onChange={(imageUrl) => setFormData({ ...formData, image: imageUrl })}
+                onCropRequest={(imageDataUrl) => setImageToCrop(imageDataUrl)}
+                isUploading={uploadingImage}
+                maxSizeMB={5}
+                onError={showError}
+              />
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-foreground">Nombre *</label>
+                <Label htmlFor="service-name" className="text-foreground">
+                  Nombre *
+                </Label>
                 <input
+                  id="service-name"
                   type="text"
                   value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-secondary/20 border border-input focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all"
+                  className={cn(
+                    "w-full px-4 py-2 mt-1 rounded-xl",
+                    "bg-secondary/20 border border-input",
+                    "focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                    "focus:outline-none transition-all"
+                  )}
                   placeholder="Ej: Manicura Gel"
+                  required
+                  aria-required="true"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-foreground">Precio ($) *</label>
+                  <Label htmlFor="service-price" className="text-foreground">
+                    Precio ($) *
+                  </Label>
                   <input
+                    id="service-price"
                     type="number"
                     value={formData.price || ''}
                     onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                    className="w-full px-4 py-2 rounded-xl bg-secondary/20 border border-input focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all"
+                    className={cn(
+                      "w-full px-4 py-2 mt-1 rounded-xl",
+                      "bg-secondary/20 border border-input",
+                      "focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                      "focus:outline-none transition-all"
+                    )}
+                    required
+                    aria-required="true"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-foreground">Duración (min) *</label>
+                  <Label htmlFor="service-duration" className="text-foreground">
+                    Duración (min) *
+                  </Label>
                   <input
+                    id="service-duration"
                     type="number"
                     value={formData.durationMin || ''}
                     onChange={(e) => setFormData({ ...formData, durationMin: Number(e.target.value) })}
-                    className="w-full px-4 py-2 rounded-xl bg-secondary/20 border border-input focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all"
+                    className={cn(
+                      "w-full px-4 py-2 mt-1 rounded-xl",
+                      "bg-secondary/20 border border-input",
+                      "focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                      "focus:outline-none transition-all"
+                    )}
+                    required
+                    aria-required="true"
+                    min="1"
+                    step="1"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-foreground">Descripción</label>
+                <Label htmlFor="service-description" className="text-foreground">
+                  Descripción
+                </Label>
                 <textarea
+                  id="service-description"
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl bg-secondary/20 border border-input focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none transition-all resize-none"
+                  className={cn(
+                    "w-full px-4 py-2 mt-1 rounded-xl",
+                    "bg-secondary/20 border border-input",
+                    "focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                    "focus:outline-none transition-all resize-none"
+                  )}
                   rows={3}
                   placeholder="Describe el tratamiento..."
                 />
@@ -309,26 +304,29 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
             </div>
 
             <div className="p-4 border-t border-border flex gap-3">
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-2 bg-secondary text-secondary-foreground rounded-xl font-medium hover:bg-secondary/80 transition-colors"
+                className="flex-1"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-2 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1"
               >
                 {saving ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Guardando...
                   </>
                 ) : (
                   editingService ? 'Guardar' : 'Crear'
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -351,7 +349,7 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
                 body: uploadFormData
               })
 
-              const data = await response.json()
+              const data = await response.json() as UploadResponse
 
               if (!response.ok) {
                 throw new Error(data.error || 'Error al subir imagen')
@@ -359,8 +357,9 @@ export default function ServiceManager({ initialServices }: ServiceManagerProps)
 
               setFormData(prev => ({ ...prev, image: data.url }))
               showSuccess('Imagen subida')
-            } catch (error: any) {
-              showError('Error al subir', error.message)
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+              showError('Error al subir', errorMessage)
             } finally {
               setUploadingImage(false)
             }

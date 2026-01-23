@@ -1,0 +1,443 @@
+---
+name: api-design
+description: |
+  REST API patterns for Next.js 16 with App Router. Server Actions first, API Routes for external integrations.
+  Trigger: Activated when creating API endpoints, webhooks, or external integrations.
+license: MIT
+metadata:
+  author: ai-library
+  version: "1.0"
+  scope: [root, backend]
+  auto_invoke:
+    - "Creating API endpoints"
+    - "Designing REST APIs"
+    - "Webhook handlers"
+    - "External API integrations"
+    - "Working with app/api/ directory"
+  patterns:
+    - "app/api/**/*.ts"
+    - "lib/api/**/*.ts"
+---
+
+# API Design - Next.js 16
+
+> **Core Principle:** Server Actions for internal operations, API Routes only for external integrations. Minimize the API surface.
+
+---
+
+## 🏗️ Decision Matrix
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Is it called externally?                      │
+│                                                                  │
+│         NO                                    YES                │
+│          │                                     │                 │
+│          ▼                                     ▼                 │
+│   ┌─────────────┐                    ┌─────────────────┐        │
+│   │   Server    │                    │   API Route     │        │
+│   │   Action    │                    │   app/api/...   │        │
+│   └─────────────┘                    └─────────────────┘        │
+│                                                                  │
+│   • Form submissions                  • Webhooks (Stripe, etc.) │
+│   • Data mutations                    • OAuth callbacks         │
+│   • Internal CRUD                     • Public APIs             │
+│   • Revalidation                      • Third-party integrations│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚫 FORBIDDEN PATTERNS
+
+### 1. Never Create API Routes for Internal Operations
+
+```typescript
+// ❌ FORBIDDEN - API Route for internal form submission
+// app/api/posts/create/route.ts
+export async function POST(request: Request) {
+  const body = await request.json()
+  // create post...
+}
+
+// ❌ FORBIDDEN - Fetching your own API from client
+const response = await fetch('/api/posts/create', {
+  method: 'POST',
+  body: JSON.stringify(data)
+})
+
+// ✅ CORRECT - Use Server Action
+// lib/actions/posts.ts
+'use server'
+
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+
+const createPostSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+})
+
+export async function createPost(formData: FormData) {
+  const validated = createPostSchema.safeParse({
+    title: formData.get('title'),
+    content: formData.get('content'),
+  })
+  
+  if (!validated.success) {
+    return { error: validated.error.flatten() }
+  }
+  
+  // Create post in database
+  await db.posts.create(validated.data)
+  
+  revalidatePath('/posts')
+  return { success: true }
+}
+```
+
+### 2. Never Skip Input Validation
+
+```typescript
+// ❌ FORBIDDEN - No validation
+export async function POST(request: Request) {
+  const body = await request.json()
+  await db.insert(body) // Dangerous!
+}
+
+// ✅ CORRECT - Always validate with Zod
+import { z } from 'zod'
+
+const webhookSchema = z.object({
+  type: z.enum(['payment.succeeded', 'payment.failed']),
+  data: z.object({
+    id: z.string(),
+    amount: z.number(),
+  }),
+})
+
+export async function POST(request: Request) {
+  const body = await request.json()
+  const validated = webhookSchema.safeParse(body)
+  
+  if (!validated.success) {
+    return Response.json(
+      { error: 'Invalid payload' },
+      { status: 400 }
+    )
+  }
+  
+  // Process validated.data safely
+}
+```
+
+### 3. Never Expose Internal Errors
+
+```typescript
+// ❌ FORBIDDEN - Leaks internal details
+export async function GET() {
+  try {
+    const data = await db.query()
+    return Response.json(data)
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 })
+  }
+}
+
+// ✅ CORRECT - Generic error response
+export async function GET() {
+  try {
+    const data = await db.query()
+    return Response.json(data)
+  } catch (error) {
+    console.error('API Error:', error) // Log internally
+    return Response.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+---
+
+## ✅ REQUIRED PATTERNS
+
+### 1. Webhook Handler Template
+
+```typescript
+// app/api/webhooks/stripe/route.ts
+import { headers } from 'next/headers'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
+export async function POST(request: Request) {
+  const body = await request.text()
+  const headersList = await headers()
+  const signature = headersList.get('stripe-signature')!
+
+  let event: Stripe.Event
+
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch (error) {
+    console.error('Webhook signature verification failed:', error)
+    return Response.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  // Handle event types
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      await handlePaymentSuccess(event.data.object)
+      break
+    case 'payment_intent.payment_failed':
+      await handlePaymentFailed(event.data.object)
+      break
+    default:
+      console.log(`Unhandled event type: ${event.type}`)
+  }
+
+  return Response.json({ received: true })
+}
+
+// Disable body parsing for raw body access
+export const config = {
+  api: { bodyParser: false }
+}
+```
+
+### 2. Public API Endpoint Template
+
+```typescript
+// app/api/v1/products/route.ts
+import { z } from 'zod'
+import { NextRequest } from 'next/server'
+
+const querySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  category: z.string().optional(),
+})
+
+export async function GET(request: NextRequest) {
+  // Parse query params
+  const searchParams = request.nextUrl.searchParams
+  const query = querySchema.safeParse({
+    page: searchParams.get('page'),
+    limit: searchParams.get('limit'),
+    category: searchParams.get('category'),
+  })
+
+  if (!query.success) {
+    return Response.json(
+      { error: 'Invalid parameters', details: query.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  const { page, limit, category } = query.data
+
+  // Fetch data
+  const products = await getProducts({ page, limit, category })
+  const total = await getProductsCount({ category })
+
+  // Return paginated response
+  return Response.json({
+    data: products,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  })
+}
+```
+
+### 3. API Response Types
+
+```typescript
+// types/api.ts
+
+// Success response
+interface ApiSuccess<T> {
+  data: T
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+// Error response
+interface ApiError {
+  error: string
+  code?: string
+  details?: Record<string, string[]>
+}
+
+// Union type for responses
+type ApiResponse<T> = ApiSuccess<T> | ApiError
+
+// Helper functions
+export function successResponse<T>(data: T, pagination?: ApiSuccess<T>['pagination']) {
+  return Response.json({ data, pagination })
+}
+
+export function errorResponse(error: string, status: number, code?: string) {
+  return Response.json({ error, code }, { status })
+}
+```
+
+### 4. Rate Limiting
+
+```typescript
+// lib/api/rate-limit.ts
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '10 s'), // 10 requests per 10 seconds
+  analytics: true,
+})
+
+export async function checkRateLimit(identifier: string) {
+  const { success, limit, remaining, reset } = await ratelimit.limit(identifier)
+  
+  return {
+    success,
+    headers: {
+      'X-RateLimit-Limit': limit.toString(),
+      'X-RateLimit-Remaining': remaining.toString(),
+      'X-RateLimit-Reset': reset.toString(),
+    },
+  }
+}
+
+// Usage in API Route
+export async function GET(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous'
+  const { success, headers } = await checkRateLimit(ip)
+  
+  if (!success) {
+    return Response.json(
+      { error: 'Too many requests' },
+      { status: 429, headers }
+    )
+  }
+  
+  // Process request...
+  return Response.json({ data }, { headers })
+}
+```
+
+### 5. API Authentication
+
+```typescript
+// lib/api/auth.ts
+import { createClient } from '@/lib/supabase/server'
+
+export async function requireApiAuth(request: Request) {
+  const authHeader = request.headers.get('authorization')
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { error: 'Missing authorization header', status: 401 }
+  }
+  
+  const token = authHeader.replace('Bearer ', '')
+  const supabase = await createClient()
+  
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+  
+  if (error || !user) {
+    return { error: 'Invalid token', status: 401 }
+  }
+  
+  return { user }
+}
+
+// Usage
+export async function GET(request: Request) {
+  const auth = await requireApiAuth(request)
+  
+  if ('error' in auth) {
+    return Response.json({ error: auth.error }, { status: auth.status })
+  }
+  
+  // auth.user is available
+  const data = await getUserData(auth.user.id)
+  return Response.json({ data })
+}
+```
+
+---
+
+## 📁 File Structure
+
+```
+app/
+├── api/
+│   ├── v1/                    # Versioned public APIs
+│   │   ├── products/
+│   │   │   └── route.ts
+│   │   └── users/
+│   │       └── route.ts
+│   ├── webhooks/              # External webhooks
+│   │   ├── stripe/
+│   │   │   └── route.ts
+│   │   └── supabase/
+│   │       └── route.ts
+│   └── auth/                  # OAuth callbacks
+│       └── callback/
+│           └── route.ts
+
+lib/
+├── actions/                   # Server Actions (internal)
+│   ├── posts.ts
+│   └── users.ts
+├── api/                       # API utilities
+│   ├── rate-limit.ts
+│   └── auth.ts
+└── validations/               # Shared Zod schemas
+    └── api.ts
+
+types/
+└── api.ts                     # API response types
+```
+
+---
+
+## 📊 HTTP Status Codes
+
+| Code | When to Use |
+|------|-------------|
+| `200` | Success (GET, PUT, PATCH) |
+| `201` | Resource created (POST) |
+| `204` | Success, no content (DELETE) |
+| `400` | Bad request (validation error) |
+| `401` | Unauthorized (no/invalid token) |
+| `403` | Forbidden (valid token, no permission) |
+| `404` | Resource not found |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+---
+
+## 📋 Checklist Before Commit
+
+- [ ] Using Server Actions for internal operations
+- [ ] API Routes only for external integrations
+- [ ] All inputs validated with Zod
+- [ ] Rate limiting on public endpoints
+- [ ] Authentication on protected endpoints
+- [ ] Generic error messages (no internal leaks)
+- [ ] Proper HTTP status codes
+- [ ] Response types defined
+
+---
+
+*Skill Version: 1.0.0 | Compatible with Next.js 16.x*

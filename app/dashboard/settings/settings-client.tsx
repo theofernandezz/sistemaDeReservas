@@ -20,14 +20,23 @@ import {
   Calendar,
   Clock,
   Globe,
-  AtSign
+  AtSign,
+  Palette
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import { disconnectGoogleCalendar, disconnectMercadoPago, updateBusiness, updateBusinessSettings } from '@/app/actions'
 import { updateBusinessPaymentConfig } from '@/app/actions/payments'
-import { sendPasswordResetEmail } from '@/app/actions/auth'
+import { requestAccountDeletion, sendPasswordResetEmail } from '@/app/actions/auth'
 
 // Types
 interface SettingsProps {
@@ -37,6 +46,11 @@ interface SettingsProps {
   mpUserId?: string
   depositPercentage: number
   businessId?: string
+  reservationSettings?: {
+    minAdvanceHours?: number
+    cancellationHours?: number
+  }
+  businessName?: string
   business?: {
     id: string
     name: string
@@ -47,9 +61,13 @@ interface SettingsProps {
     instagram?: string
     address?: string
   }
+  businessSettings?: {
+    primaryColor?: string
+    accentColor?: string
+  }
 }
 
-type SectionId = 'profile' | 'contact' | 'reservations' | 'payments' | 'integrations' | 'notifications' | 'account'
+type SectionId = 'profile' | 'contact' | 'appearance' | 'reservations' | 'payments' | 'integrations' | 'notifications' | 'account'
 
 interface Section {
   id: SectionId
@@ -61,6 +79,7 @@ interface Section {
 const sections: Section[] = [
   { id: 'profile', label: 'Perfil', icon: <Building2 size={18} />, description: 'Nombre, logo y descripción' },
   { id: 'contact', label: 'Contacto', icon: <Phone size={18} />, description: 'Teléfono, email y redes' },
+  { id: 'appearance', label: 'Apariencia', icon: <Palette size={18} />, description: 'Color de tu marca' },
   { id: 'reservations', label: 'Reservas', icon: <CalendarClock size={18} />, description: 'Anticipación y cancelaciones' },
   { id: 'payments', label: 'Pagos', icon: <CreditCard size={18} />, description: 'MercadoPago y señas' },
   { id: 'integrations', label: 'Integraciones', icon: <Plug2 size={18} />, description: 'Google Calendar' },
@@ -75,7 +94,10 @@ export default function SettingsPage({
   mpUserId,
   depositPercentage: initialDeposit,
   businessId,
-  business
+  reservationSettings,
+  businessName,
+  business,
+  businessSettings
 }: SettingsProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('profile')
   const [isMobile, setIsMobile] = useState(false)
@@ -148,8 +170,10 @@ export default function SettingsPage({
         return <ProfileSection business={business} />
       case 'contact':
         return <ContactSection business={business} />
+      case 'appearance':
+        return <AppearanceSection businessSettings={businessSettings} />
       case 'reservations':
-        return <ReservationsSection business={business} />
+        return <ReservationsSection reservationSettings={reservationSettings} />
       case 'payments':
         return (
           <PaymentsSection
@@ -164,7 +188,7 @@ export default function SettingsPage({
       case 'notifications':
         return <NotificationsSection initialEmail={initialAdminEmail} />
       case 'account':
-        return <AccountSection />
+        return <AccountSection businessName={businessName} />
       default:
         return null
     }
@@ -222,7 +246,7 @@ export default function SettingsPage({
 
       <div className="flex gap-6">
         {/* Sidebar */}
-        <div className="w-56 flex-shrink-0">
+        <div className="w-56 shrink-0">
           <nav className="space-y-1 sticky top-6">
             {sections.map(section => (
               <button
@@ -432,10 +456,20 @@ function ContactSection({ business }: { business?: SettingsProps['business'] }) 
   )
 }
 
-function ReservationsSection({ business }: { business?: SettingsProps['business'] }) {
-  // These settings would come from business.settings but for now use defaults
-  const [minAdvance, setMinAdvance] = useState('2')
-  const [cancelHours, setCancelHours] = useState('24')
+// Colores predefinidos para elegir
+const PRESET_COLORS = [
+  { name: 'Naranja', value: '#f97316' },
+  { name: 'Azul', value: '#3b82f6' },
+  { name: 'Verde', value: '#10b981' },
+  { name: 'Violeta', value: '#8b5cf6' },
+  { name: 'Rosa', value: '#ec4899' },
+  { name: 'Rojo', value: '#ef4444' },
+  { name: 'Amarillo', value: '#eab308' },
+  { name: 'Negro', value: '#000000' },
+]
+
+function AppearanceSection({ businessSettings }: { businessSettings?: SettingsProps['businessSettings'] }) {
+  const [accentColor, setAccentColor] = useState(businessSettings?.accentColor || '#f97316')
   const [saving, setSaving] = useState(false)
   const { success: showSuccess, error: showError } = useToast()
   const router = useRouter()
@@ -444,8 +478,137 @@ function ReservationsSection({ business }: { business?: SettingsProps['business'
     setSaving(true)
     try {
       const result = await updateBusinessSettings({
-        minAdvanceHours: parseInt(minAdvance) || 2,
-        cancellationHours: parseInt(cancelHours) || 24
+        accentColor
+      })
+      if (result.success) {
+        showSuccess('Guardado', 'Color actualizado correctamente')
+        router.refresh()
+      } else {
+        showError('Error', result.error || 'No se pudo guardar')
+      }
+    } catch {
+      showError('Error', 'No se pudo guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Color de acento */}
+      <div>
+        <label className="text-sm font-medium mb-1.5 block">Color de tu marca</label>
+        <p className="text-xs text-muted-foreground mb-4">
+          Se usa en botones, precios y elementos destacados de tu página de reservas
+        </p>
+        
+        {/* Colores preset */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {PRESET_COLORS.map(color => (
+            <button
+              key={color.value}
+              onClick={() => setAccentColor(color.value)}
+              className={`w-9 h-9 rounded-full border-2 transition-all ${
+                accentColor === color.value 
+                  ? 'border-foreground scale-110 ring-2 ring-offset-2 ring-foreground/20' 
+                  : 'border-border hover:scale-105 hover:border-foreground/50'
+              }`}
+              style={{ backgroundColor: color.value }}
+              title={color.name}
+            />
+          ))}
+        </div>
+
+        {/* Color picker custom */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="color"
+              value={accentColor}
+              onChange={e => setAccentColor(e.target.value)}
+              className="w-12 h-10 rounded-lg border border-border cursor-pointer"
+            />
+          </div>
+          <Input
+            value={accentColor}
+            onChange={e => setAccentColor(e.target.value)}
+            placeholder="#f97316"
+            className="w-28 font-mono text-sm"
+          />
+          <span className="text-xs text-muted-foreground">o elegí un color personalizado</span>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="pt-4 border-t border-border">
+        <label className="text-sm font-medium mb-3 block">Vista previa</label>
+        <div className="p-4 rounded-xl border border-border bg-background">
+          <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50">
+            <div>
+              <p className="font-medium text-sm text-foreground">Corte de cabello</p>
+              <p className="text-xs text-muted-foreground">30 min</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span 
+                className="font-bold"
+                style={{ color: accentColor }}
+              >
+                $25
+              </span>
+              <button
+                className="px-3 py-1.5 text-sm font-medium text-white rounded-md transition-opacity hover:opacity-90"
+                style={{ backgroundColor: accentColor }}
+              >
+                Reservar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving && <Loader2 size={16} className="animate-spin mr-2" />}
+          Guardar cambios
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ReservationsSection({
+  reservationSettings
+}: {
+  reservationSettings?: SettingsProps['reservationSettings']
+}) {
+  const initialMinAdvance = reservationSettings?.minAdvanceHours ?? 2
+  const initialCancelHours = reservationSettings?.cancellationHours ?? 24
+
+  const [minAdvance, setMinAdvance] = useState(String(initialMinAdvance))
+  const [cancelHours, setCancelHours] = useState(String(initialCancelHours))
+  const [saving, setSaving] = useState(false)
+  const { success: showSuccess, error: showError } = useToast()
+  const router = useRouter()
+
+  useEffect(() => {
+    setMinAdvance(String(initialMinAdvance))
+    setCancelHours(String(initialCancelHours))
+  }, [initialMinAdvance, initialCancelHours])
+
+  const handleSave = async () => {
+    const minAdvanceValue = Number(minAdvance)
+    const cancelHoursValue = Number(cancelHours)
+
+    if (Number.isNaN(minAdvanceValue) || Number.isNaN(cancelHoursValue)) {
+      showError('Error', 'Ingresá valores válidos')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const result = await updateBusinessSettings({
+        minAdvanceHours: Math.max(0, minAdvanceValue),
+        cancellationHours: Math.max(0, cancelHoursValue)
       })
       if (result.success) {
         showSuccess('Guardado', 'Configuración de reservas actualizada')
@@ -567,7 +730,7 @@ function PaymentsSection({
         <img
           src="/integrations/mercadopago.png"
           alt="Mercado Pago"
-          className="w-10 h-10 rounded-lg flex-shrink-0 object-contain"
+          className="w-10 h-10 rounded-lg shrink-0 object-contain"
         />
         <div className="flex-1">
           <h3 className="font-medium">Mercado Pago</h3>
@@ -666,7 +829,7 @@ function IntegrationsSection({ isGoogleConnected }: { isGoogleConnected: boolean
         <img
           src="/integrations/google-calendar.svg"
           alt="Google Calendar"
-          className="w-10 h-10 rounded-lg flex-shrink-0"
+          className="w-10 h-10 rounded-lg shrink-0"
         />
         <div className="flex-1">
           <h3 className="font-medium">Google Calendar</h3>
@@ -767,8 +930,11 @@ function NotificationsSection({ initialEmail }: { initialEmail: string }) {
   )
 }
 
-function AccountSection() {
+function AccountSection({ businessName }: { businessName?: string }) {
   const [sendingReset, setSendingReset] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [confirmName, setConfirmName] = useState('')
+  const [requestingDelete, setRequestingDelete] = useState(false)
   const { success: showSuccess, error: showError } = useToast()
 
   const handleSendResetEmail = async () => {
@@ -784,6 +950,33 @@ function AccountSection() {
       showError('Error', 'No se pudo enviar el email')
     } finally {
       setSendingReset(false)
+    }
+  }
+
+  const expectedName = businessName?.trim() || ''
+  const isConfirmMatch =
+    expectedName.length > 0 && confirmName.trim().toLowerCase() === expectedName.toLowerCase()
+
+  const handleRequestDeletion = async () => {
+    if (!isConfirmMatch) {
+      showError('Error', 'El nombre no coincide')
+      return
+    }
+
+    setRequestingDelete(true)
+    try {
+      const result = await requestAccountDeletion({ confirmationName: confirmName })
+      if (result.success) {
+        showSuccess('Solicitud enviada', 'Vamos a contactarte para continuar el proceso')
+        setShowDeleteDialog(false)
+        setConfirmName('')
+      } else {
+        showError('Error', result.error || 'No se pudo enviar la solicitud')
+      }
+    } catch {
+      showError('Error', 'No se pudo enviar la solicitud')
+    } finally {
+      setRequestingDelete(false)
     }
   }
 
@@ -808,11 +1001,57 @@ function AccountSection() {
         <Button
           variant="outline"
           className="text-destructive border-destructive hover:bg-destructive/10"
-          onClick={() => showError('Función no disponible', 'Contactanos para eliminar tu cuenta')}
+          onClick={() => setShowDeleteDialog(true)}
+          disabled={!expectedName}
         >
           Eliminar cuenta
         </Button>
+        {!expectedName && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Completá el perfil de tu negocio antes de solicitar la eliminación.
+          </p>
+        )}
       </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              Esta acción es irreversible. Para continuar, escribí el nombre del negocio tal como aparece.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Nombre esperado: <span className="font-medium text-foreground">{expectedName || '-'}</span>
+            </p>
+            <Input
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              placeholder="Escribí el nombre del negocio"
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={requestingDelete}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRequestDeletion}
+              disabled={!isConfirmMatch || requestingDelete}
+            >
+              {requestingDelete && <Loader2 size={16} className="animate-spin mr-2" />}
+              Solicitar eliminación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

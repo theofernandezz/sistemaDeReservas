@@ -85,7 +85,7 @@ export async function updateBusinessSettings(settings: Partial<BusinessSettings>
   try {
     const supabase = await createClient()
     const businessResult = await getCurrentBusiness()
-    
+
     if (!businessResult.success || !businessResult.data) {
       throw new Error('No business found')
     }
@@ -400,11 +400,22 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
   try {
     const supabase = await createClient()
 
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('id, business_id, name, price, duration_minutes')
+      .eq('id', input.service_id)
+      .single()
+
+    if (serviceError) throw serviceError
+
+    const businessId = service.business_id || await requireBusinessId()
+
     // Check for overlapping appointments (prevent double booking)
     const { data: existingAppointments, error: checkError } = await supabase
       .from('appointments')
       .select('id, start_time, end_time')
       .neq('status', 'cancelled')
+      .eq('business_id', businessId)
       .or(`and(start_time.lt.${input.end_time},end_time.gt.${input.start_time})`)
 
     if (checkError) throw checkError
@@ -425,7 +436,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
         client_phone: input.client_phone,
         client_email: input.client_email,
         status: input.status || 'pending',
-        service_id: input.service_id
+        service_id: input.service_id,
+        business_id: businessId
       }])
       .select()
       .single()
@@ -435,12 +447,6 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     // Send email notification to admin
     try {
       // Get service info for email
-      const { data: service } = await supabase
-        .from('services')
-        .select('name, price, duration_minutes')
-        .eq('id', input.service_id)
-        .single()
-
       if (service) {
         const { sendNewAppointmentNotification, sendClientConfirmation } = await import('@/lib/email')
         const startDate = new Date(input.start_time)
@@ -604,7 +610,7 @@ export async function getAvailableSlots(
     // Get the service to know duration
     const { data: service, error: serviceError } = await supabase
       .from('services')
-      .select('duration_minutes')
+      .select('duration_minutes, business_id')
       .eq('id', serviceId)
       .single()
 
@@ -621,6 +627,7 @@ export async function getAvailableSlots(
       .select('start_time, end_time')
       .gte('start_time', startOfDay.toISOString())
       .lte('start_time', endOfDay.toISOString())
+      .eq('business_id', service.business_id)
       .neq('status', 'cancelled')
 
     if (appointmentsError) throw appointmentsError
@@ -631,6 +638,7 @@ export async function getAvailableSlots(
       .select('start_time, end_time, reason')
       .gte('start_time', startOfDay.toISOString())
       .lte('start_time', endOfDay.toISOString())
+      .eq('business_id', service.business_id)
 
     if (blockedError) throw blockedError
 
@@ -1293,6 +1301,81 @@ export async function disconnectMercadoPago(): Promise<ServerActionResponse<void
     return { success: true }
   } catch (error: any) {
     console.error('Error disconnecting MP:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// ============================================
+// REMINDERS - WhatsApp Panel Actions
+// ============================================
+
+export interface AppointmentWithReminders extends AppointmentWithService {
+  email_reminder_sent: boolean
+  email_reminder_sent_at: string | null
+  whatsapp_reminder_sent: boolean
+  whatsapp_reminder_sent_at: string | null
+}
+
+/**
+ * Get tomorrow's appointments for the reminders panel
+ */
+export async function getTomorrowAppointments(): Promise<ServerActionResponse<AppointmentWithReminders[]>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    // Calculate tomorrow's date range in local timezone
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+
+    const dayAfter = new Date(tomorrow)
+    dayAfter.setDate(dayAfter.getDate() + 1)
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        service:services(*)
+      `)
+      .eq('business_id', businessId)
+      .gte('start_time', tomorrow.toISOString())
+      .lt('start_time', dayAfter.toISOString())
+      .neq('status', 'cancelled')
+      .eq('whatsapp_reminder_sent', false)  // Solo mostrar los que NO fueron enviados
+      .order('start_time', { ascending: true })
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error: any) {
+    console.error('Error fetching tomorrow appointments:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Mark an appointment as having its WhatsApp reminder sent
+ */
+export async function markWhatsAppSent(appointmentId: string): Promise<ServerActionResponse<void>> {
+  try {
+    const supabase = await createClient()
+    await requireBusinessId() // Verify user has access
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        whatsapp_reminder_sent: true,
+        whatsapp_reminder_sent_at: new Date().toISOString()
+      })
+      .eq('id', appointmentId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error marking WhatsApp sent:', error)
     return { success: false, error: error.message }
   }
 }

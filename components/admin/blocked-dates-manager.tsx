@@ -82,7 +82,7 @@ export default function BlockedDatesManager() {
               No hay fechas bloqueadas
             </div>
           ) : (
-            <div className="space-y-3 max-h-[350px] overflow-y-auto">
+            <div className="space-y-3 max-h-87.5 overflow-y-auto">
               {blockedDates.sort((a, b) => a.date.getTime() - b.date.getTime()).map((bd) => (
                 <div
                   key={bd.id}

@@ -36,9 +36,7 @@ export default function MarketingLayout({
         />
         <div className="container relative mx-auto flex h-20 items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90 relative z-10">
-            <div className="flex h-10 w-10 items-center justify-center">
-              <Image src="/logo/icon.jpg" alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
-            </div>
+            <Image src="/logo/icon.png" alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
             <span className="font-bold tracking-tight text-xl hidden sm:inline-block">
               Buki
             </span>

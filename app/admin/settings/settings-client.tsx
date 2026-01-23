@@ -70,7 +70,7 @@ export default function SettingsClient({ isGoogleConnected, initialAdminEmail }:
       {/* Google Calendar Integration */}
       <div className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
             <Calendar className="w-6 h-6 text-blue-600" />
           </div>
 
@@ -156,7 +156,7 @@ function AdminEmailSection({ initialEmail }: { initialEmail: string }) {
   return (
     <div className="bg-card border border-border rounded-xl p-6">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center flex-shrink-0">
+        <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center shrink-0">
           <Mail className="w-6 h-6 text-pink-600" />
         </div>
 

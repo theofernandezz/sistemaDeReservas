@@ -295,7 +295,7 @@
   }
 
   .glass {
-    @apply bg-background/80 backdrop-blur-xl border-b border-white/10 supports-[backdrop-filter]:bg-background/60;
+    @apply bg-background/80 backdrop-blur-xl border-b border-white/10 supports-backdrop-filter:bg-background/60;
   }
 
   .glass-card {

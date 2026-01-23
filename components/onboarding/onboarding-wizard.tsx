@@ -224,7 +224,7 @@ export default function OnboardingWizard() {
             <Button
               onClick={handleComplete}
               disabled={!canProceed || loading}
-              className="bg-gradient-to-r from-primary to-primary/80"
+              className="bg-linear-to-r from-primary to-primary/80"
             >
               {loading ? (
                 <>

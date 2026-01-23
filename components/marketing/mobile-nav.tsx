@@ -58,7 +58,7 @@ export function MobileNav() {
         <div className="flex items-center justify-between p-6 border-b">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center">
-              <Image src="/logo/icon.jpg" alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
+              <Image src="/logo/icon.svg" alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
             </div>
             <span className="font-bold tracking-tight text-xl">Buki</span>
           </Link>

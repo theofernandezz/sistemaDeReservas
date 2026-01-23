@@ -12,16 +12,19 @@ import {
   X,
   ExternalLink,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Bell
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { NotificationCenter } from '@/components/dashboard/notification-center'
 import { Business } from '@/types/database.types'
 
 const navItems = [
   { id: 'home', label: 'Inicio', icon: Home, href: '/dashboard' },
   { id: 'calendar', label: 'Calendario', icon: CalendarDays, href: '/dashboard/calendar' },
   { id: 'services', label: 'Servicios', icon: LayoutGrid, href: '/dashboard/services' },
+  { id: 'reminders', label: 'Recordatorios', icon: Bell, href: '/dashboard/reminders' },
   { id: 'availability', label: 'Disponibilidad', icon: Clock, href: '/dashboard/availability' },
   { id: 'settings', label: 'Configuración', icon: Settings, href: '/dashboard/settings' },
 ]
@@ -59,7 +62,7 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
           {/* Left: Logo/Business Name */}
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 group-hover:shadow-primary/40 transition-shadow">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 group-hover:shadow-primary/40 transition-shadow">
                 {initial}
               </div>
               <div className="hidden sm:block">
@@ -80,8 +83,8 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
                   key={item.id}
                   href={item.href}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                     }`}
                 >
                   <item.icon size={16} />
@@ -103,21 +106,26 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
               Ver página
             </Link>
 
-            {/* User Avatar Dropdown */}
-            <div className="relative" ref={userMenuRef}>
+            {/* Notification Center - hidden on mobile, use hamburger menu */}
+            <div className="hidden sm:block">
+              <NotificationCenter />
+            </div>
+
+            {/* User Avatar Dropdown - hidden on mobile, use hamburger menu instead */}
+            <div className="relative hidden sm:block" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-secondary/50 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                <div className="h-8 w-8 rounded-full bg-linear-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-medium text-primary">
                   {initial}
                 </div>
-                <ChevronDown size={14} className={`hidden sm:block text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-background shadow-lg py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-2 w-56 sm:w-48 rounded-xl border border-border bg-background shadow-lg py-1 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                   <div className="px-3 py-2 border-b border-border">
                     <p className="text-sm font-medium text-foreground">{business.name}</p>
                     <p className="text-xs text-muted-foreground">/{business.slug}</p>
@@ -171,7 +179,7 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm flex items-center justify-center">
+                <div className="h-9 w-9 rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm flex items-center justify-center">
                   {initial}
                 </div>
                 <div>
@@ -186,6 +194,16 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
 
             {/* Nav Items */}
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+              {/* Notifications - mobile only, shown first */}
+              <Link
+                href="/dashboard/notifications"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-border mb-2"
+              >
+                <Bell size={18} />
+                Notificaciones
+              </Link>
+
               {navItems.map(item => {
                 const isActive = pathname === item.href ||
                   (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -196,8 +214,8 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${isActive
-                        ? 'bg-secondary text-foreground'
-                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                      ? 'bg-secondary text-foreground'
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
                       }`}
                   >
                     <item.icon size={18} />

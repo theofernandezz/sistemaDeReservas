@@ -79,7 +79,7 @@ export default function AdminLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-[100dvh] bg-secondary/30 flex flex-col md:flex-row text-foreground font-sans">
+    <div className="min-h-dvh bg-secondary/30 flex flex-col md:flex-row text-foreground font-sans">
 
       {/* Mobile Header */}
       <div className="md:hidden bg-background border-b border-border p-4 flex items-center justify-between sticky top-0 z-20">

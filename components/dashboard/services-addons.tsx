@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import {
   Plus,
   Edit2,
   Trash2,
   Clock,
   Loader2,
-  ImageIcon,
   X,
-  Upload,
   DollarSign
 } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
@@ -26,6 +24,8 @@ import {
   updateServiceAddon,
   deleteServiceAddon
 } from '@/app/actions'
+import { ImageUpload } from '@/components/ui/image-upload'
+import ImageCropper from '@/components/ui/image-cropper'
 
 interface ServicesAndAddonsProps {
   initialServices: FrontendService[]
@@ -45,6 +45,10 @@ export default function ServicesAndAddons({
   const [editingItem, setEditingItem] = useState<FrontendService | ServiceAddon | null>(null)
   const [saving, setSaving] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  // Image upload states
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const router = useRouter()
   const { toast } = useToast()
@@ -103,7 +107,7 @@ export default function ServicesAndAddons({
     setSaving(true)
     try {
       if (activeTab === 'services') {
-        const serviceData = {
+        const serviceData: Omit<FrontendService, 'id'> = {
           title: formData.title,
           description: formData.description,
           price: Number(formData.price),
@@ -113,10 +117,10 @@ export default function ServicesAndAddons({
         }
 
         if (editingItem) {
-          await updateService((editingItem as FrontendService).id, frontendServiceToDB(serviceData as any))
+          await updateService((editingItem as FrontendService).id, frontendServiceToDB(serviceData))
           toast({ type: 'success', title: 'Servicio actualizado' })
         } else {
-          await createService(frontendServiceToDB(serviceData as any))
+          await createService(frontendServiceToDB(serviceData))
           toast({ type: 'success', title: 'Servicio creado' })
         }
       } else {
@@ -157,8 +161,9 @@ export default function ServicesAndAddons({
 
     setTogglingId(id)
     try {
-      await updateService(id, frontendServiceToDB({ ...service, active: newActiveState } as any))
-    } catch (error) {
+      const serviceUpdate: FrontendService = { ...service, active: newActiveState }
+      await updateService(id, frontendServiceToDB(serviceUpdate))
+    } catch {
       // Revert on error
       setServices(prev => prev.map(s =>
         s.id === id ? { ...s, active: service.active } : s
@@ -186,11 +191,55 @@ export default function ServicesAndAddons({
             toast({ type: 'success', title: 'Add-on eliminado' })
           }
           router.refresh()
-        } catch (error) {
+        } catch {
           toast({ type: 'error', title: 'Error al eliminar' })
         }
       }
     })
+  }
+
+  // Image upload handlers
+  const handleCropRequest = (imageDataUrl: string) => {
+    setImageToCrop(imageDataUrl)
+  }
+
+  const handleCropComplete = async (croppedImage: Blob) => {
+    setImageToCrop(null)
+    setIsUploading(true)
+
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', croppedImage, 'service-image.jpg')
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al subir imagen')
+      }
+
+      const data = await response.json()
+      setFormData({ ...formData, image: data.url })
+      toast({ type: 'success', title: 'Imagen subida correctamente' })
+    } catch {
+      toast({
+        type: 'error',
+        title: 'Error al subir imagen',
+      })
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleCropCancel = () => {
+    setImageToCrop(null)
+  }
+
+  const handleImageChange = (imageUrl: string) => {
+    setFormData({ ...formData, image: imageUrl })
   }
 
   const currentItems = activeTab === 'services' ? services : addons
@@ -250,56 +299,72 @@ export default function ServicesAndAddons({
             {services.map(service => (
               <div
                 key={service.id}
-                className={`bg-card border border-border rounded-xl p-4 transition-all hover:shadow-md hover:border-primary/30 flex flex-col ${service.active === false ? 'opacity-50' : ''
+                className={`bg-card border border-border rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-primary/30 flex flex-col ${service.active === false ? 'opacity-50' : ''
                   }`}
               >
-                {/* Top row: Title + Toggle */}
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-sm text-foreground truncate flex-1">
-                    {service.title}
-                  </h3>
-                  {togglingId === service.id ? (
-                    <Loader2 size={16} className="animate-spin text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <Switch
-                      checked={service.active !== false}
-                      onCheckedChange={() => handleToggleActive(service.id)}
+                {/* Service Image */}
+                {service.image && (
+                  <div className="relative w-full h-32 bg-secondary">
+                    <img
+                      src={service.image}
+                      alt={service.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Description - full visible */}
-                <p className="text-xs text-muted-foreground mb-3 min-h-[32px]">
-                  {service.description || 'Sin descripción'}
-                </p>
+                <div className="p-4 flex flex-col flex-1">
+                  {/* Top row: Title + Toggle */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-sm text-foreground truncate flex-1">
+                      {service.title}
+                    </h3>
+                    {togglingId === service.id ? (
+                      <Loader2 size={16} className="animate-spin text-muted-foreground shrink-0" />
+                    ) : (
+                      <Switch
+                        checked={service.active !== false}
+                        onCheckedChange={() => handleToggleActive(service.id)}
+                      />
+                    )}
+                  </div>
 
-                {/* Info row: Duration + Price */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded">
-                    <Clock size={12} />
-                    {service.durationMin}m
-                  </span>
-                  <span className="flex items-center gap-0.5 text-xs font-medium text-foreground bg-primary/10 px-2 py-0.5 rounded">
-                    ${service.price.toLocaleString()}
-                  </span>
-                </div>
+                  {/* Description - full visible */}
+                  <p className="text-xs text-muted-foreground mb-3 min-h-8">
+                    {service.description || 'Sin descripción'}
+                  </p>
 
-                {/* Actions row */}
-                <div className="flex items-center justify-end gap-1 mt-auto pt-2 border-t border-border/50">
-                  <button
-                    onClick={() => handleOpenModal(service)}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 size={14} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(service)}
-                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {/* Info row: Duration + Price */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded">
+                      <Clock size={12} />
+                      {service.durationMin}m
+                    </span>
+                    <span className="flex items-center gap-0.5 text-xs font-medium text-foreground bg-primary/10 px-2 py-0.5 rounded">
+                      ${service.price.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Actions row */}
+                  <div className="flex items-center justify-end gap-1 mt-auto pt-2 border-t border-border/50">
+                    <button
+                      onClick={() => handleOpenModal(service)}
+                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded transition-colors"
+                      title="Editar"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(service)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -307,7 +372,7 @@ export default function ServicesAndAddons({
             {/* Add New Service Card */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-[140px]"
+              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-35"
             >
               <Plus size={24} />
               <span className="font-medium">Agregar Servicio</span>
@@ -327,7 +392,7 @@ export default function ServicesAndAddons({
                 </h3>
 
                 {/* Description */}
-                <p className="text-xs text-muted-foreground mb-3 min-h-[32px]">
+                <p className="text-xs text-muted-foreground mb-3 min-h-8">
                   {addon.description || 'Sin descripción'}
                 </p>
 
@@ -367,7 +432,7 @@ export default function ServicesAndAddons({
             {/* Add New Addon Card */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-[140px]"
+              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-35"
             >
               <Plus size={20} />
               <span className="text-sm font-medium">Agregar Add-on</span>
@@ -421,6 +486,20 @@ export default function ServicesAndAddons({
                 />
               </div>
 
+              {/* Image upload - only for services */}
+              {activeTab === 'services' && (
+                <ImageUpload
+                  value={formData.image}
+                  onChange={handleImageChange}
+                  onCropRequest={handleCropRequest}
+                  label="Imagen del servicio"
+                  isUploading={isUploading}
+                  onError={(title, message) => {
+                    toast({ type: 'error', title, description: message })
+                  }}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">
@@ -468,6 +547,16 @@ export default function ServicesAndAddons({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {imageToCrop && (
+        <ImageCropper
+          imageSrc={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={16 / 9}
+        />
       )}
     </div>
   )

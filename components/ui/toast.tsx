@@ -80,7 +80,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
             key={t.id}
             className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg backdrop-blur-sm animate-in slide-in-from-right-5 fade-in duration-200 ${bgColors[t.type]}`}
           >
-            <div className="flex-shrink-0 mt-0.5">
+            <div className="shrink-0 mt-0.5">
               {icons[t.type]}
             </div>
             <div className="flex-1 min-w-0">
@@ -91,7 +91,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

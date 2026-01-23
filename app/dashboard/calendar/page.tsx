@@ -9,12 +9,21 @@ export default async function CalendarPage() {
   const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
   const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0)
 
-  const result = await getAppointments({
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString()
-  })
+  const [appointmentsResult, blockedResult] = await Promise.all([
+    getAppointments({
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    }),
+    getBlockedSlots(startDate.toISOString(), endDate.toISOString())
+  ])
 
-  const appointments = result.success ? result.data || [] : []
+  const appointments = appointmentsResult.success ? appointmentsResult.data || [] : []
+  const blockedSlots = blockedResult.success ? blockedResult.data || [] : []
 
-  return <CustomCalendar initialAppointments={appointments} />
+  return (
+    <CustomCalendar
+      initialAppointments={appointments}
+      initialBlockedSlots={blockedSlots}
+    />
+  )
 }

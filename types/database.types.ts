@@ -83,6 +83,11 @@ export interface Appointment {
   service_id: string;
   addons: SelectedAddon[];
   business_id: string;
+  // Reminder tracking fields
+  email_reminder_sent: boolean;
+  email_reminder_sent_at: string | null;
+  whatsapp_reminder_sent: boolean;
+  whatsapp_reminder_sent_at: string | null;
 }
 
 export interface BlockedSlot {
@@ -283,5 +288,47 @@ export interface TeamMemberStats {
   slotsPerDay: number;
   weeklyCapacity: number;
   weeklyHours: number;
+}
+
+// ============================================
+// Notification Types
+// ============================================
+
+export type NotificationType =
+  | 'appointment_created'
+  | 'appointment_confirmed'
+  | 'appointment_cancelled'
+  | 'appointment_reminder'
+  | 'payment_received'
+  | 'payment_failed'
+  | 'system';
+
+export interface Notification {
+  id: string;
+  business_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  appointment_id: string | null;
+  metadata: NotificationMetadata;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationMetadata {
+  client_name?: string;
+  client_email?: string;
+  service_name?: string;
+  old_status?: string;
+  new_status?: string;
+  [key: string]: unknown;
+}
+
+export interface NotificationFilters {
+  type?: NotificationType;
+  is_read?: boolean;
+  limit?: number;
+  offset?: number;
 }
 

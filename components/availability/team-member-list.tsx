@@ -14,14 +14,14 @@ interface TeamMemberListProps {
 
 // Avatar colors for team members
 export const AVATAR_COLORS = [
-  'bg-gradient-to-br from-orange-400 to-orange-600',
-  'bg-gradient-to-br from-blue-400 to-blue-600',
-  'bg-gradient-to-br from-pink-400 to-pink-600',
-  'bg-gradient-to-br from-green-400 to-green-600',
-  'bg-gradient-to-br from-purple-400 to-purple-600',
-  'bg-gradient-to-br from-cyan-400 to-cyan-600',
-  'bg-gradient-to-br from-rose-400 to-rose-600',
-  'bg-gradient-to-br from-amber-400 to-amber-600',
+  'bg-linear-to-br from-orange-400 to-orange-600',
+  'bg-linear-to-br from-blue-400 to-blue-600',
+  'bg-linear-to-br from-pink-400 to-pink-600',
+  'bg-linear-to-br from-green-400 to-green-600',
+  'bg-linear-to-br from-purple-400 to-purple-600',
+  'bg-linear-to-br from-cyan-400 to-cyan-600',
+  'bg-linear-to-br from-rose-400 to-rose-600',
+  'bg-linear-to-br from-amber-400 to-amber-600',
 ]
 
 function getInitials(name: string): string {

@@ -154,7 +154,7 @@ export default async function DashboardHomePage() {
                   className={`p-4 flex items-center gap-4 ${isPast ? 'opacity-50' : ''}`}
                 >
                   {/* Time */}
-                  <div className="text-center min-w-[60px]">
+                  <div className="text-center min-w-15">
                     <p className="text-sm font-semibold text-foreground">
                       {formatTime(appointment.start_time)}
                     </p>

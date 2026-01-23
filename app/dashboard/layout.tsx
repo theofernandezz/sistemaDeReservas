@@ -34,7 +34,7 @@ export default async function DashboardLayout({
 
   return (
     <BusinessProvider business={business}>
-      <div className="min-h-[100dvh] bg-background flex flex-col">
+      <div className="min-h-dvh bg-background flex flex-col">
         <DashboardNavbar
           business={business}
           allBusinesses={allBusinesses}

@@ -90,6 +90,58 @@ export async function sendPasswordResetEmail(): Promise<ServerActionResponse<nul
   return { success: true, data: null }
 }
 
+// Request account deletion (creates a system notification for the business)
+export async function requestAccountDeletion(input: {
+  confirmationName: string
+}): Promise<ServerActionResponse<null>> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'No autenticado' }
+    }
+
+    const businessResult = await getCurrentBusiness()
+    if (!businessResult.success || !businessResult.data) {
+      return { success: false, error: 'No se encontró el negocio' }
+    }
+
+    const businessName = businessResult.data.name?.trim() || ''
+    if (!businessName) {
+      return { success: false, error: 'El nombre del negocio no está configurado' }
+    }
+
+    if (input.confirmationName.trim().toLowerCase() !== businessName.toLowerCase()) {
+      return { success: false, error: 'El nombre no coincide' }
+    }
+
+    const { error } = await supabase
+      .from('notifications')
+      .insert({
+        business_id: businessResult.data.id,
+        type: 'system',
+        title: 'Solicitud de eliminación de cuenta',
+        message: `El negocio solicitó eliminar su cuenta. Usuario: ${user.email ?? 'sin email'}`,
+        appointment_id: null,
+        metadata: {
+          requestedBy: user.email ?? null,
+          businessName
+        }
+      })
+
+    if (error) throw error
+
+    return { success: true, data: null }
+  } catch (error: unknown) {
+    console.error('Error requesting account deletion:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'No se pudo enviar la solicitud'
+    }
+  }
+}
+
 // Verificar si el usuario actual es super admin
 export async function isSuperAdmin(): Promise<boolean> {
   const supabase = await createClient()
