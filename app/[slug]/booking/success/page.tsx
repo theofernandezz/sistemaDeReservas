@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle, Loader2 } from 'lucide-react'
+import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle, Loader2, Copy, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -7,6 +7,7 @@ import { getAppointmentById } from '@/app/actions'
 import { createClient } from '@/utils/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import CopyLinkButton from './copy-link-button'
 
 interface SuccessPageProps {
   searchParams: Promise<{ id?: string; appointment?: string; pending?: string; status?: string }>
@@ -300,6 +301,20 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                 )}
               </div>
             </div>
+          )}
+
+          {/* Email Reminder */}
+          {appointment?.client_email && (
+            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 rounded-lg p-4 text-left">
+              <p className="text-sm text-green-900 dark:text-green-100 leading-relaxed">
+                <span className="font-medium">📧 Revisá tu email:</span> Te enviamos un link para que puedas reprogramar o cancelar tu turno si lo necesitás.
+              </p>
+            </div>
+          )}
+
+          {/* Copy Management Link */}
+          {appointment && (
+            <CopyLinkButton link={`${process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'}/cancel/${appointment.id}`} />
           )}
 
           {/* Home Button */}

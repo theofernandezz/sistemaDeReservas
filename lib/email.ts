@@ -198,12 +198,22 @@ export async function sendClientConfirmation(data: AppointmentEmailData & {
               </a>
             </div>
             
-            <div style="height: 1px; background: #e8e6e3; margin-bottom: 24px;"></div>
-            
-             <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.6;">
-              ¿Necesitás cancelar? <a href="${cancelUrl}" style="color: #ef4444;">Click acá</a>
-            </p>
-            
+            <div style="height: 1px; background: #e8e6e3; margin: 32px 0;"></div>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb;">
+              <p style="margin: 0 0 12px; font-size: 14px; color: #1e40af; font-weight: 600;">
+                ¿Necesitás cambiar la fecha o cancelar?
+              </p>
+              <a href="${cancelUrl}"
+                 target="_blank"
+                 style="display: inline-block; padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-family: -apple-system, sans-serif;">
+                Gestionar mi turno
+              </a>
+              <p style="margin: 12px 0 0; font-size: 12px; color: #64748b; line-height: 1.5;">
+                Guardá este link para reprogramar o cancelar cuando lo necesites
+              </p>
+            </div>
+
           </div>
           
           <div style="padding: 24px 32px; background: #fdf2f8; text-align: center;">
@@ -281,9 +291,9 @@ export async function sendAppointmentReminder(data: AppointmentEmailData & {
             </p>
             
             <div style="height: 1px; background: #e8e6e3; margin-bottom: 24px;"></div>
-            
+
             <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.6;">
-              ¿Necesitás cancelar? <a href="${cancelUrl}" style="color: #ef4444;">Click acá</a>
+              ¿Necesitás cambiar o cancelar? <a href="${cancelUrl}" style="color: #2563eb; text-decoration: none; font-weight: 500;">Gestionar turno</a>
             </p>
           </div>
           

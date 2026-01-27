@@ -196,6 +196,7 @@ export interface PendingBookingData {
   endTime: string
   clientName: string
   clientPhone: string
+  clientEmail?: string
   addons?: { id: string; name: string; price: number; duration_minutes: number }[]
   paymentAmount: number
   paymentMethod: 'full' | 'deposit'
@@ -279,6 +280,7 @@ export async function createPendingBookingPreference(
         end_time: bookingData.endTime,
         client_name: bookingData.clientName,
         client_phone: bookingData.clientPhone,
+        client_email: bookingData.clientEmail || null,
         addons: bookingData.addons || [],
         payment_amount: bookingData.paymentAmount,
         payment_method: bookingData.paymentMethod,

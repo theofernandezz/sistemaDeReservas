@@ -5,8 +5,7 @@ import { Bell, Check, CheckCheck, Trash2, X, Filter, Calendar, CreditCard, Alert
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
-  getNotifications,
-  getUnreadNotificationCount,
+  getNotificationsWithCount,
   markNotificationAsRead,
   markNotificationAsUnread,
   markAllNotificationsAsRead,
@@ -194,33 +193,45 @@ export function NotificationCenter() {
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [notifResult, countResult] = await Promise.all([
-        getNotifications({ limit: 50 }),
-        getUnreadNotificationCount(),
-      ])
+      const result = await getNotificationsWithCount({ limit: 50 })
 
-      if (notifResult.success && notifResult.data) {
-        const visibleNotifications = notifResult.data.filter(
+      if (result.success && result.data) {
+        const visibleNotifications = result.data.notifications.filter(
           (notification) => notification.type !== 'payment_failed'
         )
         setNotifications(visibleNotifications)
-        setUnreadCount(visibleNotifications.filter((n) => !n.is_read).length)
-      }
-      if (!notifResult.success && countResult.success && countResult.data !== undefined) {
-        setUnreadCount(countResult.data)
+        setUnreadCount(result.data.unreadCount)
       }
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  // Initial fetch
+  // Initial fetch and polling with visibility detection
   useEffect(() => {
     fetchNotifications()
 
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    // Poll for new notifications every 60 seconds
+    const interval = setInterval(() => {
+      // Only poll if tab is visible
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }, 60000)
+
+    // Fetch immediately when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [fetchNotifications])
 
   // Close dropdown on outside click

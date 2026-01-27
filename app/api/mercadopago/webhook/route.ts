@@ -1,10 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import * as crypto from 'crypto'
+
+/**
+ * Verifica la firma HMAC del webhook de MercadoPago
+ * Documentación: https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks
+ */
+function verifyWebhookSignature(
+  xSignature: string | null,
+  xRequestId: string | null,
+  dataId: string,
+  webhookSecret: string
+): boolean {
+  if (!xSignature || !xRequestId) {
+    console.log('Missing x-signature or x-request-id headers')
+    return false
+  }
+
+  try {
+    // x-signature format: "ts=1234567890,v1=abc123..."
+    const parts = xSignature.split(',')
+    const tsMatch = parts.find(p => p.startsWith('ts='))
+    const hashMatch = parts.find(p => p.startsWith('v1='))
+
+    if (!tsMatch || !hashMatch) {
+      console.log('Invalid x-signature format')
+      return false
+    }
+
+    const ts = tsMatch.split('=')[1]
+    const receivedHash = hashMatch.split('=')[1]
+
+    // Build the manifest string as per MP documentation
+    // Format: id:[data.id];request-id:[x-request-id];ts:[ts];
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`
+
+    // Calculate HMAC-SHA256
+    const calculatedHash = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(manifest)
+      .digest('hex')
+
+    // Use timing-safe comparison to prevent timing attacks
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(receivedHash),
+      Buffer.from(calculatedHash)
+    )
+
+    if (!isValid) {
+      console.log('Signature verification failed')
+      console.log('Expected:', calculatedHash)
+      console.log('Received:', receivedHash)
+    }
+
+    return isValid
+  } catch (error) {
+    console.error('Error verifying signature:', error)
+    return false
+  }
+}
 
 // Webhook para notificaciones IPN de Mercado Pago
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    // Read body as text first for signature verification
+    const rawBody = await request.text()
+    const body = JSON.parse(rawBody)
 
     console.log('MP Webhook received:', JSON.stringify(body, null, 2))
 
@@ -15,6 +76,32 @@ export async function POST(request: NextRequest) {
     if (!dataId) {
       console.log('No data ID in webhook')
       return NextResponse.json({ received: true })
+    }
+
+    // Verify webhook signature if secret is configured
+    const webhookSecret = process.env.MP_WEBHOOK_SECRET
+    if (webhookSecret) {
+      const xSignature = request.headers.get('x-signature')
+      const xRequestId = request.headers.get('x-request-id')
+
+      const isValid = verifyWebhookSignature(
+        xSignature,
+        xRequestId,
+        dataId.toString(),
+        webhookSecret
+      )
+
+      if (!isValid) {
+        console.error('Invalid webhook signature - rejecting request')
+        return NextResponse.json(
+          { error: 'Invalid signature' },
+          { status: 401 }
+        )
+      }
+
+      console.log('Webhook signature verified successfully')
+    } else {
+      console.warn('MP_WEBHOOK_SECRET not configured - skipping signature verification')
     }
 
     // Solo procesar notificaciones de pago

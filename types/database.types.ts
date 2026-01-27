@@ -33,6 +33,7 @@ export interface BusinessSettings {
   // Configuración de reservas
   minAdvanceHours?: number;
   cancellationHours?: number;
+  rescheduleHours?: number;
   // Notificaciones
   notificationEmail?: string;
   googleRefreshToken?: string;
@@ -88,6 +89,11 @@ export interface Appointment {
   email_reminder_sent_at: string | null;
   whatsapp_reminder_sent: boolean;
   whatsapp_reminder_sent_at: string | null;
+  // Reschedule tracking fields
+  rescheduled_from: string | null;
+  reschedule_count: number;
+  last_rescheduled_at: string | null;
+  google_event_id: string | null;
 }
 
 export interface BlockedSlot {
@@ -155,6 +161,11 @@ export interface UpdateAppointmentInput {
   client_phone?: string | null;
   client_email?: string | null;
   status?: string;
+}
+
+export interface RescheduleAppointmentInput {
+  new_start_time: string;
+  new_end_time: string;
 }
 
 export interface CreateServiceAddonInput {

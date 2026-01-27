@@ -94,6 +94,68 @@ export async function getUnreadNotificationCount(): Promise<ServerActionResponse
 }
 
 // ============================================
+// GET: Fetch notifications with count (optimized)
+// ============================================
+
+export async function getNotificationsWithCount(
+  filters?: NotificationFilters
+): Promise<ServerActionResponse<{ notifications: Notification[]; unreadCount: number }>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    // Fetch notifications and count in parallel with same businessId
+    const [notificationsResult, countResult] = await Promise.all([
+      (async () => {
+        let query = supabase
+          .from('notifications')
+          .select('*')
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: false })
+
+        // Apply filters
+        if (filters?.type) {
+          query = query.eq('type', filters.type)
+        }
+        if (filters?.is_read !== undefined) {
+          query = query.eq('is_read', filters.is_read)
+        }
+        if (filters?.limit) {
+          query = query.limit(filters.limit)
+        }
+        if (filters?.offset) {
+          query = query.range(filters.offset, filters.offset + (filters.limit || 20) - 1)
+        }
+
+        return await query
+      })(),
+      supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', businessId)
+        .eq('is_read', false)
+    ])
+
+    if (notificationsResult.error) throw notificationsResult.error
+    if (countResult.error) throw countResult.error
+
+    return {
+      success: true,
+      data: {
+        notifications: notificationsResult.data as Notification[],
+        unreadCount: countResult.count || 0,
+      },
+    }
+  } catch (error: unknown) {
+    console.error('Error fetching notifications with count:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener notificaciones',
+    }
+  }
+}
+
+// ============================================
 // UPDATE: Mark notification as read
 // ============================================
 

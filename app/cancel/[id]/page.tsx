@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
-import { getAppointmentById } from '@/app/actions'
-import CancelForm from './cancel-form'
+import { getAppointmentById, canRescheduleAppointment } from '@/app/actions'
+import { getCurrentBusiness } from '@/app/actions/auth'
+import AppointmentActions from './appointment-actions'
 import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 export const metadata: Metadata = {
-  title: 'Cancelar Turno | Siv Nails',
+  title: 'Gestionar Turno | Siv Nails',
 }
 
 export default async function CancelPage({ params }: { params: Promise<{ id: string }> }) {
@@ -80,6 +81,20 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
     )
   }
 
+  // Check if appointment can be rescheduled
+  const eligibilityCheck = await canRescheduleAppointment(id)
+  const canReschedule = eligibilityCheck.success && eligibilityCheck.data?.canReschedule || false
+  const rescheduleMessage = eligibilityCheck.data?.reason
+
+  // Get business settings for available slots
+  const businessResult = await getCurrentBusiness()
+  const businessHours = businessResult.data?.settings?.businessHours
+    ? JSON.stringify({
+        schedule: businessResult.data.settings.businessHours,
+        slotInterval: businessResult.data.settings.slotInterval || 30
+      })
+    : undefined
+
   // Format date and time
   const date = new Date(appointment.start_time)
   const dateStr = date.toLocaleDateString('es-AR', { dateStyle: 'full', timeZone: 'America/Argentina/Buenos_Aires' })
@@ -89,9 +104,9 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
     <PageWrapper>
       <div className="space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-serif font-bold text-foreground">Cancelar Reserva</h1>
+          <h1 className="text-3xl font-serif font-bold text-foreground">Gestionar Turno</h1>
           <p className="text-muted-foreground">
-            Por favor confirmá los datos antes de cancelar.
+            Podés reprogramar o cancelar tu reserva
           </p>
         </div>
 
@@ -131,7 +146,14 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="p-6 pt-8">
-            <CancelForm appointmentId={appointment.id} />
+            <AppointmentActions
+              appointmentId={appointment.id}
+              serviceId={appointment.service_id}
+              serviceDuration={appointment.service?.duration_minutes || 60}
+              businessHours={businessHours}
+              canReschedule={canReschedule}
+              rescheduleMessage={rescheduleMessage}
+            />
           </div>
         </Card>
 
@@ -141,7 +163,7 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Volver al inicio y no cancelar
+            Volver al inicio sin hacer cambios
           </Link>
         </div>
       </div>

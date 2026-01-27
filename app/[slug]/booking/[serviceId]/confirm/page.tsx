@@ -42,6 +42,7 @@ export default function CompactConfirmPage() {
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
 
   // Ref para prevenir race conditions en mobile
   const isMountedRef = useRef(true)
@@ -199,7 +200,7 @@ export default function CompactConfirmPage() {
   }
 
   const handleSubmit = async () => {
-    if (!service || !date || !time || !name || !phone) return
+    if (!service || !date || !time || !name || !phone || !email) return
 
     // Validar que paymentConfig esté cargado
     if (paymentConfig === null) {
@@ -227,6 +228,7 @@ export default function CompactConfirmPage() {
         endTime: endDateTime.toISOString(),
         clientName: name,
         clientPhone: phone,
+        clientEmail: email,
         addons: selectedAddons,
         paymentAmount: amountToPay,
         paymentMethod,
@@ -249,6 +251,7 @@ export default function CompactConfirmPage() {
       end_time: endDateTime.toISOString(),
       client_name: name,
       client_phone: phone,
+      client_email: email,
       status: 'confirmed',
       addons: selectedAddons
     })
@@ -378,12 +381,21 @@ export default function CompactConfirmPage() {
           {/* Form */}
           <div className="bg-card border rounded-xl p-4 space-y-3">
             <div className="text-sm font-medium">Tus datos</div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <Input
-                placeholder="Nombre"
+                placeholder="Nombre completo"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-11"
+                required
+              />
+              <Input
+                placeholder="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11"
+                required
               />
               <Input
                 placeholder="Teléfono"
@@ -391,6 +403,7 @@ export default function CompactConfirmPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-11"
+                required
               />
             </div>
           </div>
@@ -434,7 +447,7 @@ export default function CompactConfirmPage() {
         </main>
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
-          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !phone || fetchingPaymentConfig} className="w-full h-12 text-base">
+          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !email || !phone || fetchingPaymentConfig} className="w-full h-12 text-base">
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
               : paymentConfig?.hasMPConnected ? <><CreditCard className="mr-2 h-4 w-4" />Pagar {formatPrice(amountToPay)} y reservar</>
                 : 'Confirmar reserva'}
@@ -570,9 +583,9 @@ export default function CompactConfirmPage() {
                   "hover:border-border/70 hover:shadow-sm"
                 )}>
                   <div className="text-sm font-medium text-foreground">Tus datos</div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <Input
-                      placeholder="Nombre"
+                      placeholder="Nombre completo"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className={cn(
@@ -581,6 +594,20 @@ export default function CompactConfirmPage() {
                         "hover:border-border/80",
                         "focus:ring-2 focus:ring-primary/20"
                       )}
+                      required
+                    />
+                    <Input
+                      placeholder="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={cn(
+                        "h-12",
+                        "transition-all duration-200",
+                        "hover:border-border/80",
+                        "focus:ring-2 focus:ring-primary/20"
+                      )}
+                      required
                     />
                     <Input
                       placeholder="Teléfono"
@@ -593,6 +620,7 @@ export default function CompactConfirmPage() {
                         "hover:border-border/80",
                         "focus:ring-2 focus:ring-primary/20"
                       )}
+                      required
                     />
                   </div>
                 </div>
@@ -688,7 +716,7 @@ export default function CompactConfirmPage() {
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || !name || !phone || fetchingPaymentConfig}
+                disabled={loading || !name || !email || !phone || fetchingPaymentConfig}
                 className={cn(
                   "w-full h-14 text-base mt-8 rounded-xl",
                   "transition-all duration-200",

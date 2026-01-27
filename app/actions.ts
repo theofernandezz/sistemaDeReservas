@@ -1379,3 +1379,238 @@ export async function markWhatsAppSent(appointmentId: string): Promise<ServerAct
     return { success: false, error: error.message }
   }
 }
+
+// ============================================
+// RESCHEDULE - Appointment Rescheduling
+// ============================================
+
+/**
+ * Check if appointment can be rescheduled based on time limit
+ */
+export async function canRescheduleAppointment(appointmentId: string): Promise<ServerActionResponse<{ canReschedule: boolean; hoursUntil: number; reason?: string }>> {
+  try {
+    const supabase = await createClient()
+
+    // Get appointment with business settings
+    const { data: appointment, error: fetchError } = await supabase
+      .from('appointments')
+      .select('*, service:services(business_id)')
+      .eq('id', appointmentId)
+      .single()
+
+    if (fetchError || !appointment) {
+      return { success: false, error: 'Reserva no encontrada' }
+    }
+
+    // Check if already cancelled or completed
+    if (appointment.status === 'cancelled') {
+      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya fue cancelado' } }
+    }
+
+    if (appointment.status === 'completed') {
+      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya fue completado' } }
+    }
+
+    // Get business settings
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('settings')
+      .eq('id', appointment.service.business_id)
+      .single()
+
+    const settings = business?.settings || {}
+    const rescheduleHours = settings.rescheduleHours || 24 // Default 24 hours
+
+    // Calculate time until appointment
+    const appointmentTime = new Date(appointment.start_time)
+    const now = new Date()
+    const hoursUntil = (appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+
+    // Check if past appointment
+    if (hoursUntil < 0) {
+      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya pasó' } }
+    }
+
+    // Check if within reschedule window
+    if (hoursUntil < rescheduleHours) {
+      return {
+        success: true,
+        data: {
+          canReschedule: false,
+          hoursUntil: Math.floor(hoursUntil),
+          reason: `Solo se puede reprogramar con al menos ${rescheduleHours} horas de anticipación`
+        }
+      }
+    }
+
+    return { success: true, data: { canReschedule: true, hoursUntil: Math.floor(hoursUntil) } }
+  } catch (error: any) {
+    console.error('Error checking reschedule eligibility:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Reschedule an existing appointment to a new date/time
+ */
+export async function rescheduleAppointment(
+  appointmentId: string,
+  newStartTime: string,
+  newEndTime: string
+): Promise<ServerActionResponse<Appointment>> {
+  try {
+    const supabase = await createClient()
+
+    // 1. Check if can reschedule
+    const eligibilityCheck = await canRescheduleAppointment(appointmentId)
+    if (!eligibilityCheck.success || !eligibilityCheck.data?.canReschedule) {
+      return {
+        success: false,
+        error: eligibilityCheck.data?.reason || eligibilityCheck.error || 'No se puede reprogramar este turno'
+      }
+    }
+
+    // 2. Get appointment details
+    const { data: appointment, error: fetchError } = await supabase
+      .from('appointments')
+      .select('*, service:services(*)')
+      .eq('id', appointmentId)
+      .single()
+
+    if (fetchError || !appointment) {
+      return { success: false, error: 'Reserva no encontrada' }
+    }
+
+    // 3. Check for overlapping appointments (prevent double booking)
+    const { data: existingAppointments, error: checkError } = await supabase
+      .from('appointments')
+      .select('id')
+      .neq('status', 'cancelled')
+      .neq('id', appointmentId) // Exclude current appointment
+      .eq('business_id', appointment.business_id)
+      .or(`and(start_time.lt.${newEndTime},end_time.gt.${newStartTime})`)
+
+    if (checkError) throw checkError
+
+    if (existingAppointments && existingAppointments.length > 0) {
+      return {
+        success: false,
+        error: 'El nuevo horario ya no está disponible. Por favor seleccioná otro horario.'
+      }
+    }
+
+    // 4. Update appointment
+    const originalStartTime = appointment.rescheduled_from || appointment.start_time
+
+    const { data: updatedAppointment, error: updateError } = await supabase
+      .from('appointments')
+      .update({
+        start_time: newStartTime,
+        end_time: newEndTime,
+        rescheduled_from: originalStartTime,
+        reschedule_count: appointment.reschedule_count + 1,
+        last_rescheduled_at: new Date().toISOString(),
+        // Reset reminders since time changed
+        email_reminder_sent: false,
+        email_reminder_sent_at: null,
+        whatsapp_reminder_sent: false,
+        whatsapp_reminder_sent_at: null
+      })
+      .eq('id', appointmentId)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    // 5. Update Google Calendar if connected
+    if (appointment.google_event_id) {
+      try {
+        const { getGoogleRefreshToken } = await import('@/app/actions')
+        const refreshToken = await getGoogleRefreshToken()
+
+        if (refreshToken) {
+          const { updateCalendarEvent } = await import('@/lib/google-calendar')
+          await updateCalendarEvent(
+            appointment.google_event_id,
+            {
+              startTime: new Date(newStartTime),
+              endTime: new Date(newEndTime)
+            },
+            refreshToken
+          )
+          console.log('Google Calendar event updated')
+        }
+      } catch (calendarError) {
+        console.error('Error updating Google Calendar event:', calendarError)
+        // Don't fail the reschedule if calendar fails
+      }
+    }
+
+    // 6. Send notification emails
+    try {
+      const { getAdminNotificationEmail } = await import('@/app/actions')
+      const adminEmail = await getAdminNotificationEmail()
+      const { Resend } = await import('resend')
+      const resend = new Resend(process.env.RESEND_API_KEY)
+
+      const oldDate = new Date(appointment.start_time)
+      const newDate = new Date(newStartTime)
+
+      // Notify admin
+      const adminHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Turno Reprogramado 🔄</h2>
+          <p>El cliente ha reprogramado su turno:</p>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+            <p><strong>Servicio:</strong> ${appointment.service?.name}</p>
+            <p><strong>Cliente:</strong> ${appointment.client_name}</p>
+            <p style="text-decoration: line-through; color: #6b7280;"><strong>Fecha anterior:</strong> ${oldDate.toLocaleDateString('es-AR')} a las ${oldDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+            <p style="color: #2563eb;"><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR')} a las ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+          </div>
+        </div>
+      `
+
+      await resend.emails.send({
+        from: 'Siv Nails <reservas@resend.dev>',
+        to: adminEmail,
+        subject: `🔄 Reprogramación: ${appointment.client_name} - ${appointment.service?.name}`,
+        html: adminHtml
+      })
+
+      // Notify client if email provided
+      if (appointment.client_email) {
+        const clientHtml = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Turno Reprogramado ✅</h2>
+            <p>Hola ${appointment.client_name},</p>
+            <p>Tu turno ha sido reprogramado exitosamente.</p>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+              <p><strong>Servicio:</strong> ${appointment.service?.name}</p>
+              <p><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p><strong>Hora:</strong> ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px;">Te esperamos!</p>
+          </div>
+        `
+
+        await resend.emails.send({
+          from: 'Siv Nails <reservas@resend.dev>',
+          to: appointment.client_email,
+          subject: `✅ Turno Reprogramado - ${newDate.toLocaleDateString('es-AR')}`,
+          html: clientHtml
+        })
+      }
+    } catch (emailError) {
+      console.error('Error sending reschedule emails:', emailError)
+      // Don't fail the reschedule if email fails
+    }
+
+    return { success: true, data: updatedAppointment }
+  } catch (error: any) {
+    console.error('Error rescheduling appointment:', error)
+    return { success: false, error: error.message }
+  }
+}
