@@ -1,13 +1,27 @@
 import { Resend } from 'resend'
+import { createClient } from '@/utils/supabase/server'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-// Brand settings - could be moved to env or config later
-const BRAND_NAME = 'Siv Nails'
-const fromEmail = process.env.RESEND_FROM_MAIL || 'reservas@example.com'
-const adminEmail = process.env.ADMIN_MAIL
+// Default brand settings
+const DEFAULT_BRAND_COLOR = '#db2777'
+const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_MAIL || 'reservas@example.com'
 
-interface AppointmentEmailData {
+/**
+ * Business email configuration
+ */
+export interface BusinessEmailConfig {
+  emailFrom: string
+  emailFromName: string
+  adminNotificationEmail: string
+  brandColor: string
+  brandName: string
+}
+
+/**
+ * Appointment email data
+ */
+export interface AppointmentEmailData {
   id: string
   clientName: string
   clientPhone?: string
@@ -18,6 +32,69 @@ interface AppointmentEmailData {
   time: string
   startDateTime?: Date
   endDateTime?: Date
+}
+
+/**
+ * Get email configuration for a business
+ */
+export async function getBusinessEmailConfig(businessId: string): Promise<BusinessEmailConfig> {
+  const supabase = await createClient()
+  
+  const { data: business, error } = await supabase
+    .from('businesses')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
+    .eq('id', businessId)
+    .single()
+  
+  if (error || !business) {
+    // Return defaults if business not found
+    return {
+      emailFrom: DEFAULT_FROM_EMAIL,
+      emailFromName: 'Sistema de Reservas',
+      adminNotificationEmail: process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+      brandColor: DEFAULT_BRAND_COLOR,
+      brandName: 'Sistema de Reservas',
+    }
+  }
+  
+  return {
+    emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
+    emailFromName: business.email_from_name || business.name,
+    adminNotificationEmail: business.admin_notification_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
+    brandName: business.name,
+  }
+}
+
+/**
+ * Get business email config using business slug (for public pages)
+ */
+export async function getBusinessEmailConfigBySlug(slug: string): Promise<BusinessEmailConfig> {
+  const supabase = await createClient()
+  
+  const { data: business, error } = await supabase
+    .from('businesses')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
+    .eq('slug', slug)
+    .single()
+  
+  if (error || !business) {
+    return {
+      emailFrom: DEFAULT_FROM_EMAIL,
+      emailFromName: 'Sistema de Reservas',
+      adminNotificationEmail: process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+      brandColor: DEFAULT_BRAND_COLOR,
+      brandName: 'Sistema de Reservas',
+    }
+  }
+  
+  return {
+    emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
+    emailFromName: business.email_from_name || business.name,
+    adminNotificationEmail: business.admin_notification_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
+    brandName: business.name,
+  }
 }
 
 // Generate Google Calendar Link Helper
@@ -35,53 +112,58 @@ function generateGoogleCalendarLink(data: AppointmentEmailData): string {
 /**
  * Send notification to admin when a new appointment is created
  */
-export async function sendNewAppointmentNotification(data: AppointmentEmailData, targetEmail?: string) {
-  const emailToUse = targetEmail || adminEmail
+export async function sendNewAppointmentNotification(
+  data: AppointmentEmailData, 
+  businessId: string,
+  targetEmail?: string
+) {
+  try {
+    const config = await getBusinessEmailConfig(businessId)
+    const emailToUse = targetEmail || config.adminNotificationEmail
 
-  if (!emailToUse) {
-    console.warn('ADMIN_MAIL not configured, skipping email notification')
-    return { success: false, error: 'Admin email not configured' }
-  }
+    if (!emailToUse) {
+      console.warn('Admin email not configured, skipping email notification')
+      return { success: false, error: 'Admin email not configured' }
+    }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
-  const googleCalendarUrl = generateGoogleCalendarLink(data)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const googleCalendarUrl = generateGoogleCalendarLink(data)
 
-  // Create Calendar Button HTML
-  let calendarButtonHtml = ''
-  if (data.startDateTime && data.endDateTime) {
-    calendarButtonHtml = `
+    // Create Calendar Button HTML
+    let calendarButtonHtml = ''
+    if (data.startDateTime && data.endDateTime) {
+      calendarButtonHtml = `
             <div style="margin-top: 24px; text-align: center;">
               <a href="${googleCalendarUrl}" 
                  target="_blank"
-                 style="display: inline-block; padding: 12px 24px; background: #db2777; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif; font-weight: bold;">
-                📅 Agregar a Google Calendar
+                 style="display: inline-block; padding: 12px 24px; background: ${config.brandColor}; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif; font-weight: bold;">
+                 Agregar a Google Calendar
               </a>
             </div>
-    `
-  }
+      `
+    }
 
-  // Create Cancel Button HTML
-  const cancelUrl = `${appUrl}/cancel/${data.id}`
-  const cancelButtonHtml = `
+    // Create Cancel Button HTML
+    const cancelUrl = `${appUrl}/cancel/${data.id}`
+    const cancelButtonHtml = `
             <div style="margin-top: 16px; text-align: center;">
               <a href="${cancelUrl}" 
                  target="_blank"
                  style="display: inline-block; padding: 10px 20px; background: #fff; color: #ef4444; text-decoration: none; border: 1px solid #ef4444; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                Cancelar Turno
+                 Cancelar Turno
               </a>
             </div>
-  `
+    `
 
-  try {
     const { error } = await resend.emails.send({
-      from: `${BRAND_NAME} <${fromEmail}>`,
+      from: `${config.emailFromName} <${config.emailFrom}>`,
       to: emailToUse,
       subject: `Nueva Reserva · ${data.serviceName} - ${data.clientName}`,
       html: `
         <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
-          <div style="padding: 32px 20px; text-align: center; border-bottom: 3px solid #db2777;">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: #db2777; margin-bottom: 8px; font-weight: bold;">Confirmación de Reserva</div>
-            <h1 style="margin: 0; font-size: 32px; color: #1f2937; letter-spacing: -0.5px;">${BRAND_NAME}</h1>
+          <div style="padding: 32px 20px; text-align: center; border-bottom: 3px solid ${config.brandColor};">
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: ${config.brandColor}; margin-bottom: 8px; font-weight: bold;">Confirmación de Reserva</div>
+            <h1 style="margin: 0; font-size: 32px; color: #1f2937; letter-spacing: -0.5px;">${config.brandName}</h1>
           </div>
 
           <div style="padding: 40px 32px; background: white;">
@@ -91,17 +173,17 @@ export async function sendNewAppointmentNotification(data: AppointmentEmailData,
 
             <div style="background: #fff1f2; padding: 32px; border-radius: 16px; text-align: center; border: 1px solid #fce7f3;">
               <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #9d174d;">${data.serviceName}</h2>
-              <p style="margin: 0 0 24px 0; font-size: 18px; color: #db2777; font-weight: bold;">$${data.servicePrice}</p>
+              <p style="margin: 0 0 24px 0; font-size: 18px; color: ${config.brandColor}; font-weight: bold;">$${data.servicePrice}</p>
               
               <div style="border-top: 1px solid #fbcfe8; border-bottom: 1px solid #fbcfe8; padding: 20px 0; margin: 20px 0;">
-                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>📅 Fecha:</strong> ${data.date}</p>
-                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>⏰ Hora:</strong> ${data.time}</p>
+                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>Fecha:</strong> ${data.date}</p>
+                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>Hora:</strong> ${data.time}</p>
               </div>
 
               <div style="text-align: left; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">👤 <strong>Cliente:</strong> ${data.clientName}</p>
-                ${data.clientPhone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;">📱 <strong>Teléfono:</strong> <a href="tel:${data.clientPhone}" style="color: #db2777; text-decoration: none;">${data.clientPhone}</a></p>` : ''}
-                ${data.clientEmail ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;">📧 <strong>Email:</strong> <a href="mailto:${data.clientEmail}" style="color: #db2777; text-decoration: none;">${data.clientEmail}</a></p>` : ''}
+                <p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Cliente:</strong> ${data.clientName}</p>
+                ${data.clientPhone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Teléfono:</strong> <a href="tel:${data.clientPhone}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientPhone}</a></p>` : ''}
+                ${data.clientEmail ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Email:</strong> <a href="mailto:${data.clientEmail}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientEmail}</a></p>` : ''}
               </div>
 
               ${calendarButtonHtml}
@@ -115,7 +197,7 @@ export async function sendNewAppointmentNotification(data: AppointmentEmailData,
 
           <div style="padding: 32px; text-align: center; background: #faf9f7; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-              © ${new Date().getFullYear()} ${BRAND_NAME}. Todos los derechos reservados.<br>
+              © ${new Date().getFullYear()} ${config.brandName}. Todos los derechos reservados.<br>
               Sistema de Reservas Automático
             </p>
           </div>
@@ -129,36 +211,40 @@ export async function sendNewAppointmentNotification(data: AppointmentEmailData,
     }
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending notification:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error sending notification' }
   }
 }
 
 /**
  * Send confirmation email to client when they book
  */
-export async function sendClientConfirmation(data: AppointmentEmailData & {
-  startDateTime: Date
-  endDateTime: Date
-}) {
+export async function sendClientConfirmation(
+  data: AppointmentEmailData & {
+    startDateTime: Date
+    endDateTime: Date
+  },
+  businessId: string
+) {
   if (!data.clientEmail) {
     return { success: false, error: 'No client email' }
   }
 
-  const googleCalendarUrl = generateGoogleCalendarLink(data)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
-  const cancelUrl = `${appUrl}/cancel/${data.id}`
-
   try {
+    const config = await getBusinessEmailConfig(businessId)
+    const googleCalendarUrl = generateGoogleCalendarLink(data)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const cancelUrl = `${appUrl}/cancel/${data.id}`
+
     const { error } = await resend.emails.send({
-      from: `${BRAND_NAME} <${fromEmail}>`,
+      from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
       subject: `Tu Reserva · ${data.serviceName}`,
       html: `
         <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
           <div style="padding: 40px 32px 32px; text-align: center; border-bottom: 1px solid #fce7f3;">
-            <div style="display: inline-block; width: 40px; height: 40px; background: #db2777; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">S</div>
+            <div style="display: inline-block; width: 40px; height: 40px; background: ${config.brandColor}; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">${config.brandName.charAt(0)}</div>
             <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1f1f24; letter-spacing: -0.5px;">Reserva Confirmada</h1>
           </div>
           
@@ -193,8 +279,8 @@ export async function sendClientConfirmation(data: AppointmentEmailData & {
             <div style="margin-bottom: 32px;">
               <a href="${googleCalendarUrl}" 
                  target="_blank"
-                 style="display: inline-block; padding: 12px 24px; background: #db2777; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                Agregar al Calendario
+                 style="display: inline-block; padding: 12px 24px; background: ${config.brandColor}; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif;">
+                 Agregar al Calendario
               </a>
             </div>
             
@@ -207,7 +293,7 @@ export async function sendClientConfirmation(data: AppointmentEmailData & {
               <a href="${cancelUrl}"
                  target="_blank"
                  style="display: inline-block; padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                Gestionar mi turno
+                 Gestionar mi turno
               </a>
               <p style="margin: 12px 0 0; font-size: 12px; color: #64748b; line-height: 1.5;">
                 Guardá este link para reprogramar o cancelar cuando lo necesites
@@ -229,35 +315,39 @@ export async function sendClientConfirmation(data: AppointmentEmailData & {
     }
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending client confirmation:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error sending client confirmation' }
   }
 }
 
 /**
  * Send reminder email to client 24hs before appointment
  */
-export async function sendAppointmentReminder(data: AppointmentEmailData & {
-  startDateTime: Date
-  endDateTime: Date
-}) {
+export async function sendAppointmentReminder(
+  data: AppointmentEmailData & {
+    startDateTime: Date
+    endDateTime: Date
+  },
+  businessId: string
+) {
   if (!data.clientEmail) {
     return { success: false, error: 'No client email' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
-  const cancelUrl = `${appUrl}/cancel/${data.id}`
-
   try {
+    const config = await getBusinessEmailConfig(businessId)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const cancelUrl = `${appUrl}/cancel/${data.id}`
+
     const { error } = await resend.emails.send({
-      from: `${BRAND_NAME} <${fromEmail}>`,
+      from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
-      subject: `Recordatorio · Tu turno es mañana ✨`,
+      subject: `Recordatorio · Tu turno es mañana`,
       html: `
         <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
           <div style="padding: 40px 32px 32px; text-align: center; border-bottom: 1px solid #fce7f3;">
-            <div style="display: inline-block; width: 40px; height: 40px; background: #db2777; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">S</div>
+            <div style="display: inline-block; width: 40px; height: 40px; background: ${config.brandColor}; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">${config.brandName.charAt(0)}</div>
             <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1f1f24; letter-spacing: -0.5px;">¡Tu turno es mañana! 📅</h1>
           </div>
           
@@ -310,8 +400,8 @@ export async function sendAppointmentReminder(data: AppointmentEmailData & {
     }
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending appointment reminder:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error sending appointment reminder' }
   }
 }

@@ -9,6 +9,7 @@ import listPlugin from '@fullcalendar/list' // Imported list plugin
 import { AppointmentWithService } from '@/types/database.types'
 import { useRouter } from 'next/navigation'
 import esLocale from '@fullcalendar/core/locales/es'
+import { EventClickArg } from '@fullcalendar/core'
 
 interface CalendarViewProps {
   initialAppointments: AppointmentWithService[]
@@ -73,7 +74,7 @@ export default function CalendarView({ initialAppointments }: CalendarViewProps)
     })
   }, [initialAppointments])
 
-  const handleEventClick = (info: any) => {
+  const handleEventClick = (info: EventClickArg) => {
     // Navigate to appointments page - could be enhanced to open a modal
     router.push('/admin/appointments')
   }

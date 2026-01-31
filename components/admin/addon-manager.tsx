@@ -86,8 +86,8 @@ export default function AddonManager({ initialAddons }: AddonManagerProps) {
 
       setShowModal(false)
       router.refresh()
-    } catch (error: any) {
-      showError('Error', error.message)
+    } catch (error: unknown) {
+      showError('Error', error instanceof Error ? error.message : 'Error saving addon')
     } finally {
       setSaving(false)
     }

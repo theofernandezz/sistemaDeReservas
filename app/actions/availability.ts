@@ -41,9 +41,9 @@ export async function getBusinessHours(): Promise<ServerActionResponse<BusinessH
     }
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching business hours:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching business hours' }
   }
 }
 
@@ -70,9 +70,9 @@ export async function upsertBusinessHours(input: BusinessHoursInput): Promise<Se
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error upserting business hours:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error upserting business hours' }
   }
 }
 
@@ -93,8 +93,8 @@ export async function updateAllBusinessHours(hours: BusinessHoursInput[]): Promi
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating business hours:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating business hours' }
   }
 }

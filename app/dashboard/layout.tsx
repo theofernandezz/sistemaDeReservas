@@ -1,8 +1,16 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getCurrentBusiness, isSuperAdmin, getAllBusinesses } from '@/app/actions/auth'
 import { BusinessProvider } from '@/lib/business-context'
 import { DashboardNavbar } from '@/components/dashboard/navbar'
 import { ConfirmProvider } from '@/components/ui/confirm-dialog'
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 export default async function DashboardLayout({
   children,

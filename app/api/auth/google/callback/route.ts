@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to settings with success
     return NextResponse.redirect(new URL('/admin/settings?success=google_connected', request.url))
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in OAuth callback:', error)
     return NextResponse.redirect(new URL('/admin/settings?error=token_exchange', request.url))
   }

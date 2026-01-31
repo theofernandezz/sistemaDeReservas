@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import logoSvg from "@/public/logo/icon.svg"
 import { Menu, X, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,8 +47,8 @@ export function MobileNav() {
           <Menu className="h-6 w-6" />
         </Button>
       </SheetTrigger>
-      <SheetContent 
-        side="right" 
+      <SheetContent
+        side="right"
         className="w-[75%] max-w-[320px] p-0 flex flex-col"
         hideCloseButton
       >
@@ -58,7 +59,7 @@ export function MobileNav() {
         <div className="flex items-center justify-between p-6 border-b">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center">
-              <Image src="/logo/icon.svg" alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
+              <Image src={logoSvg} alt="Buki" width={40} height={50} className="h-10 w-auto object-contain" />
             </div>
             <span className="font-bold tracking-tight text-xl">Buki</span>
           </Link>
@@ -104,8 +105,8 @@ export function MobileNav() {
           <div className="pt-6 border-t">
             <SheetClose asChild>
               <Link href="/signup" className="block">
-                <Button 
-                  className="w-full h-14 rounded-full font-semibold text-base shadow-lg shadow-primary/20" 
+                <Button
+                  className="w-full h-14 rounded-full font-semibold text-base shadow-lg shadow-primary/20"
                   size="lg"
                 >
                   Comenzar Gratis

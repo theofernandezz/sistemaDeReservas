@@ -189,7 +189,7 @@ async function sendPostPaymentNotifications(
       .single()
 
     if (business?.owner_email) {
-      await sendNewAppointmentNotification(emailData, business.owner_email)
+      await sendNewAppointmentNotification(emailData, businessId, business.owner_email)
       console.log(`Admin notification sent for appointment ${appointmentId}`)
     }
   } catch (error) {
@@ -199,7 +199,7 @@ async function sendPostPaymentNotifications(
   // Send client confirmation (non-blocking)
   if (clientEmail) {
     try {
-      await sendClientConfirmation(emailData as typeof emailData & { startDateTime: Date; endDateTime: Date })
+      await sendClientConfirmation(emailData as typeof emailData & { startDateTime: Date; endDateTime: Date }, businessId)
       console.log(`Client confirmation sent for appointment ${appointmentId}`)
     } catch (error) {
       console.error('Failed to send client confirmation (non-critical):', error)

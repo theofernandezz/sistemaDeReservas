@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/utils/supabase/server'
 import { sendAppointmentReminder } from '@/lib/email'
-import { format, addHours, startOfDay, endOfDay } from 'date-fns'
+import { format, addHours } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { toUTC, fromUTC } from '@/lib/utils/timezone'
 
 // Secret para autenticar el cron job
 const CRON_SECRET = process.env.CRON_SECRET
@@ -51,10 +52,11 @@ export async function GET(request: NextRequest) {
         client_email,
         client_phone,
         email_reminder_sent,
+        business_id,
         service:services(id, name, price)
       `)
-      .gte('start_time', tomorrow.toISOString())
-      .lt('start_time', tomorrowEnd.toISOString())
+      .gte('start_time', toUTC(tomorrow))
+      .lt('start_time', toUTC(tomorrowEnd))
       .eq('status', 'confirmed')
       .eq('email_reminder_sent', false)
       .not('client_email', 'is', null)
@@ -86,7 +88,7 @@ export async function GET(request: NextRequest) {
       const rawService = apt.service as unknown
       const service = Array.isArray(rawService) ? rawService[0] : rawService as { id: string; name: string; price: number } | null
 
-      if (!service || !apt.client_email) continue
+      if (!service || !apt.client_email || !apt.business_id) continue
 
       const emailResult = await sendAppointmentReminder({
         id: apt.id,
@@ -99,7 +101,7 @@ export async function GET(request: NextRequest) {
         time: format(startTime, 'HH:mm'),
         startDateTime: startTime,
         endDateTime: endTime
-      })
+      }, apt.business_id)
 
       if (emailResult.success) {
         // Marcar como enviado

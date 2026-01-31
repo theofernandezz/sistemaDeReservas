@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import {
   ArrowLeft, Calendar, Clock, Loader2, CreditCard,
@@ -15,6 +15,12 @@ import { cn } from '@/lib/utils'
 import { SelectedAddon, ServiceAddon, Service } from '@/types/database.types'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import {
+  validateBookingForm,
+  isFormValid,
+  formatArgentinePhone,
+  FormValidationState
+} from '@/lib/utils/validation'
 
 type PaymentMethod = 'full' | 'deposit'
 
@@ -43,6 +49,18 @@ export default function CompactConfirmPage() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    phone: false
+  })
+
+  const [validation, setValidation] = useState<FormValidationState>({
+    name: { isValid: false },
+    email: { isValid: false },
+    phone: { isValid: false }
+  })
 
   // Ref para prevenir race conditions en mobile
   const isMountedRef = useRef(true)
@@ -150,6 +168,11 @@ export default function CompactConfirmPage() {
     }
   }, [serviceId])
 
+  useEffect(() => {
+    const newValidation = validateBookingForm(name.trim(), email.trim(), phone.trim())
+    setValidation(newValidation)
+  }, [name, email, phone])
+
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0)
   const addonsDuration = selectedAddons.reduce((sum, a) => sum + a.duration_minutes, 0)
   const totalPrice = (service?.price || 0) + addonsTotal
@@ -199,8 +222,31 @@ export default function CompactConfirmPage() {
     })
   }
 
+  const handlePhoneChange = useCallback((value: string) => {
+    const formatted = formatArgentinePhone(value)
+    setPhone(formatted)
+  }, [])
+
+  const handleBlur = (field: keyof typeof touched) => {
+    setTouched(prev => ({ ...prev, [field]: true }))
+  }
+
   const handleSubmit = async () => {
-    if (!service || !date || !time || !name || !phone || !email) return
+    setTouched({ name: true, email: true, phone: true })
+
+    const trimmedName = name.trim()
+    const trimmedEmail = email.trim()
+    const trimmedPhone = phone.trim()
+
+    const currentValidation = validateBookingForm(trimmedName, trimmedEmail, trimmedPhone)
+    setValidation(currentValidation)
+
+    if (!isFormValid(currentValidation)) {
+      showError('Error', 'Por favor completá todos los campos correctamente')
+      return
+    }
+
+    if (!service || !date || !time) return
 
     // Validar que paymentConfig esté cargado
     if (paymentConfig === null) {
@@ -226,9 +272,9 @@ export default function CompactConfirmPage() {
         serviceId,
         startTime: new Date(startDateTime).toISOString(),
         endTime: endDateTime.toISOString(),
-        clientName: name,
-        clientPhone: phone,
-        clientEmail: email,
+        clientName: name.trim(),
+        clientPhone: phone.trim(),
+        clientEmail: email.trim(),
         addons: selectedAddons,
         paymentAmount: amountToPay,
         paymentMethod,
@@ -249,9 +295,9 @@ export default function CompactConfirmPage() {
       service_id: serviceId,
       start_time: new Date(startDateTime).toISOString(),
       end_time: endDateTime.toISOString(),
-      client_name: name,
-      client_phone: phone,
-      client_email: email,
+      client_name: name.trim(),
+      client_phone: phone.trim(),
+      client_email: email.trim(),
       status: 'confirmed',
       addons: selectedAddons
     })
@@ -280,6 +326,8 @@ export default function CompactConfirmPage() {
       </div>
     )
   }
+
+  const allFieldsValid = isFormValid(validation)
 
   // Componentes de addons reutilizables
   const AddonsSection = ({ compact = false }: { compact?: boolean }) => (
@@ -379,32 +427,59 @@ export default function CompactConfirmPage() {
           <AddonsSection />
 
           {/* Form */}
-          <div className="bg-card border rounded-xl p-4 space-y-3">
+          <div className="bg-card border rounded-xl p-4 space-y-4">
             <div className="text-sm font-medium">Tus datos</div>
-            <div className="space-y-3">
-              <Input
-                placeholder="Nombre completo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-11"
-                required
-              />
-              <Input
-                placeholder="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11"
-                required
-              />
-              <Input
-                placeholder="Teléfono"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-11"
-                required
-              />
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Input
+                  placeholder="Ej: María González"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => handleBlur('name')}
+                  className={cn(
+                    "h-10",
+                    touched.name && !validation.name.isValid && "border-destructive focus-visible:ring-destructive"
+                  )}
+                  required
+                />
+                {touched.name && !validation.name.isValid && (
+                  <p className="text-xs text-destructive">{validation.name.error}</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Ej: maria@ejemplo.com"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  className={cn(
+                    "h-10",
+                    touched.email && !validation.email.isValid && "border-destructive focus-visible:ring-destructive"
+                  )}
+                  required
+                />
+                {touched.email && !validation.email.isValid && (
+                  <p className="text-xs text-destructive">{validation.email.error}</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Ej: +54 11 1234-5678"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  className={cn(
+                    "h-10",
+                    touched.phone && !validation.phone.isValid && "border-destructive focus-visible:ring-destructive"
+                  )}
+                  required
+                />
+                {touched.phone && !validation.phone.isValid && (
+                  <p className="text-xs text-destructive">{validation.phone.error}</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -447,11 +522,31 @@ export default function CompactConfirmPage() {
         </main>
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
-          <Button type="button" onClick={handleSubmit} disabled={loading || !name || !email || !phone || fetchingPaymentConfig} className="w-full h-12 text-base">
-            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
-              : paymentConfig?.hasMPConnected ? <><CreditCard className="mr-2 h-4 w-4" />Pagar {formatPrice(amountToPay)} y reservar</>
-                : 'Confirmar reserva'}
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading || fetchingPaymentConfig || !allFieldsValid}
+            className="w-full h-12 text-base"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : paymentConfig?.hasMPConnected ? (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pagar {formatPrice(amountToPay)} y reservar
+              </>
+            ) : (
+              'Confirmar reserva'
+            )}
           </Button>
+          {!allFieldsValid && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Completá todos los campos requeridos correctamente
+            </p>
+          )}
         </div>
       </div>
 
@@ -573,62 +668,84 @@ export default function CompactConfirmPage() {
 
             {/* Right Column - Form & Payment (60%) */}
             <div className="flex-1 p-8 flex flex-col bg-background/40">
-              <h2 className="text-xl font-semibold mb-8 tracking-tight">Completá tu reserva</h2>
+              <div className="w-full max-w-[560px] mx-auto flex flex-col flex-1">
+                <h2 className="text-xl font-semibold mb-6 tracking-tight">Completá tu reserva</h2>
 
-              <div className="space-y-8 flex-1">
-                {/* User Data */}
-                <div className={cn(
-                  "bg-card/60 border border-border/50 rounded-2xl p-8 space-y-6",
-                  "transition-all duration-200",
-                  "hover:border-border/70 hover:shadow-sm"
-                )}>
-                  <div className="text-sm font-medium text-foreground">Tus datos</div>
-                  <div className="space-y-4">
-                    <Input
-                      placeholder="Nombre completo"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={cn(
-                        "h-12",
-                        "transition-all duration-200",
-                        "hover:border-border/80",
-                        "focus:ring-2 focus:ring-primary/20"
+                <div className="space-y-6 flex-1">
+                  {/* User Data */}
+                  <div className={cn(
+                    "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
+                    "transition-all duration-200",
+                    "hover:border-border/70 hover:shadow-sm"
+                  )}>
+                    <div className="text-sm font-medium text-foreground">Tus datos</div>
+                    <div className="space-y-4">
+                    <div className="space-y-1">
+                      <Input
+                        placeholder="Ej: María González"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        onBlur={() => handleBlur('name')}
+                        className={cn(
+                          "h-11",
+                          "transition-all duration-200",
+                          "hover:border-border/80",
+                          "focus:ring-2 focus:ring-primary/20",
+                          touched.name && !validation.name.isValid && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        required
+                      />
+                      {touched.name && !validation.name.isValid && (
+                        <p className="text-xs text-destructive">{validation.name.error}</p>
                       )}
-                      required
-                    />
-                    <Input
-                      placeholder="Email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={cn(
-                        "h-12",
-                        "transition-all duration-200",
-                        "hover:border-border/80",
-                        "focus:ring-2 focus:ring-primary/20"
+                    </div>
+                    <div className="space-y-1">
+                      <Input
+                        placeholder="Ej: maria@ejemplo.com"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => handleBlur('email')}
+                        className={cn(
+                          "h-11",
+                          "transition-all duration-200",
+                          "hover:border-border/80",
+                          "focus:ring-2 focus:ring-primary/20",
+                          touched.email && !validation.email.isValid && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        required
+                      />
+                      {touched.email && !validation.email.isValid && (
+                        <p className="text-xs text-destructive">{validation.email.error}</p>
                       )}
-                      required
-                    />
-                    <Input
-                      placeholder="Teléfono"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className={cn(
-                        "h-12",
-                        "transition-all duration-200",
-                        "hover:border-border/80",
-                        "focus:ring-2 focus:ring-primary/20"
+                    </div>
+                    <div className="space-y-1">
+                      <Input
+                        placeholder="Ej: +54 11 1234-5678"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        onBlur={() => handleBlur('phone')}
+                        className={cn(
+                          "h-11",
+                          "transition-all duration-200",
+                          "hover:border-border/80",
+                          "focus:ring-2 focus:ring-primary/20",
+                          touched.phone && !validation.phone.isValid && "border-destructive focus-visible:ring-destructive"
+                        )}
+                        required
+                      />
+                      {touched.phone && !validation.phone.isValid && (
+                        <p className="text-xs text-destructive">{validation.phone.error}</p>
                       )}
-                      required
-                    />
+                    </div>
                   </div>
                 </div>
 
                 {/* Payment Method */}
                 {paymentConfig?.hasMPConnected && (
                   <div className={cn(
-                    "bg-card/60 border border-border/50 rounded-2xl p-8 space-y-6",
+                    "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
                     "transition-all duration-200",
                     "hover:border-border/70 hover:shadow-sm"
                   )}>
@@ -713,32 +830,38 @@ export default function CompactConfirmPage() {
                 )}
               </div>
 
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading || !name || !email || !phone || fetchingPaymentConfig}
-                className={cn(
-                  "w-full h-14 text-base mt-8 rounded-xl",
-                  "transition-all duration-200",
-                  "hover:-translate-y-0.5 hover:shadow-lg",
-                  "active:scale-[0.98]"
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading || fetchingPaymentConfig || !allFieldsValid}
+                  className={cn(
+                    "w-full h-12 text-base mt-4 rounded-xl",
+                    "transition-all duration-200",
+                    "hover:-translate-y-0.5 hover:shadow-lg",
+                    "active:scale-[0.98]"
+                  )}
+                  size="lg"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : paymentConfig?.hasMPConnected ? (
+                    <>
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      Pagar {formatPrice(amountToPay)} y reservar
+                    </>
+                  ) : (
+                    'Confirmar reserva'
+                  )}
+                </Button>
+                {!allFieldsValid && (
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    Completá todos los campos requeridos correctamente
+                  </p>
                 )}
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Procesando...
-                  </>
-                ) : paymentConfig?.hasMPConnected ? (
-                  <>
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    Pagar {formatPrice(amountToPay)} y reservar
-                  </>
-                ) : (
-                  'Confirmar reserva'
-                )}
-              </Button>
+              </div>
             </div>
           </div>
         </div>

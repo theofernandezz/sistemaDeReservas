@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
 import { getAppointmentById, canRescheduleAppointment } from '@/app/actions'
-import { getCurrentBusiness } from '@/app/actions/auth'
 import AppointmentActions from './appointment-actions'
 import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -9,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 export const metadata: Metadata = {
-  title: 'Gestionar Turno | Siv Nails',
+  title: 'Gestionar Turno',
 }
 
 export default async function CancelPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,16 +16,22 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const result = await getAppointmentById(id)
   const appointment = result.data
 
+  // Get business info for branding (may be undefined if appointment not found)
+  const business = appointment?.business
+  const businessName = business?.name || 'Reservas'
+  const businessSlug = business?.slug || ''
+  const businessAddress = business?.address || ''
+
   // Common wrapper for consistent layout
   const PageWrapper = ({ children }: { children: React.ReactNode }) => (
     <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-pink-100 selection:text-pink-900">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
         <div className="container max-w-5xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <Link href={businessSlug ? `/${businessSlug}` : '/'} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-serif font-bold text-lg shadow-sm">
-              S
+              {businessName.charAt(0).toUpperCase()}
             </div>
-            <span className="font-serif font-bold tracking-tight text-xl">Siv Nails</span>
+            <span className="font-serif font-bold tracking-tight text-xl">{businessName}</span>
           </Link>
         </div>
       </header>
@@ -74,7 +79,7 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
             </p>
           </div>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/">Volver al inicio</Link>
+            <Link href={businessSlug ? `/${businessSlug}` : '/'}>Volver a {businessName}</Link>
           </Button>
         </Card>
       </PageWrapper>
@@ -86,12 +91,11 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const canReschedule = eligibilityCheck.success && eligibilityCheck.data?.canReschedule || false
   const rescheduleMessage = eligibilityCheck.data?.reason
 
-  // Get business settings for available slots
-  const businessResult = await getCurrentBusiness()
-  const businessHours = businessResult.data?.settings?.businessHours
+  // Get business settings from the appointment's business (no auth required)
+  const businessHours = business?.settings?.businessHours
     ? JSON.stringify({
-        schedule: businessResult.data.settings.businessHours,
-        slotInterval: businessResult.data.settings.slotInterval || 30
+        schedule: business.settings.businessHours,
+        slotInterval: business.settings.slotInterval || 30
       })
     : undefined
 
@@ -134,10 +138,12 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="font-medium text-foreground">{timeStr}hs</span>
               </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span>Villa Pueyrredón, CABA</span>
-              </div>
+              {businessAddress && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span>{businessAddress}</span>
+                </div>
+              )}
             </div>
 
             {/* Decoration Circles for ticket effect */}
@@ -159,11 +165,11 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
 
         <div className="text-center">
           <Link
-            href="/"
+            href={businessSlug ? `/${businessSlug}` : '/'}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Volver al inicio sin hacer cambios
+            Volver a {businessName}
           </Link>
         </div>
       </div>

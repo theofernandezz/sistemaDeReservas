@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(data.path)
 
     return NextResponse.json({ url: publicUrl })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Upload error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Upload error' }, { status: 500 })
   }
 }

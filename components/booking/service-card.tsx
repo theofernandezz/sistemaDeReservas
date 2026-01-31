@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/card'
-import { Clock, ChevronRight } from 'lucide-react'
+import { Clock, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,14 @@ export interface ServiceCardProps {
   accentColor?: string
 }
 
+/**
+ * ServiceCard - Premium compact service card
+ * 
+ * Design:
+ * - Mobile: Vertical stack, price always visible at bottom
+ * - Desktop: Compact card suitable for 2-column grid
+ * - Accent color glow on hover
+ */
 export function ServiceCard({ 
   id, 
   title, 
@@ -22,69 +30,105 @@ export function ServiceCard({
   durationMin, 
   image, 
   bookingBasePath = '/booking',
-  accentColor = '#f97316' // orange-500 default
+  accentColor = '#f97316'
 }: ServiceCardProps) {
   const hasImage = !!image
 
   return (
-    <Link href={`${bookingBasePath}/${id}`} className="group block">
+    <Link 
+      href={`${bookingBasePath}/${id}`} 
+      className={cn(
+        "group block h-full",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+      )}
+    >
       <Card 
         className={cn(
-          "overflow-hidden border border-border/50 bg-card transition-all duration-300",
-          "hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]",
-          // En móvil: columna (imagen arriba). En desktop: fila (imagen izquierda)
-          hasImage ? "flex flex-col sm:flex-row" : ""
+          "relative h-full overflow-hidden",
+          "border border-border/60 bg-card",
+          "transition-all duration-300 ease-out",
+          "hover:shadow-xl hover:shadow-black/5 hover:-translate-y-1",
+          "active:scale-[0.995] active:shadow-lg",
+          "flex flex-col"
         )}
-        style={{ '--accent': accentColor } as React.CSSProperties}
       >
-        {/* Imagen - arriba en móvil, lateral en desktop */}
+        {/* Accent border glow on hover */}
+        <div 
+          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 0 1px ${accentColor}25, 0 0 24px ${accentColor}08`
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Image section - optional, with proper aspect ratio */}
         {hasImage && (
-          <div className="relative w-full sm:w-36 md:w-44 lg:w-48 h-40 sm:h-auto shrink-0 overflow-hidden">
+          <div className="relative w-full aspect-[16/10] shrink-0 overflow-hidden bg-muted/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={image}
-              alt={title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              alt=""
+              className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
             />
-            {/* Gradiente adaptado a la dirección */}
-            <div className="absolute inset-0 bg-linear-to-b sm:bg-linear-to-r from-transparent to-black/10" />
           </div>
         )}
 
-        {/* Contenido */}
-        <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
-          <div className="space-y-1.5 sm:space-y-2">
-            <div className="flex items-start justify-between gap-2 sm:gap-3">
-              <h3 className="font-semibold text-base sm:text-lg text-foreground leading-tight transition-colors group-hover:text-[var(--accent)]">
-                {title}
-              </h3>
+        {/* Content section */}
+        <div className="flex flex-col flex-1 p-4 sm:p-5">
+          {/* Title */}
+          <h3 className={cn(
+            "font-semibold text-base sm:text-lg text-foreground leading-snug",
+            "transition-colors duration-200",
+            "line-clamp-2"
+          )}>
+            {title}
+          </h3>
+
+          {/* Description */}
+          {description && (
+            <p className="mt-1.5 text-muted-foreground text-xs sm:text-sm leading-relaxed line-clamp-2 flex-1">
+              {description}
+            </p>
+          )}
+
+          {/* Bottom section - price, duration, CTA */}
+          <div className="flex items-end justify-between gap-3 mt-4 pt-3 border-t border-border/40">
+            {/* Left: Duration + Price stacked */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{durationMin} min</span>
+              </div>
               <span 
-                className="shrink-0 font-bold text-base sm:text-lg"
+                className="block font-bold text-xl sm:text-2xl tabular-nums"
                 style={{ color: accentColor }}
               >
                 ${price}
               </span>
             </div>
 
-            {description && (
-              <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed line-clamp-2">
-                {description}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between mt-3 sm:mt-4 pt-3 border-t border-border/50">
-            <div className="flex items-center gap-1.5 text-muted-foreground text-xs sm:text-sm">
-              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span>{durationMin} min</span>
-            </div>
-
+            {/* Right: CTA button */}
             <div 
-              className="flex items-center gap-1 text-xs sm:text-sm font-medium group-hover:gap-2 transition-all"
-              style={{ color: accentColor }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg",
+                "text-xs sm:text-sm font-medium",
+                "transition-all duration-200",
+                "group-hover:gap-2"
+              )}
+              style={{ 
+                backgroundColor: `${accentColor}10`,
+                color: accentColor 
+              }}
             >
-              <span className="hidden xs:inline">Reservar</span>
-              <span className="xs:hidden">Ver</span>
-              <ChevronRight className="h-4 w-4" />
+              <span className="hidden xs:inline sm:inline">Reservar</span>
+              <span className="xs:hidden sm:hidden">Ver</span>
+              <ArrowRight 
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  "group-hover:translate-x-0.5"
+                )} 
+                aria-hidden="true"
+              />
             </div>
           </div>
         </div>

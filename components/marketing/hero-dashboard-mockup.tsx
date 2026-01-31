@@ -4,6 +4,7 @@ import { Calendar, ChevronLeft, ChevronRight, Clock, Bell, Plus, CalendarCheck, 
 import { HeroAnimation } from '@/components/marketing/hero-animation'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
+import logo from '@/public/logo/icon.png'
 
 export function HeroDashboardMockup() {
   return (
@@ -14,11 +15,11 @@ export function HeroDashboardMockup() {
           {/* Logo + Business Name */}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 flex items-center justify-center">
-              <Image src="/logo/icon.png" alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
+              <Image src={logo} alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
             </div>
             <span className="font-semibold text-sm hidden sm:inline">Mi Negocio</span>
           </div>
-          
+
           {/* Navigation Items */}
           <nav className="hidden md:flex items-center gap-1">
             <NavItem label="Inicio" active />
@@ -27,7 +28,7 @@ export function HeroDashboardMockup() {
             <NavItem label="Disponibilidad" />
           </nav>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 text-sm font-medium bg-green-500/10 text-green-600 px-3 py-1 rounded-full border border-green-500/20">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -41,7 +42,7 @@ export function HeroDashboardMockup() {
       {/* Main Content Area (No Sidebar) */}
       <div className="flex-1 bg-secondary/10 p-4 lg:p-8 overflow-auto">
         <div className="max-w-5xl mx-auto space-y-6">
-          
+
           {/* Greeting */}
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -54,26 +55,26 @@ export function HeroDashboardMockup() {
 
           {/* Stats Row - Aligned with Real Dashboard */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <StatCard 
-              icon={CalendarCheck} 
-              iconColor="text-primary" 
+            <StatCard
+              icon={CalendarCheck}
+              iconColor="text-primary"
               iconBg="bg-primary/10"
-              label="Citas hoy" 
-              value="8" 
+              label="Citas hoy"
+              value="8"
             />
-            <StatCard 
-              icon={Clock} 
-              iconColor="text-emerald-500" 
+            <StatCard
+              icon={Clock}
+              iconColor="text-emerald-500"
               iconBg="bg-emerald-500/10"
-              label="Por atender" 
-              value="5" 
+              label="Por atender"
+              value="5"
             />
-            <StatCard 
-              icon={CheckCircle2} 
-              iconColor="text-blue-500" 
+            <StatCard
+              icon={CheckCircle2}
+              iconColor="text-blue-500"
               iconBg="bg-blue-500/10"
-              label="Completadas" 
-              value="3" 
+              label="Completadas"
+              value="3"
             />
           </div>
 
@@ -92,7 +93,7 @@ export function HeroDashboardMockup() {
                 </div>
               </div>
             </div>
-            
+
             {/* Animation Area */}
             <div className="h-[400px] md:h-[500px] relative bg-secondary/5">
               <div className="absolute inset-0 p-4">
@@ -118,8 +119,8 @@ function NavItem({ label, active }: NavItemProps) {
   return (
     <div className={cn(
       "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
-      active 
-        ? "text-foreground bg-secondary" 
+      active
+        ? "text-foreground bg-secondary"
         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
     )}>
       {label}

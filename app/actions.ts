@@ -7,6 +7,7 @@ import {
   Appointment,
   BlockedSlot,
   AppointmentWithService,
+  AppointmentWithServiceAndBusiness,
   CreateServiceInput,
   UpdateServiceInput,
   CreateAppointmentInput,
@@ -23,6 +24,15 @@ import {
   Business,
   BusinessSettings
 } from '@/types/database.types'
+import {
+  startOfDayUTC,
+  endOfDayUTC,
+  fromUTC,
+  createSlotTimeUTC,
+  addMinutesToUTC,
+  isPastDate,
+  doTimeRangesOverlap
+} from '@/lib/utils/timezone'
 
 // Helper to get current business ID for data isolation
 async function requireBusinessId(): Promise<string> {
@@ -133,9 +143,9 @@ export async function getServices(): Promise<ServerActionResponse<Service[]>> {
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching services:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching services' }
   }
 }
 
@@ -156,9 +166,9 @@ export async function getAllServices(): Promise<ServerActionResponse<Service[]>>
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching all services:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching all services' }
   }
 }
 
@@ -179,9 +189,9 @@ export async function getServicesByBusinessId(businessId: string): Promise<Serve
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching services by business:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching services by business' }
   }
 }
 
@@ -201,9 +211,9 @@ export async function getServiceById(id: string): Promise<ServerActionResponse<S
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching service:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching service' }
   }
 }
 
@@ -228,9 +238,9 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating service:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating service' }
   }
 }
 
@@ -253,9 +263,9 @@ export async function updateService(id: string, input: UpdateServiceInput): Prom
     }
 
     return { success: true, data: data[0] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating service:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating service' }
   }
 }
 
@@ -292,9 +302,9 @@ export async function toggleServiceActive(id: string): Promise<ServerActionRespo
     }
 
     return { success: true, data: data[0] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error toggling service:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error toggling service' }
   }
 }
 
@@ -313,9 +323,9 @@ export async function deleteService(id: string): Promise<ServerActionResponse<vo
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting service:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error deleting service' }
   }
 }
 
@@ -362,16 +372,16 @@ export async function getAppointments(filters?: AppointmentFilters): Promise<Ser
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching appointments:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointments' }
   }
 }
 
 /**
  * Get appointment by ID with service data
  */
-export async function getAppointmentById(id: string): Promise<ServerActionResponse<AppointmentWithService>> {
+export async function getAppointmentById(id: string): Promise<ServerActionResponse<AppointmentWithServiceAndBusiness>> {
   try {
     const supabase = await createClient()
 
@@ -379,7 +389,8 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
       .from('appointments')
       .select(`
         *,
-        service:services(*)
+        service:services(*),
+        business:businesses(*)
       `)
       .eq('id', id)
       .single()
@@ -387,9 +398,9 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointment' }
   }
 }
 
@@ -399,6 +410,33 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
 export async function createAppointment(input: CreateAppointmentInput): Promise<ServerActionResponse<Appointment>> {
   try {
     const supabase = await createClient()
+
+    // Validate start_time < end_time
+    const startTime = new Date(input.start_time)
+    const endTime = new Date(input.end_time)
+    
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fechas inválidas proporcionadas'
+      }
+    }
+    
+    if (startTime >= endTime) {
+      return {
+        success: false,
+        error: 'La hora de inicio debe ser anterior a la hora de fin'
+      }
+    }
+    
+    // Validate appointment is not in the past
+    const now = new Date()
+    if (startTime < new Date(now.getTime() - 60000)) {
+      return {
+        success: false,
+        error: 'No se pueden crear turnos en el pasado'
+      }
+    }
 
     const { data: service, error: serviceError } = await supabase
       .from('services')
@@ -469,7 +507,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
         // Fetch admin email from settings
         const { getAdminNotificationEmail } = await import('@/app/actions')
         const adminEmail = await getAdminNotificationEmail()
-        await sendNewAppointmentNotification(emailData, adminEmail)
+        await sendNewAppointmentNotification(emailData, businessId, adminEmail)
 
         // Email to client (if email provided)
         if (input.client_email) {
@@ -478,7 +516,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
             clientEmail: input.client_email,
             startDateTime: startDate,
             endDateTime: endDate
-          })
+          }, businessId)
         }
 
         // ==========================================
@@ -520,9 +558,9 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     }
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating appointment' }
   }
 }
 
@@ -543,9 +581,9 @@ export async function updateAppointment(id: string, input: UpdateAppointmentInpu
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating appointment' }
   }
 }
 
@@ -566,9 +604,9 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating appointment status:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating appointment status' }
   }
 }
 
@@ -589,9 +627,9 @@ export async function deleteAppointment(id: string): Promise<ServerActionRespons
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error deleting appointment' }
   }
 }
 
@@ -616,17 +654,15 @@ export async function getAvailableSlots(
 
     if (serviceError) throw serviceError
 
-    // Get appointments for that day - parse date correctly for local timezone
-    const [year, month, day] = date.split('-').map(Number)
-    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
-
+    // Get appointments for that day - use UTC boundaries for database query
+    const dayStartUTC = startOfDayUTC(date)
+    const dayEndUTC = endOfDayUTC(date)
 
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
       .select('start_time, end_time')
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
+      .gte('start_time', dayStartUTC)
+      .lte('start_time', dayEndUTC)
       .eq('business_id', service.business_id)
       .neq('status', 'cancelled')
 
@@ -636,8 +672,8 @@ export async function getAvailableSlots(
     const { data: blocked, error: blockedError } = await supabase
       .from('blocked_slots')
       .select('start_time, end_time, reason')
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
+      .gte('start_time', dayStartUTC)
+      .lte('start_time', dayEndUTC)
       .eq('business_id', service.business_id)
 
     if (blockedError) throw blockedError
@@ -667,7 +703,7 @@ export async function getAvailableSlots(
         const schedule = Array.isArray(config) ? config : config.schedule
         slotInterval = config.slotInterval || 30
 
-        const dayHours = schedule?.find((h: any) => h.dayOfWeek === dayOfWeek)
+        const dayHours = schedule?.find((h: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string }) => h.dayOfWeek === dayOfWeek)
         if (dayHours) {
           dayConfig = {
             isOpen: dayHours.isOpen,
@@ -699,38 +735,37 @@ export async function getAvailableSlots(
       const minute = currentMinutes % 60
       const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
 
-      // Create slot dates properly - parse the date string and set local time
-      const [year, month, day] = date.split('-').map(Number)
-      const slotStart = new Date(year, month - 1, day, hour, minute, 0, 0)
-      const slotEnd = new Date(slotStart.getTime() + service.duration_minutes * 60 * 1000)
+      // Create slot times in UTC for comparison with database records
+      // The date string and time are in local timezone, we convert to UTC for consistency
+      const slotStartUTC = createSlotTimeUTC(date, slotTime)
+      const slotEndUTC = addMinutesToUTC(slotStartUTC, service.duration_minutes)
 
-      // Check if slot conflicts with appointments
+      // Check if slot is in the past (with 30 min buffer)
+      const isPast = isPastDate(slotStartUTC, 30)
+
+      // Check if slot conflicts with appointments (both times are UTC)
       const isBooked = appointments?.some(apt => {
-        const aptStart = new Date(apt.start_time).getTime()
-        const aptEnd = new Date(apt.end_time).getTime()
-        return slotStart.getTime() < aptEnd && slotEnd.getTime() > aptStart
+        return doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time)
       })
 
-      // Check if slot conflicts with blocked slots
+      // Check if slot conflicts with blocked slots (both times are UTC)
       const isBlocked = blocked?.some(block => {
-        const blockStart = new Date(block.start_time).getTime()
-        const blockEnd = new Date(block.end_time).getTime()
-        return slotStart.getTime() < blockEnd && slotEnd.getTime() > blockStart
+        return doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time)
       })
 
       slots.push({
         time: slotTime,
-        available: !isBooked && !isBlocked,
-        reason: isBooked ? 'booked' : isBlocked ? 'blocked' : undefined
+        available: !isBooked && !isBlocked && !isPast,
+        reason: isPast ? 'past' : isBooked ? 'booked' : isBlocked ? 'blocked' : undefined
       })
 
       currentMinutes += slotInterval
     }
 
     return { success: true, data: slots }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting available slots:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error getting available slots' }
   }
 }
 
@@ -768,9 +803,9 @@ export async function getBlockedSlots(
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching blocked slots:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching blocked slots' }
   }
 }
 
@@ -780,6 +815,24 @@ export async function getBlockedSlots(
 export async function createBlockedSlot(input: CreateBlockedSlotInput): Promise<ServerActionResponse<BlockedSlot>> {
   try {
     const supabase = await createClient()
+
+    // Validate start_time < end_time
+    const startTime = new Date(input.start_time)
+    const endTime = new Date(input.end_time)
+    
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fechas inválidas proporcionadas'
+      }
+    }
+    
+    if (startTime >= endTime) {
+      return {
+        success: false,
+        error: 'La hora de inicio debe ser anterior a la hora de fin'
+      }
+    }
 
     const { data, error } = await supabase
       .from('blocked_slots')
@@ -794,9 +847,9 @@ export async function createBlockedSlot(input: CreateBlockedSlotInput): Promise<
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating blocked slot:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating blocked slot' }
   }
 }
 
@@ -817,9 +870,9 @@ export async function updateBlockedSlot(id: string, input: UpdateBlockedSlotInpu
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating blocked slot:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating blocked slot' }
   }
 }
 
@@ -838,9 +891,9 @@ export async function deleteBlockedSlot(id: string): Promise<ServerActionRespons
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting blocked slot:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error deleting blocked slot' }
   }
 }
 
@@ -866,9 +919,9 @@ export async function getServiceAddons(): Promise<ServerActionResponse<ServiceAd
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching addons:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching addons' }
   }
 }
 
@@ -889,9 +942,9 @@ export async function getAllServiceAddons(): Promise<ServerActionResponse<Servic
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching all addons:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching all addons' }
   }
 }
 
@@ -917,9 +970,9 @@ export async function createServiceAddon(input: CreateServiceAddonInput): Promis
     if (error) throw error
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating addon:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating addon' }
   }
 }
 
@@ -942,9 +995,9 @@ export async function updateServiceAddon(id: string, input: UpdateServiceAddonIn
     }
 
     return { success: true, data: data[0] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating addon:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating addon' }
   }
 }
 
@@ -973,9 +1026,9 @@ export async function toggleServiceAddonActive(id: string): Promise<ServerAction
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error toggling addon:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error toggling addon' }
   }
 }
 
@@ -994,9 +1047,9 @@ export async function deleteServiceAddon(id: string): Promise<ServerActionRespon
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting addon:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error deleting addon' }
   }
 }
 
@@ -1025,9 +1078,9 @@ export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<
       success: true,
       data: { isConnected: !!data?.value }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting calendar settings:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error getting calendar settings' }
   }
 }
 
@@ -1069,9 +1122,9 @@ export async function disconnectGoogleCalendar(): Promise<ServerActionResponse> 
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error disconnecting calendar:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error disconnecting calendar' }
   }
 }
 
@@ -1115,9 +1168,9 @@ export async function updateAdminNotificationEmail(email: string): Promise<Serve
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating admin email:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating admin email' }
   }
 }
 
@@ -1201,9 +1254,9 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
     }
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error cancelling appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error cancelling appointment' }
   }
 }
 
@@ -1261,9 +1314,9 @@ export async function getMercadoPagoStatus(): Promise<ServerActionResponse<Merca
         expiresAt: mpIntegration.expires_at,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting MP status:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error getting MP status' }
   }
 }
 
@@ -1299,9 +1352,9 @@ export async function disconnectMercadoPago(): Promise<ServerActionResponse<void
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error disconnecting MP:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error disconnecting MP' }
   }
 }
 
@@ -1328,10 +1381,16 @@ export async function getTomorrowAppointments(): Promise<ServerActionResponse<Ap
     const now = new Date()
     const tomorrow = new Date(now)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(0, 0, 0, 0)
-
+    
+    // Format as YYYY-MM-DD for the timezone utilities
+    const tomorrowString = tomorrow.toISOString().split('T')[0]
     const dayAfter = new Date(tomorrow)
     dayAfter.setDate(dayAfter.getDate() + 1)
+    const dayAfterString = dayAfter.toISOString().split('T')[0]
+
+    // Use UTC boundaries for database query
+    const tomorrowStartUTC = startOfDayUTC(tomorrowString)
+    const tomorrowEndUTC = startOfDayUTC(dayAfterString)
 
     const { data, error } = await supabase
       .from('appointments')
@@ -1340,8 +1399,8 @@ export async function getTomorrowAppointments(): Promise<ServerActionResponse<Ap
         service:services(*)
       `)
       .eq('business_id', businessId)
-      .gte('start_time', tomorrow.toISOString())
-      .lt('start_time', dayAfter.toISOString())
+      .gte('start_time', tomorrowStartUTC)
+      .lt('start_time', tomorrowEndUTC)
       .neq('status', 'cancelled')
       .eq('whatsapp_reminder_sent', false)  // Solo mostrar los que NO fueron enviados
       .order('start_time', { ascending: true })
@@ -1349,9 +1408,9 @@ export async function getTomorrowAppointments(): Promise<ServerActionResponse<Ap
     if (error) throw error
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching tomorrow appointments:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching tomorrow appointments' }
   }
 }
 
@@ -1374,9 +1433,9 @@ export async function markWhatsAppSent(appointmentId: string): Promise<ServerAct
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error marking WhatsApp sent:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error marking WhatsApp sent' }
   }
 }
 
@@ -1444,9 +1503,9 @@ export async function canRescheduleAppointment(appointmentId: string): Promise<S
     }
 
     return { success: true, data: { canReschedule: true, hoursUntil: Math.floor(hoursUntil) } }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error checking reschedule eligibility:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error checking reschedule eligibility' }
   }
 }
 
@@ -1460,6 +1519,24 @@ export async function rescheduleAppointment(
 ): Promise<ServerActionResponse<Appointment>> {
   try {
     const supabase = await createClient()
+
+    // Validate new times
+    const startTime = new Date(newStartTime)
+    const endTime = new Date(newEndTime)
+    
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return {
+        success: false,
+        error: 'Fechas inválidas proporcionadas'
+      }
+    }
+    
+    if (startTime >= endTime) {
+      return {
+        success: false,
+        error: 'La hora de inicio debe ser anterior a la hora de fin'
+      }
+    }
 
     // 1. Check if can reschedule
     const eligibilityCheck = await canRescheduleAppointment(appointmentId)
@@ -1609,8 +1686,8 @@ export async function rescheduleAppointment(
     }
 
     return { success: true, data: updatedAppointment }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error rescheduling appointment:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error rescheduling appointment' }
   }
 }

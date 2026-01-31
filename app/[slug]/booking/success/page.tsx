@@ -314,7 +314,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
 
           {/* Copy Management Link */}
           {appointment && (
-            <CopyLinkButton link={`${process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'}/cancel/${appointment.id}`} />
+            <CopyLinkButton link={`${process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'}/cancel/${appointment.id}`} />
           )}
 
           {/* Home Button */}

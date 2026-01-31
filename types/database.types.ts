@@ -15,6 +15,11 @@ export interface Business {
   instagram: string | null;
   settings: BusinessSettings;
   deposit_percentage: number;
+  // Email configuration fields
+  email_from: string | null;
+  email_from_name: string | null;
+  admin_notification_email: string | null;
+  email_brand_color: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -111,6 +116,10 @@ export interface BlockedSlot {
 
 export interface AppointmentWithService extends Appointment {
   service: Service;
+}
+
+export interface AppointmentWithServiceAndBusiness extends AppointmentWithService {
+  business: Business;
 }
 
 // ============================================
@@ -235,7 +244,7 @@ export interface AppointmentFilters {
 export interface TimeSlot {
   time: string;
   available: boolean;
-  reason?: string; // If unavailable, why (e.g., "booked", "blocked")
+  reason?: string; // If unavailable, why (e.g., "booked", "blocked", "past")
 }
 
 // ============================================
