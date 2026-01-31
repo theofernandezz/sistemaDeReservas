@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { SupabaseClient } from '@supabase/supabase-js'
 import * as crypto from 'crypto'
+import { sendNewAppointmentNotification, sendClientConfirmation } from '@/lib/email'
+import { createCalendarEvent } from '@/lib/google-calendar'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 /**
  * Verifica la firma HMAC del webhook de MercadoPago
@@ -78,31 +83,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
-    // Verify webhook signature if secret is configured
+    // Verify webhook signature (REQUIRED in production)
     const webhookSecret = process.env.MP_WEBHOOK_SECRET
-    if (webhookSecret) {
-      const xSignature = request.headers.get('x-signature')
-      const xRequestId = request.headers.get('x-request-id')
-
-      const isValid = verifyWebhookSignature(
-        xSignature,
-        xRequestId,
-        dataId.toString(),
-        webhookSecret
+    if (!webhookSecret) {
+      console.error('CRITICAL: MP_WEBHOOK_SECRET not configured')
+      return NextResponse.json(
+        { error: 'Service unavailable - webhook not configured' },
+        { status: 503 }
       )
-
-      if (!isValid) {
-        console.error('Invalid webhook signature - rejecting request')
-        return NextResponse.json(
-          { error: 'Invalid signature' },
-          { status: 401 }
-        )
-      }
-
-      console.log('Webhook signature verified successfully')
-    } else {
-      console.warn('MP_WEBHOOK_SECRET not configured - skipping signature verification')
     }
+
+    const xSignature = request.headers.get('x-signature')
+    const xRequestId = request.headers.get('x-request-id')
+
+    const isValid = verifyWebhookSignature(
+      xSignature,
+      xRequestId,
+      dataId.toString(),
+      webhookSecret
+    )
+
+    if (!isValid) {
+      console.error('Invalid webhook signature - rejecting request')
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 401 }
+      )
+    }
+
+    console.log('Webhook signature verified successfully')
 
     // Solo procesar notificaciones de pago
     if (type === 'payment') {
@@ -139,14 +148,95 @@ async function processPaymentNotification(paymentId: string) {
   }
 }
 
+/**
+ * Send post-payment notifications (emails + calendar)
+ * Errors in email/calendar should NOT fail the payment process
+ */
+async function sendPostPaymentNotifications(
+  supabase: SupabaseClient,
+  appointmentId: string,
+  serviceName: string,
+  servicePrice: number,
+  clientName: string,
+  clientEmail: string | null,
+  clientPhone: string | null,
+  startTime: string,
+  endTime: string,
+  businessId: string
+) {
+  const startDateTime = new Date(startTime)
+  const endDateTime = new Date(endTime)
+
+  const emailData = {
+    id: appointmentId,
+    clientName,
+    clientEmail: clientEmail || undefined,
+    clientPhone: clientPhone || undefined,
+    serviceName,
+    servicePrice,
+    date: format(startDateTime, "EEEE d 'de' MMMM", { locale: es }),
+    time: format(startDateTime, 'HH:mm'),
+    startDateTime,
+    endDateTime,
+  }
+
+  // Send admin notification (non-blocking)
+  try {
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('owner_email')
+      .eq('id', businessId)
+      .single()
+
+    if (business?.owner_email) {
+      await sendNewAppointmentNotification(emailData, business.owner_email)
+      console.log(`Admin notification sent for appointment ${appointmentId}`)
+    }
+  } catch (error) {
+    console.error('Failed to send admin notification (non-critical):', error)
+  }
+
+  // Send client confirmation (non-blocking)
+  if (clientEmail) {
+    try {
+      await sendClientConfirmation(emailData as typeof emailData & { startDateTime: Date; endDateTime: Date })
+      console.log(`Client confirmation sent for appointment ${appointmentId}`)
+    } catch (error) {
+      console.error('Failed to send client confirmation (non-critical):', error)
+    }
+  }
+
+  // Add to Google Calendar if connected (non-blocking)
+  try {
+    const { data: googleIntegration } = await supabase
+      .from('google_integrations')
+      .select('refresh_token')
+      .eq('business_id', businessId)
+      .single()
+
+    if (googleIntegration?.refresh_token) {
+      await createCalendarEvent({
+        summary: `${serviceName} - ${clientName}`,
+        description: `Cliente: ${clientName}\nTeléfono: ${clientPhone || 'N/A'}\nEmail: ${clientEmail || 'N/A'}`,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        refreshToken: googleIntegration.refresh_token,
+      })
+      console.log(`Calendar event created for appointment ${appointmentId}`)
+    }
+  } catch (error) {
+    console.error('Failed to create calendar event (non-critical):', error)
+  }
+}
+
 // NEW FLOW: Create appointment from pending_booking when payment is confirmed
-async function processPendingBookingPayment(supabase: any, paymentId: string) {
-  // Find pending bookings waiting for payment
+async function processPendingBookingPayment(supabase: SupabaseClient, paymentId: string) {
+  // Find pending bookings waiting for payment - expand select to get service details
   const { data: pendingBookings } = await supabase
     .from('pending_bookings')
     .select(`
       *,
-      service:services(business_id)
+      service:services(business_id, name, price)
     `)
     .eq('status', 'pending_payment')
     .not('mp_preference_id', 'is', null)
@@ -227,8 +317,23 @@ async function processPendingBookingPayment(supabase: any, paymentId: string) {
 
       console.log(`Created appointment ${newAppointment.id} from pending booking ${pending.id}`)
 
-      // TODO: Send confirmation email
-      // TODO: Add to Google Calendar
+      // Send notifications (emails + calendar)
+      // @ts-ignore - service comes from join
+      const serviceData = pending.service as { business_id: string; name: string; price: number } | null
+      if (serviceData) {
+        await sendPostPaymentNotifications(
+          supabase,
+          newAppointment.id,
+          serviceData.name,
+          serviceData.price,
+          pending.client_name,
+          pending.client_email,
+          pending.client_phone,
+          pending.start_time,
+          pending.end_time,
+          businessId
+        )
+      }
 
       return // Found and processed, exit
     }
@@ -236,7 +341,7 @@ async function processPendingBookingPayment(supabase: any, paymentId: string) {
 }
 
 // LEGACY FLOW: Update existing appointment status
-async function processLegacyAppointmentPayment(supabase: any, paymentId: string) {
+async function processLegacyAppointmentPayment(supabase: SupabaseClient, paymentId: string) {
   const { data: pendingAppointments } = await supabase
     .from('appointments')
     .select(`

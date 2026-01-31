@@ -8,6 +8,15 @@ import { es } from 'date-fns/locale'
 const CRON_SECRET = process.env.CRON_SECRET
 
 export async function GET(request: NextRequest) {
+  // CRON_SECRET is REQUIRED in production
+  if (!CRON_SECRET) {
+    console.error('CRITICAL: CRON_SECRET not configured')
+    return NextResponse.json(
+      { error: 'Service unavailable - cron not configured' },
+      { status: 503 }
+    )
+  }
+
   // Verificar autenticación - soporta header de Vercel Cron y query param para testing
   const authHeader = request.headers.get('authorization')
   const urlSecret = request.nextUrl.searchParams.get('secret')
@@ -15,8 +24,7 @@ export async function GET(request: NextRequest) {
   // Vercel Cron envía: Authorization: Bearer <CRON_SECRET>
   const providedSecret = authHeader?.replace('Bearer ', '') || urlSecret
 
-  // Si hay CRON_SECRET configurado, verificar
-  if (CRON_SECRET && providedSecret !== CRON_SECRET) {
+  if (providedSecret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -116,11 +124,11 @@ export async function GET(request: NextRequest) {
       ...results
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Cron error:', error)
     return NextResponse.json({
       error: 'Internal error',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

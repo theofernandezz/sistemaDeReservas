@@ -3,6 +3,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { ServerActionResponse } from '@/types/database.types'
 import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago'
+import { z } from 'zod'
+
+// Payment limits for security
+const PAYMENT_LIMITS = {
+  MIN_AMOUNT_ARS: 100,
+  MAX_AMOUNT_ARS: 500000,
+} as const
 
 interface PaymentConfig {
   depositPercentage: number
@@ -44,9 +51,9 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
         hasMPConnected: !!mpIntegration,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error getting payment config:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error getting payment config' }
   }
 }
 
@@ -73,9 +80,9 @@ export async function updateBusinessPaymentConfig(
     if (error) throw error
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating payment config:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating payment config' }
   }
 }
 
@@ -135,7 +142,7 @@ export async function createBookingPaymentPreference(
     const paymentAmount = customAmount || Math.round(totalPrice * depositPercentage / 100)
 
     // Create MP preference
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
     const businessSlug = business?.slug || 'siv-nails'
 
     // Build back URLs - ensure they are valid
@@ -183,9 +190,9 @@ export async function createBookingPaymentPreference(
         initPoint: preference.init_point!,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating payment preference:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating payment preference' }
   }
 }
 
@@ -202,6 +209,24 @@ export interface PendingBookingData {
   paymentMethod: 'full' | 'deposit'
 }
 
+// Zod schema for pending booking validation
+const pendingBookingSchema = z.object({
+  serviceId: z.string().uuid('ID de servicio inválido'),
+  startTime: z.string().datetime('Fecha de inicio inválida'),
+  endTime: z.string().datetime('Fecha de fin inválida'),
+  clientName: z.string().min(1, 'Nombre del cliente requerido').max(100),
+  clientPhone: z.string().min(1, 'Teléfono del cliente requerido').max(20),
+  clientEmail: z.string().email('Email inválido').optional().or(z.literal('')),
+  addons: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    price: z.number().nonnegative(),
+    duration_minutes: z.number().nonnegative(),
+  })).optional(),
+  paymentAmount: z.number().min(PAYMENT_LIMITS.MIN_AMOUNT_ARS).max(PAYMENT_LIMITS.MAX_AMOUNT_ARS),
+  paymentMethod: z.enum(['full', 'deposit']),
+})
+
 /**
  * Create a Mercado Pago payment preference for a PENDING booking
  * The appointment will be created AFTER payment confirmation via webhook
@@ -210,34 +235,22 @@ export async function createPendingBookingPreference(
   bookingData: PendingBookingData
 ): Promise<ServerActionResponse<PaymentPreferenceResult & { pendingBookingId: string }>> {
   try {
-    // Validaciones de entrada
-    if (!bookingData.paymentMethod || !['full', 'deposit'].includes(bookingData.paymentMethod)) {
-      return { 
-        success: false, 
-        error: 'Método de pago inválido. Por favor selecciona una opción de pago.' 
-      }
-    }
-    
-    if (!bookingData.paymentAmount || bookingData.paymentAmount <= 0) {
-      return { 
-        success: false, 
-        error: 'Monto de pago inválido.' 
-      }
-    }
-    
-    if (!bookingData.serviceId || !bookingData.clientName || !bookingData.clientPhone) {
+    // Validate input with Zod
+    const validationResult = pendingBookingSchema.safeParse(bookingData)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0]
       return {
         success: false,
-        error: 'Faltan datos requeridos para la reserva.'
+        error: firstError.message
       }
     }
 
     const supabase = await createClient()
 
-    // Get service to find business_id
+    // Get service AND business data in one query
     const { data: service, error: serviceError } = await supabase
       .from('services')
-      .select('id, name, price, business_id')
+      .select('id, name, price, business_id, businesses!inner(deposit_percentage, name, slug)')
       .eq('id', bookingData.serviceId)
       .single()
 
@@ -250,13 +263,56 @@ export async function createPendingBookingPreference(
       throw new Error('Negocio no encontrado')
     }
 
-    // Get business config and MP integration
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('name, slug')
-      .eq('id', businessId)
-      .single()
+    // @ts-ignore - Supabase types for nested selects
+    const business = (service.businesses as any)
+    if (!business) {
+      throw new Error('Configuración de negocio no encontrada')
+    }
 
+    // Validate deposit_percentage is in valid range
+    const depositPercentage = business.deposit_percentage ?? 100
+    if (depositPercentage < 0 || depositPercentage > 100) {
+      throw new Error('Configuración de depósito inválida')
+    }
+
+    // CRITICAL: Recalculate payment amount server-side (NEVER trust client input)
+    const servicePrice = service.price
+    const addonsTotal = (bookingData.addons || []).reduce((sum, addon) => sum + addon.price, 0)
+    const totalPrice = servicePrice + addonsTotal
+
+    let serverCalculatedAmount: number
+    if (bookingData.paymentMethod === 'full') {
+      serverCalculatedAmount = totalPrice
+    } else {
+      serverCalculatedAmount = Math.round(totalPrice * depositPercentage / 100)
+    }
+
+    // Validate calculated amount is within limits
+    if (serverCalculatedAmount < PAYMENT_LIMITS.MIN_AMOUNT_ARS ||
+        serverCalculatedAmount > PAYMENT_LIMITS.MAX_AMOUNT_ARS) {
+      return {
+        success: false,
+        error: `Monto fuera de rango permitido (${PAYMENT_LIMITS.MIN_AMOUNT_ARS}-${PAYMENT_LIMITS.MAX_AMOUNT_ARS} ARS)`
+      }
+    }
+
+    // Verify client-provided amount matches server calculation (tolerance: 1 ARS for rounding)
+    if (Math.abs(bookingData.paymentAmount - serverCalculatedAmount) > 1) {
+      console.error('Payment amount mismatch:', {
+        client: bookingData.paymentAmount,
+        server: serverCalculatedAmount,
+        service: servicePrice,
+        addons: addonsTotal,
+        method: bookingData.paymentMethod,
+        depositPct: depositPercentage
+      })
+      return {
+        success: false,
+        error: 'Monto de pago inválido. Por favor recarga la página.'
+      }
+    }
+
+    // Get MP integration
     const { data: mpIntegration } = await supabase
       .from('mp_integrations')
       .select('access_token')
@@ -270,7 +326,7 @@ export async function createPendingBookingPreference(
     // Create a pending_bookings record to store the booking data temporarily
     const pendingBookingId = crypto.randomUUID()
 
-    // Store in database (we'll create this table)
+    // Store in database - use SERVER-CALCULATED amount, not client input
     const { error: insertError } = await supabase
       .from('pending_bookings')
       .insert({
@@ -282,7 +338,7 @@ export async function createPendingBookingPreference(
         client_phone: bookingData.clientPhone,
         client_email: bookingData.clientEmail || null,
         addons: bookingData.addons || [],
-        payment_amount: bookingData.paymentAmount,
+        payment_amount: serverCalculatedAmount, // Use server-calculated amount
         payment_method: bookingData.paymentMethod,
         status: 'pending_payment',
         created_at: new Date().toISOString(),
@@ -295,7 +351,7 @@ export async function createPendingBookingPreference(
     }
 
     // Create MP preference
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://appointments.devora.lat'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
     const businessSlug = business?.slug || 'siv-nails'
 
     const backUrls = {
@@ -312,7 +368,7 @@ export async function createPendingBookingPreference(
           title: `Pago - ${service.name}`,
           description: `Reserva en ${business?.name}`,
           quantity: 1,
-          unit_price: bookingData.paymentAmount,
+          unit_price: serverCalculatedAmount, // Use server-calculated amount
         }
       ],
       {
@@ -336,9 +392,9 @@ export async function createPendingBookingPreference(
         pendingBookingId,
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating pending booking preference:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Error creating pending booking preference' }
   }
 }
 

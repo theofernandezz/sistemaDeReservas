@@ -212,13 +212,13 @@ export async function signUpWithBusiness(data: {
   const supabase = await createClient()
 
   // 1. Verificar que el slug no exista
-  const { data: existingBusiness } = await supabase
+  const { data: existingBusinessBySlug } = await supabase
     .from('businesses')
     .select('id')
     .eq('slug', data.slug)
     .single()
 
-  if (existingBusiness) {
+  if (existingBusinessBySlug) {
     return { success: false, error: 'Esta URL ya está en uso. Por favor elige otra.' }
   }
 
@@ -243,9 +243,20 @@ export async function signUpWithBusiness(data: {
     return { success: false, error: 'Error al crear la cuenta.' }
   }
 
-  // 3. Crear el negocio asociado al usuario (using service client to bypass RLS)
+  // 3. Verificar que el usuario no tenga ya un negocio
   const serviceClient = createServiceClient()
 
+  const { data: existingBusiness } = await serviceClient
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', authData.user.id)
+    .single()
+
+  if (existingBusiness) {
+    return { success: false, error: 'Ya tienes un negocio registrado.' }
+  }
+
+  // 4. Crear el negocio asociado al usuario (using service client to bypass RLS)
   console.log('Creating business with:', {
     owner_id: authData.user.id,
     name: data.businessName,
@@ -312,15 +323,15 @@ export async function getCurrentBusiness(): Promise<ServerActionResponse<Busines
 
   // Si es super admin y no tiene negocio propio, obtener el primero disponible
   if (isSuperAdminUser) {
-    const { data: anyBusiness, error: anyError } = await supabase
+    const { data: fallbackBusiness, error: fallbackError } = await supabase
       .from('businesses')
       .select('*')
       .order('created_at', { ascending: true })
       .limit(1)
       .single()
 
-    if (!anyError && anyBusiness) {
-      return { success: true, data: { ...anyBusiness, isViewing: true } }
+    if (!fallbackError && fallbackBusiness) {
+      return { success: true, data: { ...fallbackBusiness, isViewing: true } }
     }
   }
 
