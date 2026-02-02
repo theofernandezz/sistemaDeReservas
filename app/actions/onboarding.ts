@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { ServerActionResponse, Business } from '@/types/database.types'
+import { completeOnboardingSchema } from '@/lib/schemas'
 
 interface OnboardingData {
   businessName: string
@@ -36,6 +37,17 @@ export async function checkSlugAvailability(slug: string): Promise<{ available: 
 }
 
 export async function completeOnboarding(data: OnboardingData): Promise<ServerActionResponse<Business>> {
+  // Validate input with Zod
+  const validationResult = completeOnboardingSchema.safeParse(data)
+  if (!validationResult.success) {
+    const firstError = validationResult.error.issues[0]
+    return {
+      success: false,
+      error: firstError?.message || 'Error de validación'
+    }
+  }
+
+  const validatedData = validationResult.data
   const supabase = await createClient()
 
   // 1. Get current user
@@ -56,11 +68,11 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
   }
 
   // 3. Check if slug is available (if different from current)
-  if (data.slug !== business.slug) {
+  if (validatedData.slug !== business.slug) {
     const { data: existingSlug } = await supabase
       .from('businesses')
       .select('id')
-      .eq('slug', data.slug)
+      .eq('slug', validatedData.slug)
       .single()
 
     if (existingSlug) {
@@ -69,11 +81,11 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
   }
 
   // 4. Upload logo to storage if it's a base64 string
-  let logoUrl = data.logo
-  if (data.logo && data.logo.startsWith('data:image')) {
+  let logoUrl = validatedData.logo
+  if (validatedData.logo && validatedData.logo.startsWith('data:image')) {
     try {
-      const base64Data = data.logo.split(',')[1]
-      const mimeType = data.logo.match(/data:(.*);base64/)?.[1] || 'image/png'
+      const base64Data = validatedData.logo.split(',')[1]
+      const mimeType = validatedData.logo.match(/data:(.*);base64/)?.[1] || 'image/png'
       const extension = mimeType.split('/')[1]
       const fileName = `${business.id}/logo.${extension}`
 
@@ -108,14 +120,14 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
   const { error: updateError } = await supabase
     .from('businesses')
     .update({
-      name: data.businessName,
-      slug: data.slug,
+      name: validatedData.businessName,
+      slug: validatedData.slug,
       logo: logoUrl,
-      description: data.description || null,
+      description: validatedData.description || null,
       settings: {
         ...business.settings,
-        businessHours: data.businessHours,
-        slotInterval: data.slotInterval,
+        businessHours: validatedData.businessHours,
+        slotInterval: validatedData.slotInterval,
       },
     })
     .eq('id', business.id)
@@ -126,8 +138,8 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
   }
 
   // 6. Create services (if any)
-  if (data.services.length > 0) {
-    const servicesToInsert = data.services
+  if (validatedData.services.length > 0) {
+    const servicesToInsert = validatedData.services
       .filter(s => s.name.trim()) // Only insert services with names
       .map(service => ({
         business_id: business.id,

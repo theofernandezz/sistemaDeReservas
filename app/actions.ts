@@ -25,6 +25,12 @@ import {
   BusinessSettings
 } from '@/types/database.types'
 import {
+  createAppointmentSchema,
+  rescheduleAppointmentSchema,
+  createServiceSchema,
+  updateServiceSchema,
+} from '@/lib/schemas'
+import {
   startOfDayUTC,
   endOfDayUTC,
   fromUTC,
@@ -222,15 +228,25 @@ export async function getServiceById(id: string): Promise<ServerActionResponse<S
  */
 export async function createService(input: CreateServiceInput): Promise<ServerActionResponse<Service>> {
   try {
+    // Validate input with Zod
+    const validationResult = createServiceSchema.safeParse(input)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
       .from('services')
       .insert([{
-        name: input.name,
-        duration_minutes: input.duration_minutes,
-        price: input.price,
-        is_active: input.is_active ?? true
+        name: validationResult.data.name,
+        duration_minutes: validationResult.data.duration_minutes,
+        price: validationResult.data.price,
+        is_active: validationResult.data.is_active ?? true
       }])
       .select()
       .single()
@@ -249,11 +265,21 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
  */
 export async function updateService(id: string, input: UpdateServiceInput): Promise<ServerActionResponse<Service>> {
   try {
+    // Validate input with Zod
+    const validationResult = updateServiceSchema.safeParse(input)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
       .from('services')
-      .update(input)
+      .update(validationResult.data)
       .eq('id', id)
       .select()
 
@@ -409,27 +435,21 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
  */
 export async function createAppointment(input: CreateAppointmentInput): Promise<ServerActionResponse<Appointment>> {
   try {
+    // Validate input with Zod
+    const validationResult = createAppointmentSchema.safeParse(input)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
+    const validatedInput = validationResult.data
     const supabase = await createClient()
 
-    // Validate start_time < end_time
-    const startTime = new Date(input.start_time)
-    const endTime = new Date(input.end_time)
-    
-    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      return {
-        success: false,
-        error: 'Fechas inválidas proporcionadas'
-      }
-    }
-    
-    if (startTime >= endTime) {
-      return {
-        success: false,
-        error: 'La hora de inicio debe ser anterior a la hora de fin'
-      }
-    }
-    
     // Validate appointment is not in the past
+    const startTime = new Date(validatedInput.start_time)
     const now = new Date()
     if (startTime < new Date(now.getTime() - 60000)) {
       return {
@@ -441,7 +461,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     const { data: service, error: serviceError } = await supabase
       .from('services')
       .select('id, business_id, name, price, duration_minutes')
-      .eq('id', input.service_id)
+      .eq('id', validatedInput.service_id)
       .single()
 
     if (serviceError) throw serviceError
@@ -454,7 +474,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       .select('id, start_time, end_time')
       .neq('status', 'cancelled')
       .eq('business_id', businessId)
-      .or(`and(start_time.lt.${input.end_time},end_time.gt.${input.start_time})`)
+      .or(`and(start_time.lt.${validatedInput.end_time},end_time.gt.${validatedInput.start_time})`)
 
     if (checkError) throw checkError
 
@@ -468,13 +488,13 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
-        start_time: input.start_time,
-        end_time: input.end_time,
-        client_name: input.client_name,
-        client_phone: input.client_phone,
-        client_email: input.client_email,
-        status: input.status || 'pending',
-        service_id: input.service_id,
+        start_time: validatedInput.start_time,
+        end_time: validatedInput.end_time,
+        client_name: validatedInput.client_name,
+        client_phone: validatedInput.client_phone,
+        client_email: validatedInput.client_email,
+        status: validatedInput.status || 'pending',
+        service_id: validatedInput.service_id,
         business_id: businessId
       }])
       .select()
@@ -487,14 +507,14 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       // Get service info for email
       if (service) {
         const { sendNewAppointmentNotification, sendClientConfirmation } = await import('@/lib/email')
-        const startDate = new Date(input.start_time)
-        const endDate = new Date(input.end_time)
+        const startDate = new Date(validatedInput.start_time)
+        const endDate = new Date(validatedInput.end_time)
 
         const emailData = {
           id: data.id,
-          clientName: input.client_name,
-          clientPhone: input.client_phone || undefined,
-          clientEmail: input.client_email || undefined,
+          clientName: validatedInput.client_name,
+          clientPhone: validatedInput.client_phone || undefined,
+          clientEmail: validatedInput.client_email || undefined,
           serviceName: service.name,
           servicePrice: service.price,
           date: startDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
@@ -1518,28 +1538,25 @@ export async function rescheduleAppointment(
   newEndTime: string
 ): Promise<ServerActionResponse<Appointment>> {
   try {
+    // Validate input with Zod
+    const validationResult = rescheduleAppointmentSchema.safeParse({
+      appointmentId,
+      newStartTime,
+      newEndTime,
+    })
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
+    const { appointmentId: validatedId, newStartTime: validatedStartTime, newEndTime: validatedEndTime } = validationResult.data
     const supabase = await createClient()
 
-    // Validate new times
-    const startTime = new Date(newStartTime)
-    const endTime = new Date(newEndTime)
-    
-    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-      return {
-        success: false,
-        error: 'Fechas inválidas proporcionadas'
-      }
-    }
-    
-    if (startTime >= endTime) {
-      return {
-        success: false,
-        error: 'La hora de inicio debe ser anterior a la hora de fin'
-      }
-    }
-
     // 1. Check if can reschedule
-    const eligibilityCheck = await canRescheduleAppointment(appointmentId)
+    const eligibilityCheck = await canRescheduleAppointment(validatedId)
     if (!eligibilityCheck.success || !eligibilityCheck.data?.canReschedule) {
       return {
         success: false,
@@ -1551,7 +1568,7 @@ export async function rescheduleAppointment(
     const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
       .select('*, service:services(*)')
-      .eq('id', appointmentId)
+      .eq('id', validatedId)
       .single()
 
     if (fetchError || !appointment) {
@@ -1563,9 +1580,9 @@ export async function rescheduleAppointment(
       .from('appointments')
       .select('id')
       .neq('status', 'cancelled')
-      .neq('id', appointmentId) // Exclude current appointment
+      .neq('id', validatedId) // Exclude current appointment
       .eq('business_id', appointment.business_id)
-      .or(`and(start_time.lt.${newEndTime},end_time.gt.${newStartTime})`)
+      .or(`and(start_time.lt.${validatedEndTime},end_time.gt.${validatedStartTime})`)
 
     if (checkError) throw checkError
 
@@ -1582,8 +1599,8 @@ export async function rescheduleAppointment(
     const { data: updatedAppointment, error: updateError } = await supabase
       .from('appointments')
       .update({
-        start_time: newStartTime,
-        end_time: newEndTime,
+        start_time: validatedStartTime,
+        end_time: validatedEndTime,
         rescheduled_from: originalStartTime,
         reschedule_count: appointment.reschedule_count + 1,
         last_rescheduled_at: new Date().toISOString(),
@@ -1593,7 +1610,7 @@ export async function rescheduleAppointment(
         whatsapp_reminder_sent: false,
         whatsapp_reminder_sent_at: null
       })
-      .eq('id', appointmentId)
+      .eq('id', validatedId)
       .select()
       .single()
 
@@ -1610,8 +1627,8 @@ export async function rescheduleAppointment(
           await updateCalendarEvent(
             appointment.google_event_id,
             {
-              startTime: new Date(newStartTime),
-              endTime: new Date(newEndTime)
+              startTime: new Date(validatedStartTime),
+              endTime: new Date(validatedEndTime)
             },
             refreshToken
           )

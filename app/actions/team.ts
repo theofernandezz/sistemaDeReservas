@@ -1,14 +1,15 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { 
-  TeamMember, 
-  CreateTeamMemberInput, 
-  UpdateTeamMemberInput, 
+import {
+  TeamMember,
+  CreateTeamMemberInput,
+  UpdateTeamMemberInput,
   ServerActionResponse,
   WeeklySchedule
 } from '@/types/database.types'
 import { getCurrentBusiness } from './auth'
+import { createTeamMemberSchema } from '@/lib/schemas'
 
 // Default weekly schedule for new team members
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
@@ -96,6 +97,18 @@ export async function getTeamMember(memberId: string): Promise<ServerActionRespo
  */
 export async function createTeamMember(input: CreateTeamMemberInput): Promise<ServerActionResponse<TeamMember>> {
   try {
+    // Validate input with Zod
+    const validationResult = createTeamMemberSchema.safeParse(input)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
+    const validatedInput = validationResult.data
+
     const businessResult = await getCurrentBusiness()
     if (!businessResult.success || !businessResult.data) {
       return { success: false, error: 'No se encontró el negocio' }
@@ -106,13 +119,13 @@ export async function createTeamMember(input: CreateTeamMemberInput): Promise<Se
       .from('team_members')
       .insert({
         business_id: businessResult.data.id,
-        name: input.name,
-        role: input.role || null,
-        avatar_color: input.avatar_color || 'bg-linear-to-br from-primary to-primary/80',
-        is_active: input.is_active ?? true,
-        slot_interval: input.slot_interval ?? 15,
-        buffer_time: input.buffer_time ?? 5,
-        weekly_schedule: input.weekly_schedule || DEFAULT_WEEKLY_SCHEDULE,
+        name: validatedInput.name,
+        role: validatedInput.role || null,
+        avatar_color: validatedInput.avatar_color || 'bg-linear-to-br from-primary to-primary/80',
+        is_active: validatedInput.is_active ?? true,
+        slot_interval: validatedInput.slot_interval ?? 15,
+        buffer_time: validatedInput.buffer_time ?? 5,
+        weekly_schedule: validatedInput.weekly_schedule || DEFAULT_WEEKLY_SCHEDULE,
       })
       .select()
       .single()

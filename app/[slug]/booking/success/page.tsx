@@ -7,6 +7,7 @@ import { getAppointmentById } from '@/app/actions'
 import { createClient } from '@/utils/supabase/server'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { getAppUrl } from '@/lib/config'
 import CopyLinkButton from './copy-link-button'
 
 interface SuccessPageProps {
@@ -314,7 +315,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
 
           {/* Copy Management Link */}
           {appointment && (
-            <CopyLinkButton link={`${process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'}/cancel/${appointment.id}`} />
+            <CopyLinkButton link={`${getAppUrl()}/cancel/${appointment.id}`} />
           )}
 
           {/* Home Button */}

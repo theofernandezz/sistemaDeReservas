@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { createClient } from '@/utils/supabase/server'
+import { getAppUrl } from '@/lib/config'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -126,7 +127,7 @@ export async function sendNewAppointmentNotification(
       return { success: false, error: 'Admin email not configured' }
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const appUrl = getAppUrl()
     const googleCalendarUrl = generateGoogleCalendarLink(data)
 
     // Create Calendar Button HTML
@@ -234,7 +235,7 @@ export async function sendClientConfirmation(
   try {
     const config = await getBusinessEmailConfig(businessId)
     const googleCalendarUrl = generateGoogleCalendarLink(data)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const appUrl = getAppUrl()
     const cancelUrl = `${appUrl}/cancel/${data.id}`
 
     const { error } = await resend.emails.send({
@@ -337,7 +338,7 @@ export async function sendAppointmentReminder(
 
   try {
     const config = await getBusinessEmailConfig(businessId)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const appUrl = getAppUrl()
     const cancelUrl = `${appUrl}/cancel/${data.id}`
 
     const { error } = await resend.emails.send({

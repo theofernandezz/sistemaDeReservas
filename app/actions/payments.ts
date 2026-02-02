@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { ServerActionResponse } from '@/types/database.types'
 import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago'
 import { z } from 'zod'
+import { getAppUrl } from '@/lib/config'
 
 // Payment limits for security
 const PAYMENT_LIMITS = {
@@ -142,7 +143,7 @@ export async function createBookingPaymentPreference(
     const paymentAmount = customAmount || Math.round(totalPrice * depositPercentage / 100)
 
     // Create MP preference
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const appUrl = getAppUrl()
     const businessSlug = business?.slug || 'siv-nails'
 
     // Build back URLs - ensure they are valid
@@ -351,7 +352,7 @@ export async function createPendingBookingPreference(
     }
 
     // Create MP preference
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+    const appUrl = getAppUrl()
     const businessSlug = business?.slug || 'siv-nails'
 
     const backUrls = {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
+import { getAppUrl } from "@/lib/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,8 +20,10 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const appUrl = getAppUrl()
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'),
+  metadataBase: new URL(appUrl),
   title: {
     default: 'Buki - Sistema de Reservas para Profesionales',
     template: '%s | Buki',
@@ -32,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'es_AR',
-    url: 'https://buki.devora.lat',
+    url: appUrl,
     siteName: 'Buki',
     title: 'Buki - Sistema de Reservas para Profesionales',
     description: 'Automatiza citas, pagos y recordatorios.',

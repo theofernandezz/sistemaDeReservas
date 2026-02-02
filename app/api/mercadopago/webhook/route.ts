@@ -6,6 +6,7 @@ import { sendNewAppointmentNotification, sendClientConfirmation } from '@/lib/em
 import { createCalendarEvent } from '@/lib/google-calendar'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { mercadoPagoWebhookSchema, mercadoPagoPaymentSchema } from '@/lib/schemas'
 
 /**
  * Verifica la firma HMAC del webhook de MercadoPago
@@ -73,6 +74,16 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(rawBody)
 
     console.log('MP Webhook received:', JSON.stringify(body, null, 2))
+
+    // Validate webhook payload with Zod
+    const webhookValidation = mercadoPagoWebhookSchema.safeParse(body)
+    if (!webhookValidation.success) {
+      console.error('Invalid webhook payload:', webhookValidation.error.issues)
+      return NextResponse.json(
+        { error: 'Invalid webhook payload' },
+        { status: 400 }
+      )
+    }
 
     // MP envía diferentes tipos de notificaciones
     const type = body.type || body.topic
@@ -274,12 +285,39 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
 
     const payment = await paymentResponse.json()
 
+    // Validate payment response with Zod
+    const paymentValidation = mercadoPagoPaymentSchema.safeParse(payment)
+    if (!paymentValidation.success) {
+      console.error('Invalid payment response from MP:', paymentValidation.error.issues)
+      continue
+    }
+
+    const validatedPayment = paymentValidation.data
+
     // Check if this payment matches this pending booking
-    if (payment.metadata?.pending_booking_id !== pending.id) continue
+    if (validatedPayment.metadata?.pending_booking_id !== pending.id) continue
+
+    // SECURITY: Validate payment amount matches expected amount
+    const paidAmount = validatedPayment.transaction_amount
+    const expectedAmount = pending.payment_amount / 100 // Convert cents to ARS
+    const tolerance = 0.01 // Allow 1 cent difference for rounding
+
+    if (Math.abs(paidAmount - expectedAmount) > tolerance) {
+      console.error('SECURITY: Payment amount mismatch!', {
+        pendingBookingId: pending.id,
+        expectedAmount,
+        paidAmount,
+        difference: paidAmount - expectedAmount,
+        paymentId,
+      })
+      // Continue checking other bookings instead of creating appointment
+      continue
+    }
 
     // Payment matches! Check status
-    if (payment.status === 'approved') {
+    if (validatedPayment.status === 'approved') {
       console.log(`Payment ${paymentId} approved for pending booking ${pending.id}`)
+      console.log(`Amount validated: ${paidAmount} ARS (expected: ${expectedAmount} ARS)`)
 
       // Create the actual appointment
       const { data: newAppointment, error: appointmentError } = await supabase

@@ -1,4 +1,5 @@
 import type { Business } from '@/types/database.types'
+import { getAppUrl } from '@/lib/config'
 
 interface SoftwareApplicationProps {
   name?: string
@@ -12,7 +13,7 @@ interface SoftwareApplicationProps {
 export function SoftwareApplicationSchema({
   name = 'Buki',
   description = 'Plataforma de reservas online para profesionales. Automatiza citas, pagos con Mercado Pago y recordatorios.',
-  url = 'https://buki.devora.lat',
+  url = getAppUrl(),
 }: SoftwareApplicationProps) {
   const schema = {
     '@context': 'https://schema.org',
@@ -50,13 +51,14 @@ interface LocalBusinessSchemaProps {
  * Schema para negocio local - usar en páginas de negocios /[slug]
  */
 export function LocalBusinessSchema({ business }: LocalBusinessSchemaProps) {
+  const appUrl = getAppUrl()
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     name: business.name,
     description: business.description || `Reserva tu turno en ${business.name}`,
     image: business.logo || undefined,
-    url: `https://buki.devora.lat/${business.slug}`,
+    url: `${appUrl}/${business.slug}`,
     telephone: business.phone || undefined,
     address: business.address
       ? {
@@ -92,6 +94,7 @@ export function ServiceSchema({
   businessName,
   businessSlug,
 }: ServiceSchemaProps) {
+  const appUrl = getAppUrl()
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -100,7 +103,7 @@ export function ServiceSchema({
     provider: {
       '@type': 'LocalBusiness',
       name: businessName,
-      url: `https://buki.devora.lat/${businessSlug}`,
+      url: `${appUrl}/${businessSlug}`,
     },
     offers: {
       '@type': 'Offer',

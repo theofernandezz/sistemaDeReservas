@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { getPublicBusinessSlugs } from '@/app/actions/public'
+import { getAppUrl } from '@/lib/config'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://buki.devora.lat'
+  const baseUrl = getAppUrl()
 
   // Páginas estáticas
   const staticPages: MetadataRoute.Sitemap = [
