@@ -1286,6 +1286,7 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
 
 interface MercadoPagoStatus {
   isConnected: boolean
+  tokenValid?: boolean
   mpUserId?: string
   connectedAt?: string
   expiresAt?: string
@@ -1317,7 +1318,7 @@ export async function getMercadoPagoStatus(): Promise<ServerActionResponse<Merca
     // Check for MP integration
     const { data: mpIntegration } = await supabase
       .from('mp_integrations')
-      .select('mp_user_id, created_at, expires_at')
+      .select('mp_user_id, created_at, expires_at, access_token')
       .eq('business_id', business.id)
       .single()
 
@@ -1325,10 +1326,21 @@ export async function getMercadoPagoStatus(): Promise<ServerActionResponse<Merca
       return { success: true, data: { isConnected: false } }
     }
 
+    // Validate the stored access token against MP API
+    let tokenValid = true
+    if (mpIntegration.access_token) {
+      const { validateMPToken } = await import('@/lib/mercadopago')
+      const validation = await validateMPToken(mpIntegration.access_token)
+      // Solo marcar como inválido si MP confirmó que el token no funciona
+      // En caso de network_error, no penalizar al usuario
+      tokenValid = validation.valid || validation.error === 'network_error'
+    }
+
     return {
       success: true,
       data: {
         isConnected: true,
+        tokenValid,
         mpUserId: mpIntegration.mp_user_id,
         connectedAt: mpIntegration.created_at,
         expiresAt: mpIntegration.expires_at,

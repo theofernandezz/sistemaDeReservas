@@ -284,7 +284,11 @@ export default function CompactConfirmPage() {
         window.location.href = preferenceResult.data.initPoint
         return
       } else {
-        showError('Error al crear pago', preferenceResult.error || 'Intenta nuevamente')
+        if (preferenceResult.error === 'mp_token_invalid') {
+          showError('Mercado Pago no disponible', 'El negocio necesita reconectar su cuenta de Mercado Pago.')
+        } else {
+          showError('Error al crear pago', preferenceResult.error || 'Intenta nuevamente')
+        }
         setLoading(false)
         return
       }

@@ -34,6 +34,7 @@ export default async function SettingsServerPage() {
 
   const isConnected = calendarResult.success && calendarResult.data?.isConnected
   const isMPConnected = mpResult.success && mpResult.data?.isConnected
+  const mpTokenValid = mpResult.data?.tokenValid ?? true
   const mpUserId = mpResult.data?.mpUserId
   const business = businessResult.success ? businessResult.data : null
   const reservationSettings = business?.settings
@@ -48,6 +49,7 @@ export default async function SettingsServerPage() {
       isGoogleConnected={isConnected || false}
       initialAdminEmail={adminEmail}
       isMPConnected={isMPConnected || false}
+      mpTokenValid={mpTokenValid}
       mpUserId={mpUserId}
       depositPercentage={business?.deposit_percentage || 100}
       businessId={business?.id}

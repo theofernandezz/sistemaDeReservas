@@ -21,7 +21,8 @@ import {
   Clock,
   Globe,
   AtSign,
-  Palette
+  Palette,
+  AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +44,7 @@ interface SettingsProps {
   isGoogleConnected: boolean
   initialAdminEmail: string
   isMPConnected: boolean
+  mpTokenValid?: boolean
   mpUserId?: string
   depositPercentage: number
   businessId?: string
@@ -91,6 +93,7 @@ export default function SettingsPage({
   isGoogleConnected,
   initialAdminEmail,
   isMPConnected,
+  mpTokenValid,
   mpUserId,
   depositPercentage: initialDeposit,
   businessId,
@@ -184,6 +187,7 @@ export default function SettingsPage({
         return (
           <PaymentsSection
             isMPConnected={isMPConnected}
+            mpTokenValid={mpTokenValid}
             mpUserId={mpUserId}
             depositPercentage={initialDeposit}
             businessId={businessId}
@@ -683,11 +687,13 @@ function ReservationsSection({
 
 function PaymentsSection({
   isMPConnected,
+  mpTokenValid,
   mpUserId,
   depositPercentage,
   businessId
 }: {
   isMPConnected: boolean
+  mpTokenValid?: boolean
   mpUserId?: string
   depositPercentage: number
   businessId?: string
@@ -743,13 +749,28 @@ function PaymentsSection({
           <p className="text-sm text-muted-foreground mt-0.5">
             Recibí pagos directamente en tu cuenta
           </p>
+          {isMPConnected && mpTokenValid === false && (
+            <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">
+                La conexión con Mercado Pago expiró o fue revocada. Reconectá tu cuenta para seguir recibiendo pagos.
+              </p>
+            </div>
+          )}
           <div className="mt-3 flex items-center gap-3">
             {isMPConnected ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-                  <Check className="w-4 h-4" />
-                  Conectado {mpUserId && <span className="text-xs opacity-75">({mpUserId})</span>}
-                </div>
+                {mpTokenValid === false ? (
+                  <Button size="sm" onClick={handleConnectMP} className="bg-amber-500 hover:bg-amber-600 text-white">
+                    <ExternalLink className="w-4 h-4 mr-1.5" />
+                    Reconectar
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                    <Check className="w-4 h-4" />
+                    Conectado {mpUserId && <span className="text-xs opacity-75">({mpUserId})</span>}
+                  </div>
+                )}
                 <Button variant="outline" size="sm" onClick={handleDisconnectMP} disabled={disconnecting}>
                   {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                   <span className="ml-1">Desconectar</span>

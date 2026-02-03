@@ -12,6 +12,20 @@ const PAYMENT_LIMITS = {
   MAX_AMOUNT_ARS: 500000,
 } as const
 
+const MP_TOKEN_INVALID_ERROR = 'mp_token_invalid'
+
+function isMPTokenInvalid(error: unknown): boolean {
+  if (error instanceof Error) {
+    // MP SDK wraps HTTP errors — check status on the error or its cause
+    const err = error as Error & { status?: number; cause?: { status?: number } }
+    if (err.status === 401 || err.status === 403) return true
+    if (err.cause?.status === 401 || err.cause?.status === 403) return true
+    // Some SDK versions include the status in the message
+    if (/\b(401|403)\b/.test(err.message)) return true
+  }
+  return false
+}
+
 interface PaymentConfig {
   depositPercentage: number
   hasMPConnected: boolean
@@ -197,6 +211,9 @@ export async function createBookingPaymentPreference(
     }
   } catch (error: unknown) {
     console.error('Error creating payment preference:', error)
+    if (isMPTokenInvalid(error)) {
+      return { success: false, error: MP_TOKEN_INVALID_ERROR }
+    }
     return { success: false, error: error instanceof Error ? error.message : 'Error creating payment preference' }
   }
 }
@@ -401,6 +418,9 @@ export async function createPendingBookingPreference(
     }
   } catch (error: unknown) {
     console.error('Error creating pending booking preference:', error)
+    if (isMPTokenInvalid(error)) {
+      return { success: false, error: MP_TOKEN_INVALID_ERROR }
+    }
     return { success: false, error: error instanceof Error ? error.message : 'Error creating pending booking preference' }
   }
 }

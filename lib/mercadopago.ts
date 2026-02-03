@@ -60,6 +60,38 @@ export async function createPaymentPreference(
   return result
 }
 
+// Validar token contra la API de MP usando GET /users/me
+export async function validateMPToken(accessToken: string): Promise<{
+  valid: boolean
+  error?: 'invalid_token' | 'expired' | 'network_error'
+}> {
+  try {
+    const response = await fetch('https://api.mercadopago.com/users/me', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+    })
+
+    if (response.ok) {
+      return { valid: true }
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      console.warn('MP token validation failed: unauthorized', { status: response.status })
+      return { valid: false, error: 'invalid_token' }
+    }
+
+    // 401/403 = inválido, otro código = tratarlo como error de red
+    console.warn('MP token validation unexpected status:', { status: response.status })
+    return { valid: false, error: 'network_error' }
+  } catch (error) {
+    console.error('MP token validation network error:', error)
+    return { valid: false, error: 'network_error' }
+  }
+}
+
 // Refrescar access_token usando refresh_token
 export async function refreshMPToken(refreshToken: string): Promise<{
   access_token: string
