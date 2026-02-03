@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 
 // Callback de Mercado Pago OAuth
@@ -119,8 +119,10 @@ export async function GET(request: NextRequest) {
     // Calcular fecha de expiración
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000))
 
-    // Guardar o actualizar la integración
-    const { error: upsertError } = await supabase
+    // Guardar o actualizar la integración usando service role
+    // (bypasses RLS porque estamos guardando tokens de OAuth)
+    const serviceSupabase = createServiceClient()
+    const { error: upsertError } = await serviceSupabase
       .from('mp_integrations')
       .upsert({
         business_id: businessId,
