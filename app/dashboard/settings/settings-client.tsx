@@ -99,10 +99,16 @@ export default function SettingsPage({
   business,
   businessSettings
 }: SettingsProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>('profile')
-  const [isMobile, setIsMobile] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [activeSection, setActiveSection] = useState<SectionId>(
+    searchParams.get('mp_success') === 'true' || searchParams.get('mp_error')
+      ? 'payments'
+      : searchParams.get('success') === 'google_connected'
+        ? 'integrations'
+        : 'profile'
+  )
+  const [isMobile, setIsMobile] = useState(false)
   const { success: showSuccess, error: showError } = useToast()
 
   // Mobile detection
