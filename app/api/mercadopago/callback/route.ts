@@ -156,6 +156,9 @@ function closePopupWithResult(status: 'success' | 'error', errorCode?: string) {
     ? 'mp_success=true'
     : `mp_error=${errorCode || 'unknown'}`
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+  const settingsUrl = `${appUrl}/dashboard/settings?${params}`
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -163,10 +166,10 @@ function closePopupWithResult(status: 'success' | 'error', errorCode?: string) {
       <body>
         <script>
           if (window.opener) {
-            window.opener.location.href = '/dashboard/settings?${params}';
+            window.opener.location.href = '${settingsUrl}';
             window.close();
           } else {
-            window.location.href = '/dashboard/settings?${params}';
+            window.location.href = '${settingsUrl}';
           }
         </script>
         <p>Redirigiendo...</p>

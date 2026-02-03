@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { ServerActionResponse } from '@/types/database.types'
 import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago'
 import { z } from 'zod'
@@ -38,8 +38,10 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
 
     if (bizError) throw bizError
 
-    // Check if MP is connected
-    const { data: mpIntegration } = await supabase
+    // Check if MP is connected — use service client because this action
+    // is called from public booking pages where the user is not authenticated
+    const serviceSupabase = createServiceClient()
+    const { data: mpIntegration } = await serviceSupabase
       .from('mp_integrations')
       .select('id')
       .eq('business_id', businessId)
@@ -126,7 +128,9 @@ export async function createBookingPaymentPreference(
       .eq('id', businessId)
       .single()
 
-    const { data: mpIntegration } = await supabase
+    // Use service client for mp_integrations — this may be called from public pages
+    const serviceSupabase = createServiceClient()
+    const { data: mpIntegration } = await serviceSupabase
       .from('mp_integrations')
       .select('access_token')
       .eq('business_id', businessId)
@@ -313,8 +317,10 @@ export async function createPendingBookingPreference(
       }
     }
 
-    // Get MP integration
-    const { data: mpIntegration } = await supabase
+    // Get MP integration — use service client because this is called from
+    // the public booking page where the user is not authenticated
+    const serviceSupabase = createServiceClient()
+    const { data: mpIntegration } = await serviceSupabase
       .from('mp_integrations')
       .select('access_token')
       .eq('business_id', businessId)
