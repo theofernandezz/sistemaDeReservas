@@ -7,7 +7,6 @@ import {
   Appointment,
   BlockedSlot,
   AppointmentWithService,
-  AppointmentWithServiceAndBusiness,
   CreateServiceInput,
   UpdateServiceInput,
   CreateAppointmentInput,
@@ -407,7 +406,7 @@ export async function getAppointments(filters?: AppointmentFilters): Promise<Ser
 /**
  * Get appointment by ID with service data
  */
-export async function getAppointmentById(id: string): Promise<ServerActionResponse<AppointmentWithServiceAndBusiness>> {
+export async function getAppointmentById(id: string): Promise<ServerActionResponse<AppointmentWithService>> {
   try {
     const supabase = await createClient()
 
@@ -415,8 +414,7 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
       .from('appointments')
       .select(`
         *,
-        service:services(*),
-        business:businesses(*)
+        service:services(*)
       `)
       .eq('id', id)
       .single()
@@ -425,8 +423,15 @@ export async function getAppointmentById(id: string): Promise<ServerActionRespon
 
     return { success: true, data }
   } catch (error: unknown) {
-    console.error('Error fetching appointment:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointment' }
+    const postgrestError = error as { code?: string; message?: string; details?: string; hint?: string }
+    console.error('Error fetching appointment:', {
+      id,
+      code: postgrestError.code,
+      message: postgrestError.message,
+      details: postgrestError.details,
+      hint: postgrestError.hint,
+    })
+    return { success: false, error: postgrestError.message || 'Error fetching appointment' }
   }
 }
 
@@ -839,14 +844,14 @@ export async function createBlockedSlot(input: CreateBlockedSlotInput): Promise<
     // Validate start_time < end_time
     const startTime = new Date(input.start_time)
     const endTime = new Date(input.end_time)
-    
+
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
       return {
         success: false,
         error: 'Fechas inválidas proporcionadas'
       }
     }
-    
+
     if (startTime >= endTime) {
       return {
         success: false,
@@ -1402,6 +1407,40 @@ export interface AppointmentWithReminders extends AppointmentWithService {
 }
 
 /**
+ * Get all future pending (unconfirmed) appointments for the booking approval section
+ */
+export async function getPendingAppointments(): Promise<ServerActionResponse<AppointmentWithService[]>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    const now = new Date().toISOString()
+
+    console.log('[getPendingAppointments] Query params:', { businessId, now })
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        service:services(*)
+      `)
+      .eq('business_id', businessId)
+      .eq('status', 'pending')
+      .gte('start_time', now)
+      .order('start_time', { ascending: true })
+
+    console.log('[getPendingAppointments] Results:', { count: data?.length, error, data })
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error: unknown) {
+    console.error('Error fetching pending appointments:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching pending appointments' }
+  }
+}
+
+/**
  * Get tomorrow's appointments for the reminders panel
  */
 export async function getTomorrowAppointments(): Promise<ServerActionResponse<AppointmentWithReminders[]>> {
@@ -1413,7 +1452,7 @@ export async function getTomorrowAppointments(): Promise<ServerActionResponse<Ap
     const now = new Date()
     const tomorrow = new Date(now)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    
+
     // Format as YYYY-MM-DD for the timezone utilities
     const tomorrowString = tomorrow.toISOString().split('T')[0]
     const dayAfter = new Date(tomorrow)

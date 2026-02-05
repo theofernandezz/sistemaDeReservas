@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Check, CheckCheck, Trash2, X, Filter, Calendar, CreditCard, AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Bell, Check, CheckCheck, Trash2, X, Calendar, CreditCard, AlertCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -96,6 +97,7 @@ interface NotificationItemProps {
   onMarkAsRead: (id: string) => void
   onMarkAsUnread: (id: string) => void
   onDelete: (id: string) => void
+  onClick: () => void
 }
 
 function NotificationItem({
@@ -103,6 +105,7 @@ function NotificationItem({
   onMarkAsRead,
   onMarkAsUnread,
   onDelete,
+  onClick,
 }: NotificationItemProps) {
   const config = notificationTypeConfig[notification.type] || notificationTypeConfig.system
   const Icon = config.icon
@@ -110,17 +113,24 @@ function NotificationItem({
   return (
     <div
       className={cn(
-        'group relative flex gap-3 p-3 transition-colors hover:bg-secondary/50',
+        'group relative flex gap-3 p-3 pr-14 transition-colors hover:bg-secondary/50 cursor-pointer',
         !notification.is_read && 'bg-primary/5'
       )}
+      onClick={onClick}
     >
-      {/* Icon */}
-      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', config.bgColor)}>
-        <Icon size={16} className={config.color} />
+      {/* Icon with unread indicator */}
+      <div className="relative shrink-0">
+        <div className={cn('flex h-9 w-9 items-center justify-center rounded-full', config.bgColor)}>
+          <Icon size={16} className={config.color} />
+        </div>
+        {/* Unread dot badge */}
+        {!notification.is_read && (
+          <div className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
+        )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 pr-16">
+      <div className="flex-1 min-w-0">
         <p className={cn('text-sm font-medium line-clamp-1', !notification.is_read && 'text-foreground')}>
           {notification.title}
         </p>
@@ -131,11 +141,6 @@ function NotificationItem({
           {formatRelativeTime(notification.created_at)}
         </span>
       </div>
-
-      {/* Unread indicator */}
-      {!notification.is_read && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-primary" />
-      )}
 
       {/* Actions - always visible with background on hover for clarity */}
       <div className="absolute right-2 top-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 backdrop-blur-sm rounded-md p-0.5">
@@ -182,11 +187,12 @@ function NotificationItem({
 // ============================================
 
 export function NotificationCenter() {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const [filter, setFilter] = useState<NotificationType | 'all'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending'>('all')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Fetch notifications and count
@@ -290,7 +296,16 @@ export function NotificationCenter() {
   // Filter notifications
   const filteredNotifications = filter === 'all'
     ? notifications
-    : notifications.filter((n) => n.type === filter)
+    : notifications.filter((n) => n.type === 'appointment_created')
+
+  // Handle notification click - navigate to reminders and mark as read
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      await handleMarkAsRead(notification.id)
+    }
+    setIsOpen(false)
+    router.push('/dashboard/reminders')
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -343,11 +358,11 @@ export function NotificationCenter() {
             </div>
 
             {/* Filter tabs */}
-            <div className="flex items-center gap-1 px-3 py-2 border-b border-border overflow-x-auto">
+            <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
               <button
                 onClick={() => setFilter('all')}
                 className={cn(
-                  'px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap',
+                  'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
                   filter === 'all'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-secondary'
@@ -356,26 +371,16 @@ export function NotificationCenter() {
                 Todas
               </button>
               <button
-                onClick={() => setFilter('appointment_created')}
+                onClick={() => setFilter('pending')}
                 className={cn(
-                  'px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap',
-                  filter === 'appointment_created'
+                  'px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5',
+                  filter === 'pending'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-secondary'
                 )}
               >
-                Nuevas
-              </button>
-              <button
-                onClick={() => setFilter('payment_received')}
-                className={cn(
-                  'px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap',
-                  filter === 'payment_received'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary'
-                )}
-              >
-                Pagos
+                <Clock size={12} />
+                Pendientes
               </button>
             </div>
 
@@ -406,6 +411,7 @@ export function NotificationCenter() {
                       onMarkAsRead={handleMarkAsRead}
                       onMarkAsUnread={handleMarkAsUnread}
                       onDelete={handleDelete}
+                      onClick={() => handleNotificationClick(notification)}
                     />
                   ))}
                 </div>

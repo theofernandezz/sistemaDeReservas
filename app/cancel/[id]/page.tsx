@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { getAppointmentById, canRescheduleAppointment } from '@/app/actions'
+import { createClient } from '@/utils/supabase/server'
 import AppointmentActions from './appointment-actions'
 import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -16,8 +17,17 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const result = await getAppointmentById(id)
   const appointment = result.data
 
-  // Get business info for branding (may be undefined if appointment not found)
-  const business = appointment?.business
+  // Fetch business info separately (no FK from appointments to businesses in PostgREST)
+  let business: { name: string; slug: string; address?: string; settings?: { businessHours?: unknown; slotInterval?: number } } | null = null
+  if (appointment?.business_id) {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('businesses')
+      .select('name, slug, address, settings')
+      .eq('id', appointment.business_id)
+      .single()
+    business = data
+  }
   const businessName = business?.name || 'Reservas'
   const businessSlug = business?.slug || ''
   const businessAddress = business?.address || ''

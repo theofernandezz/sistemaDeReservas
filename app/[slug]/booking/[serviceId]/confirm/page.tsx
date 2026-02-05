@@ -66,78 +66,45 @@ export default function CompactConfirmPage() {
   const isMountedRef = useRef(true)
   const paymentConfigLoadedRef = useRef(false)
 
+  // Validate form in real-time as user types
+  useEffect(() => {
+    const currentValidation = validateBookingForm(name.trim(), email.trim(), phone.trim())
+    setValidation(currentValidation)
+  }, [name, email, phone])
+
   useEffect(() => {
     isMountedRef.current = true
     paymentConfigLoadedRef.current = false
 
     async function fetchData() {
-      const startTime = Date.now()
-      const sessionId = Math.random().toString(36).substring(7)
-
-      console.log(`[${sessionId}] 🔄 START fetchData - mounted: ${isMountedRef.current}`)
-
-      if (!isMountedRef.current) {
-        console.log(`[${sessionId}] ⚠️ Component unmounted before fetch started`)
-        return
-      }
+      if (!isMountedRef.current) return
 
       setFetchingPaymentConfig(true)
 
       if (serviceId) {
-        console.log(`[${sessionId}] 📡 Fetching service and addons...`)
         const [serviceResult, addonsResult] = await Promise.all([
           getServiceById(serviceId),
           getServiceAddons()
         ])
 
-        if (!isMountedRef.current) {
-          console.log(`[${sessionId}] ⚠️ Component unmounted after service fetch`)
-          return
-        }
-
-        console.log(`[${sessionId}] [DEBUG] serviceResult:`, serviceResult)
+        if (!isMountedRef.current) return
 
         if (serviceResult.success && serviceResult.data) {
           setService(serviceResult.data)
 
-          console.log(`[${sessionId}] [DEBUG] service.business_id:`, serviceResult.data.business_id)
-
           if (serviceResult.data.business_id) {
             const businessId = serviceResult.data.business_id
-            console.log(`[${sessionId}] 💳 Fetching payment config for business:`, businessId)
             const configResult = await getBusinessPaymentConfig(businessId)
-            const loadTime = Date.now() - startTime
 
-            // CRÍTICO: Loggear la RAW response completa
-            console.log(`[${sessionId}] 📦 RAW configResult:`, JSON.stringify(configResult, null, 2))
-            console.log(`[${sessionId}] 🔍 configResult.success type:`, typeof configResult.success)
-            console.log(`[${sessionId}] 🔍 configResult.data:`, configResult.data)
-
-            if (configResult.data) {
-              console.log(`[${sessionId}] 🔍 hasMPConnected value:`, configResult.data.hasMPConnected)
-              console.log(`[${sessionId}] 🔍 hasMPConnected type:`, typeof configResult.data.hasMPConnected)
-              console.log(`[${sessionId}] 🔍 depositPercentage value:`, configResult.data.depositPercentage)
-              console.log(`[${sessionId}] 🔍 depositPercentage type:`, typeof configResult.data.depositPercentage)
-            }
-
-            if (!isMountedRef.current) {
-              console.log(`[${sessionId}] ⚠️ Component unmounted after payment config fetch`)
-              return
-            }
-
-            console.log(`[${sessionId}] [DEBUG] paymentConfig result:`, configResult)
+            if (!isMountedRef.current) return
 
             if (configResult.success && configResult.data) {
               paymentConfigLoadedRef.current = true
               setPaymentConfig(configResult.data)
-
             } else {
-              // CRÍTICO: Si falla la carga, NO usar fallback
               console.error('Payment config failed:', configResult.error)
-              // Dejar paymentConfig en null para que las validaciones bloqueen el submit
             }
           } else {
-            // Si no hay business_id, es un servicio legacy sin negocio asociado
             if (isMountedRef.current) {
               setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
             }
@@ -155,15 +122,11 @@ export default function CompactConfirmPage() {
         setFetchingData(false)
         setFetchingPaymentConfig(false)
       }
-
-      console.log(`[${sessionId}] ✅ END fetchData - paymentConfigLoaded: ${paymentConfigLoadedRef.current}`)
     }
 
     fetchData()
 
-    // Cleanup function
     return () => {
-      console.log('🧹 Cleanup: Setting isMountedRef to false')
       isMountedRef.current = false
     }
   }, [serviceId])

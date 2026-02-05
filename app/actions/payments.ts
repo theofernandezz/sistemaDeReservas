@@ -162,7 +162,7 @@ export async function createBookingPaymentPreference(
 
     // Create MP preference
     const appUrl = getAppUrl()
-    const businessSlug = business?.slug || 'siv-nails'
+    const businessSlug = business?.slug
 
     // Build back URLs - ensure they are valid
     const backUrls = {
@@ -355,6 +355,7 @@ export async function createPendingBookingPreference(
       .from('pending_bookings')
       .insert({
         id: pendingBookingId,
+        business_id: businessId,
         service_id: bookingData.serviceId,
         start_time: bookingData.startTime,
         end_time: bookingData.endTime,
@@ -376,7 +377,7 @@ export async function createPendingBookingPreference(
 
     // Create MP preference
     const appUrl = getAppUrl()
-    const businessSlug = business?.slug || 'siv-nails'
+    const businessSlug = business?.slug
 
     const backUrls = {
       success: `${appUrl}/${businessSlug}/booking/success?pending=${pendingBookingId}`,

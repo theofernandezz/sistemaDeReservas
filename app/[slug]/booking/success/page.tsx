@@ -75,7 +75,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
     // First check if payment was completed (converted_appointment_id exists)
     const { data: pending } = await supabase
       .from('pending_bookings')
-      .select('*, service:services(name)')
+      .select('*, service:services(name, price)')
       .eq('id', pendingId)
       .single()
 
@@ -106,6 +106,9 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
   const startDate = appointment ? new Date(appointment.start_time) : (pendingBooking ? new Date(pendingBooking.start_time) : null)
   const endDate = appointment ? new Date(appointment.end_time) : (pendingBooking ? new Date(pendingBooking.end_time) : null)
   const serviceName = appointment?.service?.name || (pendingBooking?.service as any)?.name || 'Cita'
+  const clientName = appointment?.client_name || pendingBooking?.client_name
+  const clientEmail = appointment?.client_email || pendingBooking?.client_email
+  const servicePrice = appointment?.service?.price || (pendingBooking?.service as any)?.price
 
   const googleCalendarUrl = startDate && endDate && isConfirmed
     ? generateGoogleCalendarUrl(
@@ -149,7 +152,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
               </p>
             </div>
 
-            {appointment && startDate && (
+            {startDate && (
               <div className="bg-secondary/30 rounded-xl p-4 text-left space-y-3">
                 <h3 className="font-semibold text-lg">{serviceName}</h3>
                 <Separator />
@@ -251,7 +254,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
           </div>
 
           {/* Appointment Details */}
-          {appointment && startDate && (
+          {startDate && (
             <div className="bg-secondary/30 rounded-xl p-4 text-left space-y-3">
               <h3 className="font-semibold text-lg">{serviceName}</h3>
               <Separator />
@@ -266,14 +269,16 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                   <span className="text-muted-foreground">Hora</span>
                   <span className="font-medium">{format(startDate, 'HH:mm')} hs</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cliente</span>
-                  <span className="font-medium">{appointment.client_name}</span>
-                </div>
-                {appointment.service?.price && (
+                {clientName && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cliente</span>
+                    <span className="font-medium">{clientName}</span>
+                  </div>
+                )}
+                {servicePrice && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total</span>
-                    <span className="font-semibold text-primary">${appointment.service.price}</span>
+                    <span className="font-semibold text-primary">${servicePrice}</span>
                   </div>
                 )}
               </div>
@@ -305,7 +310,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
           )}
 
           {/* Email Reminder */}
-          {appointment?.client_email && (
+          {clientEmail && (
             <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 rounded-lg p-4 text-left">
               <p className="text-sm text-green-900 dark:text-green-100 leading-relaxed">
                 <span className="font-medium">📧 Revisá tu email:</span> Te enviamos un link para que puedas reprogramar o cancelar tu turno si lo necesitás.

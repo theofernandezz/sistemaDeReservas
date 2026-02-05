@@ -299,7 +299,7 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
 
     // SECURITY: Validate payment amount matches expected amount
     const paidAmount = validatedPayment.transaction_amount
-    const expectedAmount = pending.payment_amount / 100 // Convert cents to ARS
+    const expectedAmount = pending.payment_amount
     const tolerance = 0.01 // Allow 1 cent difference for rounding
 
     if (Math.abs(paidAmount - expectedAmount) > tolerance) {

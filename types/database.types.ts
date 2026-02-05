@@ -118,9 +118,6 @@ export interface AppointmentWithService extends Appointment {
   service: Service;
 }
 
-export interface AppointmentWithServiceAndBusiness extends AppointmentWithService {
-  business: Business;
-}
 
 // ============================================
 // Input Types for CRUD Operations
