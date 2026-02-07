@@ -13,13 +13,13 @@ import { updatePassword } from '@/app/actions/auth'
 import { createClient } from '@/utils/supabase/client'
 import { cn } from '@/lib/utils'
 
-const PASSWORD_STRENGTH_LABELS = {
-  0: 'Muy debil',
-  1: 'Debil',
-  2: 'Regular',
-  3: 'Buena',
-  4: 'Fuerte',
-} as const
+const PASSWORD_STRENGTH_LABELS = [
+  'Muy debil',
+  'Debil',
+  'Regular',
+  'Buena',
+  'Fuerte',
+] as const
 
 function getPasswordStrength(password: string): number {
   let score = 0
