@@ -2,8 +2,6 @@ import { getTomorrowAppointments, getPendingAppointments } from '@/app/actions'
 import RemindersList from '@/components/admin/reminders-list'
 import { Bell, Clock } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
 export default async function RemindersPage() {
   // Fetch both pending approvals and tomorrow's reminders
   const [pendingResult, tomorrowResult] = await Promise.all([

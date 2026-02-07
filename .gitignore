@@ -41,9 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 # ai development docs (local only)
-.agents
 .gitmodules
-AGENTS.md
-CLAUDE.md
-agents
-skills
+

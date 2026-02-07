@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { getCurrentBusiness } from '@/app/actions/auth'
 import { ServerActionResponse } from '@/types/database.types'
@@ -93,6 +94,7 @@ export async function updateBusinessEmailSettings(
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error updating email settings:', error)

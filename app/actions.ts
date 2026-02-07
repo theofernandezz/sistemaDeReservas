@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { getCurrentBusiness } from '@/app/actions/auth'
 import {
@@ -86,6 +87,7 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Server
 
     if (error) throw error
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error updating business:', error)
@@ -119,6 +121,7 @@ export async function updateBusinessSettings(settings: Partial<BusinessSettings>
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error updating business settings:', error)
@@ -252,6 +255,7 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
 
     if (error) throw error
 
+    revalidatePath('/dashboard/services')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error creating service:', error)
@@ -287,6 +291,7 @@ export async function updateService(id: string, input: UpdateServiceInput): Prom
       throw new Error('Servicio no encontrado')
     }
 
+    revalidatePath('/dashboard/services')
     return { success: true, data: data[0] }
   } catch (error: unknown) {
     console.error('Error updating service:', error)
@@ -326,6 +331,7 @@ export async function toggleServiceActive(id: string): Promise<ServerActionRespo
       throw new Error('Error al actualizar')
     }
 
+    revalidatePath('/dashboard/services')
     return { success: true, data: data[0] }
   } catch (error: unknown) {
     console.error('Error toggling service:', error)
@@ -347,6 +353,7 @@ export async function deleteService(id: string): Promise<ServerActionResponse<vo
 
     if (error) throw error
 
+    revalidatePath('/dashboard/services')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error deleting service:', error)
@@ -582,6 +589,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       console.error('Error in post-booking actions (email/calendar):', emailError)
     }
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error creating appointment:', error)
@@ -605,6 +613,7 @@ export async function updateAppointment(id: string, input: UpdateAppointmentInpu
 
     if (error) throw error
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error updating appointment:', error)
@@ -628,6 +637,7 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
     if (error) throw error
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error updating appointment status:', error)
@@ -651,6 +661,7 @@ export async function deleteAppointment(id: string): Promise<ServerActionRespons
 
     if (error) throw error
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error deleting appointment:', error)
@@ -871,6 +882,7 @@ export async function createBlockedSlot(input: CreateBlockedSlotInput): Promise<
 
     if (error) throw error
 
+    revalidatePath('/dashboard/calendar')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error creating blocked slot:', error)
@@ -894,6 +906,7 @@ export async function updateBlockedSlot(id: string, input: UpdateBlockedSlotInpu
 
     if (error) throw error
 
+    revalidatePath('/dashboard/calendar')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error updating blocked slot:', error)
@@ -915,6 +928,7 @@ export async function deleteBlockedSlot(id: string): Promise<ServerActionRespons
 
     if (error) throw error
 
+    revalidatePath('/dashboard/calendar')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error deleting blocked slot:', error)
@@ -994,6 +1008,8 @@ export async function createServiceAddon(input: CreateServiceAddonInput): Promis
 
     if (error) throw error
 
+    revalidatePath('/dashboard/services')
+    revalidatePath('/dashboard/addons')
     return { success: true, data }
   } catch (error: unknown) {
     console.error('Error creating addon:', error)
@@ -1019,6 +1035,8 @@ export async function updateServiceAddon(id: string, input: UpdateServiceAddonIn
       throw new Error('Add-on no encontrado')
     }
 
+    revalidatePath('/dashboard/services')
+    revalidatePath('/dashboard/addons')
     return { success: true, data: data[0] }
   } catch (error: unknown) {
     console.error('Error updating addon:', error)
@@ -1050,6 +1068,8 @@ export async function toggleServiceAddonActive(id: string): Promise<ServerAction
 
     if (error) throw error
 
+    revalidatePath('/dashboard/services')
+    revalidatePath('/dashboard/addons')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error toggling addon:', error)
@@ -1071,6 +1091,8 @@ export async function deleteServiceAddon(id: string): Promise<ServerActionRespon
 
     if (error) throw error
 
+    revalidatePath('/dashboard/services')
+    revalidatePath('/dashboard/addons')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error deleting addon:', error)
@@ -1146,6 +1168,7 @@ export async function disconnectGoogleCalendar(): Promise<ServerActionResponse> 
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error disconnecting calendar:', error)
@@ -1192,6 +1215,7 @@ export async function updateAdminNotificationEmail(email: string): Promise<Serve
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error updating admin email:', error)
@@ -1261,6 +1285,7 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
       console.error('Error sending cancellation email:', emailError)
     }
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error cancelling appointment:', error)
@@ -1371,6 +1396,7 @@ export async function disconnectMercadoPago(): Promise<ServerActionResponse<void
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error disconnecting MP:', error)
@@ -1486,6 +1512,7 @@ export async function markWhatsAppSent(appointmentId: string): Promise<ServerAct
 
     if (error) throw error
 
+    revalidatePath('/dashboard/reminders')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error marking WhatsApp sent:', error)
@@ -1690,6 +1717,7 @@ export async function rescheduleAppointment(
       // Don't fail the reschedule if email fails
     }
 
+    revalidatePath('/dashboard', 'layout')
     return { success: true, data: updatedAppointment }
   } catch (error: unknown) {
     console.error('Error rescheduling appointment:', error)

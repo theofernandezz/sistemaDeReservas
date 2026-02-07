@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { ServerActionResponse } from '@/types/database.types'
 import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago'
@@ -96,6 +97,7 @@ export async function updateBusinessPaymentConfig(
 
     if (error) throw error
 
+    revalidatePath('/dashboard/settings')
     return { success: true }
   } catch (error: unknown) {
     console.error('Error updating payment config:', error)

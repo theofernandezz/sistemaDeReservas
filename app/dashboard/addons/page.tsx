@@ -1,8 +1,6 @@
 import { getAllServiceAddons } from '@/app/actions'
 import AddonManager from '@/components/admin/addon-manager'
 
-export const dynamic = 'force-dynamic'
-
 export default async function AddonsPage() {
   const result = await getAllServiceAddons()
   const addons = result.success ? result.data || [] : []

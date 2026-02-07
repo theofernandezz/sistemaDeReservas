@@ -3,8 +3,6 @@ import { getCurrentBusiness } from '@/app/actions/auth'
 import Link from 'next/link'
 import { CalendarCheck, Clock, Plus, Ban, ExternalLink, ChevronRight } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
 // Get greeting based on time of day
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -36,18 +34,21 @@ function getStatusBadge(status: string) {
 }
 
 export default async function DashboardHomePage() {
-  const businessResult = await getCurrentBusiness()
-  const business = businessResult.data
-
   // Get today's appointments
   const today = new Date()
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
 
-  const appointmentsResult = await getAppointments({
-    startDate: startOfDay.toISOString(),
-    endDate: endOfDay.toISOString(),
-  })
+  // Parallelize data fetches
+  const [businessResult, appointmentsResult] = await Promise.all([
+    getCurrentBusiness(),
+    getAppointments({
+      startDate: startOfDay.toISOString(),
+      endDate: endOfDay.toISOString(),
+    }),
+  ])
+
+  const business = businessResult.data
 
   const appointments = appointmentsResult.success ? appointmentsResult.data || [] : []
   const upcomingAppointments = appointments.filter(apt =>

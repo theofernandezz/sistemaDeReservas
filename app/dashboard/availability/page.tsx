@@ -19,8 +19,6 @@ import {
 } from '@/app/actions/team'
 import { Loader2, Users, User, CalendarX } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
 // Default weekly schedule
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
   '0': { isOpen: false, startTime: '10:00', endTime: '14:00', breaks: [] },

@@ -2,8 +2,6 @@ import { getGoogleCalendarSettings, getAdminNotificationEmail, getMercadoPagoSta
 import { getCurrentBusiness } from '@/app/actions/auth'
 import SettingsPage from './settings-client'
 
-export const dynamic = 'force-dynamic'
-
 export default async function SettingsServerPage() {
   const [calendarResultRaw, adminEmailRaw, mpResultRaw, businessResultRaw] = await Promise.allSettled([
     getGoogleCalendarSettings(),

@@ -112,6 +112,7 @@ export default function SettingsPage({
         : 'profile'
   )
   const [isMobile, setIsMobile] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(true)
   const { success: showSuccess, error: showError } = useToast()
 
   // Mobile detection
@@ -130,12 +131,14 @@ export default function SettingsPage({
 
   useEffect(() => {
     if (successParam === 'google_connected') {
+      setShowMobileMenu(false)
       setTimeout(() => {
         showSuccess('Google Calendar conectado', 'Tu calendario ha sido vinculado correctamente')
         router.replace('/dashboard/settings')
       }, 0)
     }
     if (mpSuccess === 'true') {
+      setShowMobileMenu(false)
       setTimeout(() => {
         showSuccess('Mercado Pago conectado', 'Ya podés recibir pagos de tus clientes')
         router.replace('/dashboard/settings')
@@ -208,10 +211,10 @@ export default function SettingsPage({
   if (isMobile) {
     return (
       <div className="p-4">
-        {activeSection ? (
+        {!showMobileMenu ? (
           <div>
             <button
-              onClick={() => setActiveSection('profile')}
+              onClick={() => setShowMobileMenu(true)}
               className="flex items-center gap-2 text-primary mb-4 text-sm"
             >
               <ChevronRight size={16} className="rotate-180" />
@@ -229,7 +232,10 @@ export default function SettingsPage({
               {sections.map(section => (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => {
+                    setActiveSection(section.id)
+                    setShowMobileMenu(false)
+                  }}
                   className="w-full flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -511,18 +517,17 @@ function AppearanceSection({ businessSettings }: { businessSettings?: SettingsPr
         <p className="text-xs text-muted-foreground mb-4">
           Se usa en botones, precios y elementos destacados de tu página de reservas
         </p>
-        
+
         {/* Colores preset */}
         <div className="flex flex-wrap gap-2 mb-4">
           {PRESET_COLORS.map(color => (
             <button
               key={color.value}
               onClick={() => setAccentColor(color.value)}
-              className={`w-9 h-9 rounded-full border-2 transition-all ${
-                accentColor === color.value 
-                  ? 'border-foreground scale-110 ring-2 ring-offset-2 ring-foreground/20' 
+              className={`w-9 h-9 rounded-full border-2 transition-all ${accentColor === color.value
+                  ? 'border-foreground scale-110 ring-2 ring-offset-2 ring-foreground/20'
                   : 'border-border hover:scale-105 hover:border-foreground/50'
-              }`}
+                }`}
               style={{ backgroundColor: color.value }}
               title={color.name}
             />
@@ -559,7 +564,7 @@ function AppearanceSection({ businessSettings }: { businessSettings?: SettingsPr
               <p className="text-xs text-muted-foreground">30 min</p>
             </div>
             <div className="flex items-center gap-3">
-              <span 
+              <span
                 className="font-bold"
                 style={{ color: accentColor }}
               >

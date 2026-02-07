@@ -1,8 +1,6 @@
 import { getAppointments } from '@/app/actions'
 import AppointmentList from '@/components/admin/appointment-list'
 
-export const dynamic = 'force-dynamic'
-
 export default async function AppointmentsPage() {
   const result = await getAppointments()
   const appointments = result.success && result.data ? result.data : []

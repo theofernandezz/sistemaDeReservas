@@ -194,6 +194,8 @@ export function NotificationCenter() {
   const [isLoading, setIsLoading] = useState(false)
   const [filter, setFilter] = useState<'all' | 'pending'>('all')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const pollIntervalRef = useRef(60000) // Start at 60 seconds
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch notifications and count
   const fetchNotifications = useCallback(async () => {
@@ -205,29 +207,51 @@ export function NotificationCenter() {
         const visibleNotifications = result.data.notifications.filter(
           (notification) => notification.type !== 'payment_failed'
         )
+
+        // Detect if new notifications arrived
+        const hasNewNotifications = result.data.unreadCount > unreadCount
+
         setNotifications(visibleNotifications)
         setUnreadCount(result.data.unreadCount)
+
+        // Adaptive polling: reset to 60s if new notifications, otherwise back off
+        if (hasNewNotifications) {
+          pollIntervalRef.current = 60000 // Reset to 60s
+        } else {
+          // Back off to max 5 minutes (300000ms)
+          pollIntervalRef.current = Math.min(pollIntervalRef.current * 1.5, 300000)
+        }
       }
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [unreadCount])
 
-  // Initial fetch and polling with visibility detection
+  // Initial fetch and adaptive polling with visibility detection
   useEffect(() => {
     fetchNotifications()
 
-    // Poll for new notifications every 60 seconds
-    const interval = setInterval(() => {
-      // Only poll if tab is visible
-      if (document.visibilityState === 'visible') {
-        fetchNotifications()
+    // Adaptive polling using setTimeout instead of setInterval
+    const schedulePoll = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
       }
-    }, 60000)
 
-    // Fetch immediately when tab becomes visible again
+      timeoutRef.current = setTimeout(() => {
+        // Only poll if tab is visible
+        if (document.visibilityState === 'visible') {
+          fetchNotifications()
+        }
+        schedulePoll() // Schedule next poll
+      }, pollIntervalRef.current)
+    }
+
+    schedulePoll()
+
+    // Fetch immediately when tab becomes visible again and reset interval
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        pollIntervalRef.current = 60000 // Reset to 60s
         fetchNotifications()
       }
     }
@@ -235,7 +259,9 @@ export function NotificationCenter() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      clearInterval(interval)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [fetchNotifications])
