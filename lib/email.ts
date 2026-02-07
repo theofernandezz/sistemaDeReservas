@@ -7,6 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // Default brand settings
 const DEFAULT_BRAND_COLOR = '#db2777'
 const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_MAIL || 'reservas@example.com'
+const DEFAULT_FROM_NAME = 'Sistema de Reservas'
 
 /**
  * Business email configuration
@@ -33,6 +34,29 @@ export interface AppointmentEmailData {
   time: string
   startDateTime?: Date
   endDateTime?: Date
+}
+
+export interface PasswordResetEmailData {
+  email: string
+  resetLink: string
+}
+
+export interface AppointmentCancellationEmailData {
+  businessId: string
+  serviceName?: string | null
+  clientName: string
+  clientEmail?: string | null
+  startTime: string
+  reason: string
+}
+
+export interface AppointmentRescheduleEmailData {
+  businessId: string
+  serviceName?: string | null
+  clientName: string
+  clientEmail?: string | null
+  oldStartTime: string
+  newStartTime: string
 }
 
 /**
@@ -95,6 +119,200 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
     adminNotificationEmail: business.admin_notification_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
+  }
+}
+
+export async function sendPasswordResetEmailViaResend(
+  data: PasswordResetEmailData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await resend.emails.send({
+      from: `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
+      to: data.email,
+      subject: 'Restablecer contrasena',
+      html: `
+        <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; padding: 0;">
+          <div style="padding: 32px 24px; text-align: center; border-bottom: 1px solid #e5e7eb;">
+            <h1 style="margin: 0; font-size: 24px; color: #111827;">Restablecer contrasena</h1>
+            <p style="margin: 12px 0 0; font-size: 14px; color: #6b7280;">
+              Si no solicitaste este cambio, ignora este correo.
+            </p>
+          </div>
+
+          <div style="padding: 32px 24px;">
+            <p style="margin: 0 0 20px; font-size: 15px; color: #374151;">
+              Haz clic en el boton para crear una nueva contrasena.
+            </p>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${data.resetLink}"
+                 target="_blank"
+                 style="display: inline-block; padding: 12px 24px; background: #db2777; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;">
+                 Restablecer contrasena
+              </a>
+            </div>
+
+            <p style="margin: 0; font-size: 12px; color: #9ca3af; word-break: break-all;">
+              Si el boton no funciona, copia y pega este enlace en tu navegador:<br />
+              <a href="${data.resetLink}" target="_blank" style="color: #2563eb; text-decoration: none;">
+                ${data.resetLink}
+              </a>
+            </p>
+          </div>
+
+          <div style="padding: 20px 24px; text-align: center; background: #f9fafb; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+              Este enlace expira pronto por seguridad.
+            </p>
+          </div>
+        </div>
+      `,
+    })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error sending password reset email',
+    }
+  }
+}
+
+function formatDate(value: string, locale: string = 'es-AR'): string {
+  return new Date(value).toLocaleDateString(locale)
+}
+
+function formatTime(value: string, locale: string = 'es-AR'): string {
+  return new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+}
+
+export async function sendAppointmentCancellationEmails(
+  data: AppointmentCancellationEmailData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getBusinessEmailConfig(data.businessId)
+
+    if (!config.adminNotificationEmail) {
+      return { success: false, error: 'Admin email not configured' }
+    }
+
+    const adminHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: ${config.brandColor};">Reserva Cancelada ❌</h2>
+        <p>El cliente ha cancelado el siguiente turno:</p>
+
+        <div style="background: #fdf2f8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
+          <p><strong>Cliente:</strong> ${data.clientName}</p>
+          <p><strong>Fecha original:</strong> ${formatDate(data.startTime)}</p>
+          <p><strong>Hora:</strong> ${formatTime(data.startTime)}</p>
+          <p><strong>Motivo:</strong> ${data.reason}</p>
+        </div>
+      </div>
+    `
+
+    const { error } = await resend.emails.send({
+      from: `${config.emailFromName} <${config.emailFrom}>`,
+      to: config.adminNotificationEmail,
+      subject: `❌ Cancelacion: ${data.clientName} - ${data.serviceName ?? 'Turno'}`,
+      html: adminHtml,
+    })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error sending cancellation email',
+    }
+  }
+}
+
+export async function sendAppointmentRescheduleEmails(
+  data: AppointmentRescheduleEmailData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getBusinessEmailConfig(data.businessId)
+
+    if (!config.adminNotificationEmail) {
+      return { success: false, error: 'Admin email not configured' }
+    }
+
+    const oldDate = new Date(data.oldStartTime)
+    const newDate = new Date(data.newStartTime)
+    const adminHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Turno Reprogramado 🔄</h2>
+        <p>El cliente ha reprogramado su turno:</p>
+
+        <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+          <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
+          <p><strong>Cliente:</strong> ${data.clientName}</p>
+          <p style="text-decoration: line-through; color: #6b7280;"><strong>Fecha anterior:</strong> ${oldDate.toLocaleDateString('es-AR')} a las ${oldDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+          <p style="color: #2563eb;"><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR')} a las ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+        </div>
+      </div>
+    `
+
+    let errorMessage: string | undefined
+
+    const adminResult = await resend.emails.send({
+      from: `${config.emailFromName} <${config.emailFrom}>`,
+      to: config.adminNotificationEmail,
+      subject: `🔄 Reprogramacion: ${data.clientName} - ${data.serviceName ?? 'Turno'}`,
+      html: adminHtml,
+    })
+
+    if (adminResult.error) {
+      errorMessage = adminResult.error.message
+    }
+
+    if (data.clientEmail) {
+      const clientHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Turno Reprogramado ✅</h2>
+          <p>Hola ${data.clientName},</p>
+          <p>Tu turno ha sido reprogramado exitosamente.</p>
+
+          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+            <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
+            <p><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p><strong>Hora:</strong> ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px;">Te esperamos!</p>
+        </div>
+      `
+
+      const clientResult = await resend.emails.send({
+        from: `${config.emailFromName} <${config.emailFrom}>`,
+        to: data.clientEmail,
+        subject: `✅ Turno Reprogramado - ${newDate.toLocaleDateString('es-AR')}`,
+        html: clientHtml,
+      })
+
+      if (clientResult.error && !errorMessage) {
+        errorMessage = clientResult.error.message
+      }
+    }
+
+    if (errorMessage) {
+      return { success: false, error: errorMessage }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error sending reschedule emails',
+    }
   }
 }
 

@@ -1,9 +1,13 @@
 'use server'
 
-import { createClient, createServiceClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { ServerActionResponse, Business } from '@/types/database.types'
+import { redirect } from 'next/navigation'
+
+import { sendPasswordResetEmailViaResend } from '@/lib/email'
+import { getAppUrl } from '@/lib/config'
+import { passwordResetRequestSchema, passwordUpdateSchema } from '@/lib/validations/auth'
+import type { Business, ServerActionResponse } from '@/types/database.types'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 
 const ACTIVE_BUSINESS_COOKIE = 'active_business_id'
 
@@ -71,7 +75,7 @@ export async function signUp(data: {
 // Send password reset email
 export async function sendPasswordResetEmail(): Promise<ServerActionResponse<null>> {
   const supabase = await createClient()
-  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const origin = getAppUrl()
   
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -79,12 +83,141 @@ export async function sendPasswordResetEmail(): Promise<ServerActionResponse<nul
     return { success: false, error: 'No se encontró el email del usuario' }
   }
 
+  const redirectTo = `${origin}/reset-password?next=/dashboard/settings`
+  const customResult = await sendCustomPasswordResetEmail(user.email, redirectTo)
+
+  if (customResult.success) {
+    return { success: true, data: null }
+  }
+
   const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-    redirectTo: `${origin}/auth/callback?next=/dashboard/settings`,
+    redirectTo,
   })
 
   if (error) {
-    return { success: false, error: error.message }
+    return { success: false, error: 'No pudimos enviar el email. Intenta de nuevo.' }
+  }
+
+  return { success: true, data: null }
+}
+
+export async function requestPasswordResetEmail(input: {
+  email: string
+}): Promise<ServerActionResponse<null>> {
+  const validated = passwordResetRequestSchema.safeParse(input)
+
+  if (!validated.success) {
+    return { success: false, error: 'Email invalido.' }
+  }
+
+  const supabase = await createClient()
+  const origin = getAppUrl()
+  const redirectTo = `${origin}/reset-password`
+
+  const customResult = await sendCustomPasswordResetEmail(
+    validated.data.email,
+    redirectTo
+  )
+
+  if (customResult.success) {
+    return { success: true, data: null }
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    validated.data.email,
+    { redirectTo }
+  )
+
+  if (error) {
+    return {
+      success: false,
+      error: 'No pudimos enviar el email. Intenta de nuevo.',
+    }
+  }
+
+  return { success: true, data: null }
+}
+
+async function sendCustomPasswordResetEmail(
+  email: string,
+  redirectTo: string
+): Promise<ServerActionResponse<null>> {
+  try {
+    const serviceClient = createServiceClient()
+    const { data, error } = await serviceClient.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo },
+    })
+
+    if (error || !data?.properties?.action_link) {
+      return { success: false, error: 'No pudimos generar el enlace.' }
+    }
+
+    const resetLink = buildPasswordResetLink(data.properties.action_link)
+
+    const emailResult = await sendPasswordResetEmailViaResend({
+      email,
+      resetLink,
+    })
+
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error ?? 'No pudimos enviar el email.' }
+    }
+
+    return { success: true, data: null }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'No pudimos enviar el email.',
+    }
+  }
+}
+
+function buildPasswordResetLink(actionLink: string): string {
+  try {
+    const baseUrl = getAppUrl()
+    const originUrl = new URL(baseUrl)
+    const actionUrl = new URL(actionLink)
+
+    actionUrl.protocol = originUrl.protocol
+    actionUrl.host = originUrl.host
+    actionUrl.pathname = '/reset-password'
+
+    return actionUrl.toString()
+  } catch {
+    return actionLink
+  }
+}
+
+export async function updatePassword(input: {
+  password: string
+}): Promise<ServerActionResponse<null>> {
+  const validated = passwordUpdateSchema.safeParse(input)
+
+  if (!validated.success) {
+    return {
+      success: false,
+      error: 'La contrasena debe tener al menos 6 caracteres.',
+    }
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Sesion expirada. Inicia sesion de nuevo.' }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: validated.data.password,
+  })
+
+  if (error) {
+    return {
+      success: false,
+      error: 'No pudimos actualizar la contrasena. Intenta de nuevo.',
+    }
   }
 
   return { success: true, data: null }

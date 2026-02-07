@@ -1248,31 +1248,14 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
 
     // 4. Notify Admin
     try {
-      const { getAdminNotificationEmail } = await import('@/app/actions')
-      const adminEmail = await getAdminNotificationEmail()
-      const { Resend } = await import('resend')
-      const resend = new Resend(process.env.RESEND_API_KEY)
-
-      const adminHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #db2777;">Reserva Cancelada ❌</h2>
-          <p>El cliente ha cancelado el siguiente turno:</p>
-          
-          <div style="background: #fdf2f8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Servicio:</strong> ${appointment.service?.name}</p>
-            <p><strong>Cliente:</strong> ${appointment.client_name}</p>
-            <p><strong>Fecha original:</strong> ${new Date(appointment.start_time).toLocaleDateString()}</p>
-            <p><strong>Hora:</strong> ${new Date(appointment.start_time).toLocaleTimeString()}</p>
-            <p><strong>Motivo:</strong> ${reason}</p>
-          </div>
-        </div>
-      `
-
-      await resend.emails.send({
-        from: 'Siv Nails <reservas@resend.dev>', // Should use configured sender
-        to: adminEmail,
-        subject: `❌ Cancelación: ${appointment.client_name} - ${appointment.service?.name}`,
-        html: adminHtml
+      const { sendAppointmentCancellationEmails } = await import('@/lib/email')
+      await sendAppointmentCancellationEmails({
+        businessId: appointment.business_id,
+        serviceName: appointment.service?.name,
+        clientName: appointment.client_name,
+        clientEmail: appointment.client_email,
+        startTime: appointment.start_time,
+        reason,
       })
     } catch (emailError) {
       console.error('Error sending cancellation email:', emailError)
@@ -1693,61 +1676,15 @@ export async function rescheduleAppointment(
 
     // 6. Send notification emails
     try {
-      const { getAdminNotificationEmail } = await import('@/app/actions')
-      const adminEmail = await getAdminNotificationEmail()
-      const { Resend } = await import('resend')
-      const resend = new Resend(process.env.RESEND_API_KEY)
-
-      const oldDate = new Date(appointment.start_time)
-      const newDate = new Date(newStartTime)
-
-      // Notify admin
-      const adminHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Turno Reprogramado 🔄</h2>
-          <p>El cliente ha reprogramado su turno:</p>
-
-          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
-            <p><strong>Servicio:</strong> ${appointment.service?.name}</p>
-            <p><strong>Cliente:</strong> ${appointment.client_name}</p>
-            <p style="text-decoration: line-through; color: #6b7280;"><strong>Fecha anterior:</strong> ${oldDate.toLocaleDateString('es-AR')} a las ${oldDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-            <p style="color: #2563eb;"><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR')} a las ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-          </div>
-        </div>
-      `
-
-      await resend.emails.send({
-        from: 'Siv Nails <reservas@resend.dev>',
-        to: adminEmail,
-        subject: `🔄 Reprogramación: ${appointment.client_name} - ${appointment.service?.name}`,
-        html: adminHtml
+      const { sendAppointmentRescheduleEmails } = await import('@/lib/email')
+      await sendAppointmentRescheduleEmails({
+        businessId: appointment.business_id,
+        serviceName: appointment.service?.name,
+        clientName: appointment.client_name,
+        clientEmail: appointment.client_email,
+        oldStartTime: appointment.start_time,
+        newStartTime: validatedStartTime,
       })
-
-      // Notify client if email provided
-      if (appointment.client_email) {
-        const clientHtml = `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Turno Reprogramado ✅</h2>
-            <p>Hola ${appointment.client_name},</p>
-            <p>Tu turno ha sido reprogramado exitosamente.</p>
-
-            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
-              <p><strong>Servicio:</strong> ${appointment.service?.name}</p>
-              <p><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              <p><strong>Hora:</strong> ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-            </div>
-
-            <p style="color: #6b7280; font-size: 14px;">Te esperamos!</p>
-          </div>
-        `
-
-        await resend.emails.send({
-          from: 'Siv Nails <reservas@resend.dev>',
-          to: appointment.client_email,
-          subject: `✅ Turno Reprogramado - ${newDate.toLocaleDateString('es-AR')}`,
-          html: clientHtml
-        })
-      }
     } catch (emailError) {
       console.error('Error sending reschedule emails:', emailError)
       // Don't fail the reschedule if email fails

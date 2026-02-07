@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/utils/supabase/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const nextPath = getSafeNextPath(requestUrl.searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()
@@ -12,6 +13,10 @@ export async function GET(request: NextRequest) {
 
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
+
+      if (nextPath) {
+        return NextResponse.redirect(new URL(nextPath, requestUrl.origin))
+      }
 
       if (user) {
         // Check if user already has a business
@@ -48,4 +53,11 @@ export async function GET(request: NextRequest) {
 
   // Return the user to login with error
   return NextResponse.redirect(new URL('/login?error=auth_callback_error', requestUrl.origin))
+}
+
+function getSafeNextPath(nextPath: string | null): string | null {
+  if (!nextPath) return null
+  if (!nextPath.startsWith('/')) return null
+  if (nextPath.startsWith('//')) return null
+  return nextPath
 }
