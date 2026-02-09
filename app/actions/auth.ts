@@ -349,7 +349,7 @@ export async function signUpWithBusiness(data: {
     .from('businesses')
     .select('id')
     .eq('slug', data.slug)
-    .single()
+    .maybeSingle()
 
   if (existingBusinessBySlug) {
     return { success: false, error: 'Esta URL ya está en uso. Por favor elige otra.' }
@@ -383,7 +383,7 @@ export async function signUpWithBusiness(data: {
     .from('businesses')
     .select('id')
     .eq('owner_id', authData.user.id)
-    .single()
+    .maybeSingle()
 
   if (existingBusiness) {
     return { success: false, error: 'Ya tienes un negocio registrado.' }
@@ -447,7 +447,7 @@ export async function getCurrentBusiness(): Promise<ServerActionResponse<Busines
     .from('businesses')
     .select('*')
     .eq('owner_id', user.id)
-    .single()
+    .maybeSingle()
 
   // Si encontró negocio propio, devolverlo
   if (!error && business) {

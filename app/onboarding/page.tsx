@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
     .from('businesses')
     .select('settings')
     .eq('owner_id', user.id)
-    .single()
+    .maybeSingle()
 
   // If business already has businessHours configured, redirect to dashboard
   if (business?.settings?.businessHours && business.settings.businessHours.length > 0) {

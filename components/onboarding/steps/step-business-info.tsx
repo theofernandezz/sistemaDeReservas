@@ -21,7 +21,7 @@ interface StepBusinessInfoProps {
 }
 
 function generateSlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -29,6 +29,10 @@ function generateSlug(name: string): string {
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+
+  // Return fallback if slug is empty after sanitization
+  return slug || 'mi-negocio'
 }
 
 export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoProps) {
@@ -36,6 +40,14 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
   const [dragActive, setDragActive] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [baseUrl, setBaseUrl] = useState('reserva.com')
+
+  // Get the actual domain on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBaseUrl(window.location.host)
+    }
+  }, [])
 
   // Debounced slug check
   const checkSlug = useDebouncedCallback(async (slug: string) => {
@@ -103,6 +115,14 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecciona una imagen válida')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024 // 5MB in bytes
+    if (file.size > MAX_SIZE) {
+      alert('La imagen es demasiado grande. El tamaño máximo es 5MB.')
       return
     }
 
@@ -112,6 +132,10 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
     const reader = new FileReader()
     reader.onload = (e) => {
       onChange({ ...data, logo: e.target?.result as string })
+      setUploadingLogo(false)
+    }
+    reader.onerror = () => {
+      alert('Error al cargar la imagen. Por favor, intenta de nuevo.')
       setUploadingLogo(false)
     }
     reader.readAsDataURL(file)
@@ -140,7 +164,7 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
         <Label htmlFor="slug">Link de tu página *</Label>
         <div className="flex items-center">
           <span className="bg-muted border border-r-0 rounded-l-md px-3 h-12 flex items-center text-muted-foreground text-sm">
-            reserva.com/
+            {baseUrl}/
           </span>
           <div className="relative flex-1">
             <Input
@@ -193,7 +217,7 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
                 <img src={data.logo} alt="" className="w-10 h-10 rounded-lg object-cover" />
                 <div>
                   <p className="font-semibold text-sm">{data.name || 'Tu Negocio'}</p>
-                  <p className="text-xs text-muted-foreground">reserva.com/{data.slug || 'tu-negocio'}</p>
+                  <p className="text-xs text-muted-foreground">{baseUrl}/{data.slug || 'tu-negocio'}</p>
                 </div>
               </div>
             </div>
@@ -242,7 +266,7 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
               </div>
               <div>
                 <p className="font-semibold text-sm">{data.name}</p>
-                <p className="text-xs text-muted-foreground">reserva.com/{data.slug || 'tu-negocio'}</p>
+                <p className="text-xs text-muted-foreground">{baseUrl}/{data.slug || 'tu-negocio'}</p>
               </div>
             </div>
           </div>

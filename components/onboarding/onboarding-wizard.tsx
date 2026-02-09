@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, ArrowRight, Loader2, Check, Store, Briefcase, Clock, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, Check, Store, Briefcase, Clock, Sparkles, RotateCcw } from 'lucide-react'
 import StepBusinessInfo, { BusinessInfoData } from './steps/step-business-info'
 import StepServices, { ServiceData } from './steps/step-services'
 import StepHours, { HoursData } from './steps/step-hours'
@@ -43,12 +43,41 @@ const INITIAL_DATA: OnboardingData = {
   },
 }
 
+const STORAGE_KEY = 'onboarding-draft'
+
 export default function OnboardingWizard() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [data, setData] = useState<OnboardingData>(INITIAL_DATA)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasDraft, setHasDraft] = useState(false)
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        setData(parsed.data)
+        setCurrentStep(parsed.step || 1)
+        setHasDraft(true)
+      }
+    } catch (e) {
+      console.error('Error loading draft:', e)
+    }
+  }, [])
+
+  // Save draft to localStorage whenever data or step changes
+  useEffect(() => {
+    if (data.business.name || data.services.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step: currentStep }))
+      } catch (e) {
+        console.error('Error saving draft:', e)
+      }
+    }
+  }, [data, currentStep])
 
   // Validate current step
   const canProceed = useMemo(() => {
@@ -108,6 +137,8 @@ export default function OnboardingWizard() {
       })
 
       if (result.success) {
+        // Clear draft on successful completion
+        localStorage.removeItem(STORAGE_KEY)
         router.push('/dashboard')
       } else {
         setError(result.error || 'Error al completar la configuración')
@@ -116,6 +147,15 @@ export default function OnboardingWizard() {
       setError('Ocurrió un error inesperado')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResetDraft = () => {
+    if (confirm('¿Estás seguro de que quieres empezar de nuevo? Se perderá tu progreso actual.')) {
+      localStorage.removeItem(STORAGE_KEY)
+      setData(INITIAL_DATA)
+      setCurrentStep(1)
+      setHasDraft(false)
     }
   }
 
@@ -163,14 +203,30 @@ export default function OnboardingWizard() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">
-            {STEPS[currentStep - 1].title}
-          </h1>
-          <p className="text-muted-foreground">
-            {currentStep === 1 && 'Cuéntanos sobre tu negocio para personalizar tu página'}
-            {currentStep === 2 && 'Agrega los servicios que ofreces (puedes hacerlo después)'}
-            {currentStep === 3 && 'Define tus horarios de atención'}
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">
+                {STEPS[currentStep - 1].title}
+              </h1>
+              <p className="text-muted-foreground">
+                {currentStep === 1 && 'Cuéntanos sobre tu negocio para personalizar tu página'}
+                {currentStep === 2 && 'Agrega los servicios que ofreces (puedes hacerlo después)'}
+                {currentStep === 3 && 'Define tus horarios de atención'}
+              </p>
+            </div>
+            {hasDraft && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetDraft}
+                disabled={loading}
+                className="text-muted-foreground"
+              >
+                <RotateCcw size={14} className="mr-1" />
+                Empezar de nuevo
+              </Button>
+            )}
+          </div>
         </div>
 
         {error && (

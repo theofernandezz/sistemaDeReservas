@@ -125,20 +125,46 @@ export const completeOnboardingSchema = z.object({
     .min(3, 'La URL debe tener al menos 3 caracteres')
     .max(50, 'La URL es demasiado larga')
     .regex(/^[a-z0-9-]+$/, 'La URL solo puede contener letras minúsculas, números y guiones'),
-  logo: z.string().url('URL de logo inválida').nullable().optional(),
-  description: z.string().max(500, 'Descripción demasiado larga'),
+  logo: z.string()
+    .refine(
+      (val) => {
+        if (!val) return true
+        return val.startsWith('http') || val.startsWith('data:image')
+      },
+      'Logo debe ser una URL o imagen base64'
+    )
+    .nullable()
+    .optional(),
+  description: z.string()
+    .max(500, 'Descripción demasiado larga')
+    .optional()
+    .or(z.literal('')),
   services: z.array(z.object({
     name: z.string().min(1, 'Nombre del servicio requerido').max(100),
     durationMinutes: z.number().int().min(1).max(1440),
     price: z.number().nonnegative().max(PAYMENT_LIMITS.MAX_AMOUNT_ARS),
-  })).min(1, 'Debe agregar al menos un servicio'),
+  })).min(0),
   businessHours: z.array(z.object({
     dayOfWeek: z.number().int().min(0).max(6),
     dayName: z.string(),
     isOpen: z.boolean(),
     startTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
     endTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
-  })),
+  })).refine(
+    (hours) => {
+      return hours.every((day) => {
+        if (!day.isOpen) return true
+        const [startH, startM] = day.startTime.split(':').map(Number)
+        const [endH, endM] = day.endTime.split(':').map(Number)
+        const startMinutes = startH * 60 + startM
+        const endMinutes = endH * 60 + endM
+        return startMinutes < endMinutes
+      })
+    },
+    {
+      message: 'La hora de cierre debe ser posterior a la hora de apertura',
+    }
+  ),
   slotInterval: z.number().int().min(5).max(120),
 })
 

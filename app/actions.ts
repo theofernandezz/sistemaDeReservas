@@ -1520,6 +1520,92 @@ export async function markWhatsAppSent(appointmentId: string): Promise<ServerAct
   }
 }
 
+export type WhatsAppDateFilter = 'today' | 'tomorrow' | 'week'
+export type WhatsAppStatusFilter = 'pending' | 'sent' | 'all'
+
+export interface WhatsAppFilters {
+  dateRange: WhatsAppDateFilter
+  status: WhatsAppStatusFilter
+}
+
+/**
+ * Get appointments for WhatsApp reminders panel with filters
+ * Only returns appointments with phone numbers
+ */
+export async function getAppointmentsForWhatsApp(
+  filters: WhatsAppFilters
+): Promise<ServerActionResponse<AppointmentWithReminders[]>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    const now = new Date()
+    let startDate: string
+    let endDate: string
+
+    // Calculate date range based on filter
+    switch (filters.dateRange) {
+      case 'today': {
+        const todayString = now.toISOString().split('T')[0]
+        const tomorrowDate = new Date(now)
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+        startDate = startOfDayUTC(todayString)
+        endDate = startOfDayUTC(tomorrowDate.toISOString().split('T')[0])
+        break
+      }
+      case 'tomorrow': {
+        const tomorrow = new Date(now)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const tomorrowString = tomorrow.toISOString().split('T')[0]
+        const dayAfter = new Date(tomorrow)
+        dayAfter.setDate(dayAfter.getDate() + 1)
+        startDate = startOfDayUTC(tomorrowString)
+        endDate = startOfDayUTC(dayAfter.toISOString().split('T')[0])
+        break
+      }
+      case 'week': {
+        const todayString = now.toISOString().split('T')[0]
+        const weekLater = new Date(now)
+        weekLater.setDate(weekLater.getDate() + 7)
+        startDate = startOfDayUTC(todayString)
+        endDate = startOfDayUTC(weekLater.toISOString().split('T')[0])
+        break
+      }
+    }
+
+    // Build query
+    let query = supabase
+      .from('appointments')
+      .select(`
+        *,
+        service:services(*)
+      `)
+      .eq('business_id', businessId)
+      .gte('start_time', startDate)
+      .lt('start_time', endDate)
+      .neq('status', 'cancelled')
+      .not('client_phone', 'is', null) // Only with phone numbers
+      .neq('client_phone', '')
+      .order('start_time', { ascending: true })
+
+    // Apply status filter
+    if (filters.status === 'pending') {
+      query = query.eq('whatsapp_reminder_sent', false)
+    } else if (filters.status === 'sent') {
+      query = query.eq('whatsapp_reminder_sent', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error: unknown) {
+    console.error('Error fetching WhatsApp appointments:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointments' }
+  }
+}
+
 // ============================================
 // RESCHEDULE - Appointment Rescheduling
 // ============================================

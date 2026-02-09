@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { ServerActionResponse, Business } from '@/types/database.types'
 import { completeOnboardingSchema } from '@/lib/schemas'
+import { BusinessService } from '@/lib/services/business-service'
 
 interface OnboardingData {
   businessName: string
@@ -56,38 +57,66 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
     return { success: false, error: 'No autenticado' }
   }
 
-  // 2. Get user's business
-  const { data: business, error: businessError } = await supabase
-    .from('businesses')
-    .select('*')
-    .eq('owner_id', user.id)
-    .single()
+  // 2. Get user's business (may not exist yet)
+  const business = await BusinessService.getByOwnerId(user.id)
 
-  if (businessError || !business) {
-    return { success: false, error: 'No se encontró el negocio' }
-  }
+  // 3. Check if slug is available
+  // If business exists and slug hasn't changed, skip check
+  // If slug is temp placeholder from callback, allow change
+  const shouldCheckSlug = !business ||
+    (validatedData.slug !== business.slug &&
+     business.slug !== `negocio-${user.id}`)
 
-  // 3. Check if slug is available (if different from current)
-  if (validatedData.slug !== business.slug) {
-    const { data: existingSlug } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('slug', validatedData.slug)
-      .single()
+  if (shouldCheckSlug) {
+    const isAvailable = await BusinessService.isSlugAvailable(
+      validatedData.slug,
+      business?.id
+    )
 
-    if (existingSlug) {
+    if (!isAvailable) {
       return { success: false, error: 'Esta URL ya está en uso' }
     }
   }
 
-  // 4. Upload logo to storage if it's a base64 string
+  // 4. If no business exists, create it first
+  let businessId: string
+  let existingSettings = {}
+
+  if (!business) {
+    // Create new business for first-time onboarding
+    const newBusiness = await BusinessService.createForOwner(user.id, {
+      name: validatedData.businessName,
+      slug: validatedData.slug,
+      settings: {
+        businessHours: validatedData.businessHours,
+        slotInterval: validatedData.slotInterval,
+      },
+    })
+
+    if (!newBusiness) {
+      return { success: false, error: 'No se pudo crear el negocio. Por favor, intenta de nuevo.' }
+    }
+
+    businessId = newBusiness.id
+  } else {
+    businessId = business.id
+    existingSettings = business.settings || {}
+  }
+
+  // 5. Upload logo to storage if it's a base64 string
   let logoUrl = validatedData.logo
   if (validatedData.logo && validatedData.logo.startsWith('data:image')) {
     try {
       const base64Data = validatedData.logo.split(',')[1]
+
+      // Validate base64 size (max ~5MB = ~6.7M chars)
+      if (base64Data.length > 6700000) {
+        return { success: false, error: 'La imagen es demasiado grande. Máximo 5MB.' }
+      }
+
       const mimeType = validatedData.logo.match(/data:(.*);base64/)?.[1] || 'image/png'
       const extension = mimeType.split('/')[1]
-      const fileName = `${business.id}/logo.${extension}`
+      const fileName = `${businessId}/logo.${extension}`
 
       // Convert base64 to Uint8Array
       const binaryString = atob(base64Data)
@@ -116,7 +145,7 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
     }
   }
 
-  // 5. Update business info
+  // 6. Update business info (now that it definitely exists)
   const { error: updateError } = await supabase
     .from('businesses')
     .update({
@@ -125,24 +154,24 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
       logo: logoUrl,
       description: validatedData.description || null,
       settings: {
-        ...business.settings,
+        ...existingSettings,
         businessHours: validatedData.businessHours,
         slotInterval: validatedData.slotInterval,
       },
     })
-    .eq('id', business.id)
+    .eq('id', businessId)
 
   if (updateError) {
     console.error('Error updating business:', updateError)
-    return { success: false, error: 'Error al actualizar el negocio' }
+    return { success: false, error: 'No se pudo completar la configuración. Por favor, intenta de nuevo.' }
   }
 
-  // 6. Create services (if any)
+  // 7. Create services (if any)
   if (validatedData.services.length > 0) {
     const servicesToInsert = validatedData.services
       .filter(s => s.name.trim()) // Only insert services with names
       .map(service => ({
-        business_id: business.id,
+        business_id: businessId,
         name: service.name,
         duration_minutes: service.durationMinutes,
         price: service.price,
@@ -161,11 +190,11 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
     }
   }
 
-  // 7. Return updated business
+  // 8. Return updated business
   const { data: updatedBusiness } = await supabase
     .from('businesses')
     .select('*')
-    .eq('id', business.id)
+    .eq('id', businessId)
     .single()
 
   return { success: true, data: updatedBusiness }

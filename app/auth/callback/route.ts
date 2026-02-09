@@ -24,18 +24,28 @@ export async function GET(request: NextRequest) {
           .from('businesses')
           .select('id, settings')
           .eq('owner_id', user.id)
-          .single()
+          .maybeSingle()
 
         if (!existingBusiness) {
           // Create empty business for the user (using service client to bypass RLS)
           const serviceClient = createServiceClient()
-          await serviceClient
+          const { data: newBusiness, error: createError } = await serviceClient
             .from('businesses')
             .insert({
               owner_id: user.id,
               name: 'Mi Negocio', // Placeholder, will be updated in onboarding
               slug: `negocio-${user.id.slice(0, 8)}`, // Temp slug
             })
+            .select('id, settings')
+            .single()
+
+          if (createError) {
+            console.error('Error creating business in callback:', createError)
+            // Continue to onboarding anyway - it will handle creation there
+          }
+
+          // Redirect to onboarding for new users
+          return NextResponse.redirect(new URL('/onboarding', requestUrl.origin))
         }
 
         // Check if onboarding is complete (has business hours configured)

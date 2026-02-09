@@ -22,7 +22,9 @@ interface StepHoursProps {
 }
 
 const INTERVAL_OPTIONS = [
+  { value: 15, label: '15 min' },
   { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
   { value: 60, label: '1 hora' },
 ]
 
@@ -55,6 +57,18 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
     for (let m = 0; m < 60; m += 30) {
       timeOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`)
     }
+  }
+
+  // Filter end time options to only show times after start time
+  const getEndTimeOptions = (startTime: string): string[] => {
+    const [startH, startM] = startTime.split(':').map(Number)
+    const startMinutes = startH * 60 + startM
+
+    return timeOptions.filter(time => {
+      const [h, m] = time.split(':').map(Number)
+      const timeMinutes = h * 60 + m
+      return timeMinutes > startMinutes
+    })
   }
 
   return (
@@ -131,7 +145,7 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
                     onChange={(e) => handleTimeChange(day.dayOfWeek, 'endTime', e.target.value)}
                     className="px-3 py-1.5 rounded-lg bg-muted/50 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    {timeOptions.map(time => (
+                    {getEndTimeOptions(day.startTime).map(time => (
                       <option key={`end-${time}`} value={time}>{time}</option>
                     ))}
                   </select>
