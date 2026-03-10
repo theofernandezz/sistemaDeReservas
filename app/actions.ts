@@ -241,6 +241,7 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
     }
 
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('services')
@@ -248,7 +249,8 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
         name: validationResult.data.name,
         duration_minutes: validationResult.data.duration_minutes,
         price: validationResult.data.price,
-        is_active: validationResult.data.is_active ?? true
+        is_active: validationResult.data.is_active ?? true,
+        business_id: businessId
       }])
       .select()
       .single()
@@ -870,12 +872,15 @@ export async function createBlockedSlot(input: CreateBlockedSlotInput): Promise<
       }
     }
 
+    const businessId = await requireBusinessId()
+
     const { data, error } = await supabase
       .from('blocked_slots')
       .insert([{
         start_time: input.start_time,
         end_time: input.end_time,
-        reason: input.reason
+        reason: input.reason,
+        business_id: businessId
       }])
       .select()
       .single()
@@ -993,6 +998,7 @@ export async function getAllServiceAddons(): Promise<ServerActionResponse<Servic
 export async function createServiceAddon(input: CreateServiceAddonInput): Promise<ServerActionResponse<ServiceAddon>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
       .from('service_addons')
@@ -1001,7 +1007,8 @@ export async function createServiceAddon(input: CreateServiceAddonInput): Promis
         description: input.description,
         price: input.price,
         duration_minutes: input.duration_minutes,
-        is_active: input.is_active ?? true
+        is_active: input.is_active ?? true,
+        business_id: businessId
       }])
       .select()
       .single()
