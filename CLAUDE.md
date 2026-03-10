@@ -1,85 +1,87 @@
 # AI Development Library - Claude Code
 
-> Este archivo configura cómo Claude Code debe usar la librería de skills para desarrollo.
+> This file configures how Claude Code should use the skills library for development.
 
 ---
 
-## Sistema de Skills
+## Skills System
 
-Esta librería contiene **skills** (patrones de código) y **agentes especializados** (contexto por dominio) que DEBES usar ANTES de escribir código.
+This library contains **skills** (code patterns) and **specialized agents** (domain-specific context) that you MUST use BEFORE writing code.
 
-### Regla Crítica
+### Critical Rule
 
-**SIEMPRE cargá y leé los skills relevantes ANTES de escribir código.**
+**ALWAYS load and read the relevant skills BEFORE writing code.**
 
-No importa cuán "simple" parezca la tarea. Sin excepciones. Si no seguís los patrones de los skills, el código será rechazado.
+No matter how "simple" the task seems. No exceptions. If you don't follow the skill patterns, the code will be rejected.
 
 ---
 
-## Detección Automática de Skills
+## Automatic Skill Detection
 
-Cuando trabajes con estas acciones/archivos, **lee el skill correspondiente PRIMERO**:
+When working with these actions/files, **read the corresponding skill FIRST**:
 
-| Si estás... | Skill | Path |
+| If you're... | Skill | Path |
 |-------------|-------|------|
-| Creando/editando archivos .ts o .tsx | `typescript` | `skills/generic/typescript/SKILL.md` |
-| Trabajando en app/ directory | `nextjs-core` | `skills/generic/nextjs-core/SKILL.md` |
-| Creando componentes React | `react-patterns` | `skills/generic/react-patterns/SKILL.md` |
-| Usando Tailwind/shadcn/Aceternity | `ui-engineering` | `skills/generic/ui-engineering/SKILL.md` |
-| Trabajando con Supabase/DB | `database` | `skills/generic/database/SKILL.md` |
-| Creando Server Actions | `nextjs-core` + `security` | Ver ambos skills |
-| Manejando autenticación | `security` | `skills/generic/security/SKILL.md` |
-| Escribiendo tests | `testing` | `skills/generic/testing/SKILL.md` |
-| Haciendo commits/PRs | `git-workflow` | `skills/generic/git-workflow/SKILL.md` |
-| Creando API routes/webhooks | `api-design` | `skills/generic/api-design/SKILL.md` |
-| Manejando errores | `error-handling` | `skills/generic/error-handling/SKILL.md` |
-| Internacionalizando | `i18n` | `skills/generic/i18n/SKILL.md` |
-| Trabajando accesibilidad | `accessibility` | `skills/generic/accessibility/SKILL.md` |
-| Optimizando performance | `performance` | `skills/generic/performance/SKILL.md` |
-| Configurando SEO | `seo` | `skills/generic/seo/SKILL.md` |
-| Creando videos con Remotion | `remotion` | `skills/generic/remotion/SKILL.md` |
+| Creating/editing .ts or .tsx files | `typescript` | `skills/generic/typescript/SKILL.md` |
+| Working in the app/ directory | `nextjs-core` | `skills/generic/nextjs-core/SKILL.md` |
+| Creating React components | `react-patterns` | `skills/generic/react-patterns/SKILL.md` |
+| Using Tailwind/shadcn/Aceternity | `ui-engineering` | `skills/generic/ui-engineering/SKILL.md` |
+| Working with Supabase/DB | `database` | `skills/generic/database/SKILL.md` |
+| Working with Prisma/PostgreSQL | `prisma` | `skills/generic/prisma/SKILL.md` |
+| Creating Server Actions | `nextjs-core` + `security` | Read both skills |
+| Handling authentication | `security` | `skills/generic/security/SKILL.md` |
+| Writing tests | `testing` | `skills/generic/testing/SKILL.md` |
+| Making commits/PRs | `git-workflow` | `skills/generic/git-workflow/SKILL.md` |
+| Creating API routes/webhooks | `api-design` | `skills/generic/api-design/SKILL.md` |
+| Handling errors | `error-handling` | `skills/generic/error-handling/SKILL.md` |
+| Internationalizing content | `i18n` | `skills/generic/i18n/SKILL.md` |
+| Working on accessibility | `accessibility` | `skills/generic/accessibility/SKILL.md` |
+| Optimizing performance | `performance` | `skills/generic/performance/SKILL.md` |
+| Configuring SEO | `seo` | `skills/generic/seo/SKILL.md` |
+| Creating videos with Remotion | `remotion` | `skills/generic/remotion/SKILL.md` |
+| Managing global/shared state | `state-management` | `skills/generic/state-management/SKILL.md` |
 
 ---
 
-## Delegación por Dominio
+## Domain Delegation
 
-Cuando la tarea pertenece a un dominio específico, **cargá el agente correspondiente** para obtener contexto completo:
+When a task belongs to a specific domain, **load the corresponding agent** to get full context:
 
-| Dominio | Agente | Cuándo usarlo |
-|---------|--------|---------------|
-| **UI/Frontend** | `agents/ui.md` | Componentes, estilos, animaciones, accesibilidad |
-| **Backend/Server** | `agents/backend.md` | Server Actions, APIs, base de datos, lógica de negocio |
-| **Auth** | `agents/auth.md` | Autenticación, autorización, RLS, sesiones |
-| **Testing** | `agents/testing.md` | Tests unitarios, integración, E2E |
+| Domain | Agent | When to use |
+|--------|--------|-------------|
+| **UI/Frontend** | `agents/ui.md` | Components, styles, animations, accessibility |
+| **Backend/Server** | `agents/backend.md` | Server Actions, APIs, database, business logic |
+| **Auth** | `agents/auth.md` | Authentication, authorization, RLS, sessions |
+| **Testing** | `agents/testing.md` | Unit tests, integration, E2E |
 
-### Cómo "Delegar"
+### How to "Delegate"
 
-La delegación en Claude Code se hace cargando contexto adicional:
+Delegation in Claude Code is done by loading additional context:
 
 ```
-1. Leé el archivo del agente (ej: agents/ui.md)
-2. Identificá los skills que orquesta
-3. Leé cada skill listado
-4. Ejecutá la tarea siguiendo TODOS los patrones
+1. Read the agent file (e.g. agents/ui.md)
+2. Identify the skills it orchestrates
+3. Read each listed skill
+4. Execute the task following ALL patterns
 ```
 
 ---
 
 ## Meta-Skills
 
-Para tareas especiales de la librería:
+For special library tasks:
 
-| Tarea | Skill | Instrucción |
-|-------|-------|-------------|
-| Crear nuevo skill | `skill-creator` | Lee `skills/skill-creator/SKILL.md` y seguí el template |
-| Sincronizar AGENTS.md | `skill-sync` | Ejecutá `./skills/skill-sync/assets/sync.sh` |
-| Registrar mejoras | `feedback-loop` | Lee `skills/feedback-loop/SKILL.md` |
+| Task | Skill | Instructions |
+|------|-------|-------------|
+| Create new skill | `skill-creator` | Read `skills/skill-creator/SKILL.md` and follow the template |
+| Sync AGENTS.md | `skill-sync` | Run `./skills/skill-sync/assets/sync.sh` |
+| Record improvements | `feedback-loop` | Read `skills/feedback-loop/SKILL.md` |
 
 ---
 
-## Reglas Globales (Siempre Aplican)
+## Global Rules (Always Apply)
 
-Estas reglas son **NON-NEGOTIABLE** y aplican a TODO el código:
+These rules are **NON-NEGOTIABLE** and apply to ALL code:
 
 ### Type Safety
 ```typescript
@@ -103,16 +105,16 @@ type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES]
 ```
 
 ### Server-First (Next.js)
-- Server Components por defecto
-- Client Components solo para interactividad
-- NUNCA useEffect para data fetching
-- NUNCA API routes para operaciones internas
+- Server Components by default
+- Client Components only for interactivity
+- NEVER use useEffect for data fetching
+- NEVER use API routes for internal operations
 
 ### Security
-- Validar TODO input con Zod
-- RLS en TODAS las tablas de Supabase
-- NUNCA confiar en checks client-side
-- NUNCA exponer errores internos al usuario
+- Validate ALL input with Zod
+- RLS on ALL Supabase tables
+- NEVER trust client-side checks
+- NEVER expose internal errors to the user
 
 ### Imports
 ```typescript
@@ -141,32 +143,32 @@ import { cn } from '@/lib/utils'
 
 ---
 
-## Flujo de Trabajo
+## Workflow
 
 ```
-Usuario pide algo
+User requests something
     ↓
-1. Analizá la tarea - identificá dominio y tecnologías
+1. Analyze the task — identify domain and technologies
     ↓
-2. Cargá el agente del dominio (si aplica)
+2. Load the relevant domain agent (if applicable)
     ↓
-3. Cargá los skills necesarios (leé cada SKILL.md)
+3. Load the necessary skills (read each SKILL.md)
     ↓
-4. Escribí el código siguiendo TODOS los patrones
+4. Write code following ALL patterns
     ↓
-5. Verificá contra los checklists de cada skill
+5. Verify against each skill's checklist
 ```
 
 ---
 
-## Índice Rápido de Skills
+## Quick Skills Index
 
-Ver `skills/_index.md` para una tabla completa de todos los skills disponibles.
+See `skills/_index.md` for a complete table of all available skills.
 
-## Referencia Completa
+## Full Reference
 
-Para reglas detalladas, tablas de auto-invoke, y arquitectura completa: `AGENTS.md`
+For detailed rules, auto-invoke tables, and full architecture: `AGENTS.md`
 
 ---
 
-*Claude Code Configuration v1.0 | Compatible con ai-library v2.1*
+*Claude Code Configuration v1.1 | Compatible with ai-library v2.3.0*

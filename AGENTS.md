@@ -3,7 +3,8 @@
 
 > **Philosophy:** This library acts as the cognitive backbone for AI-assisted development. Every skill is a self-contained context module that gets injected into the AI's working memory based on the user's current action.
 
-> **Claude Code Users:** Si estás usando Claude Code CLI, leé [`CLAUDE.md`](CLAUDE.md) para instrucciones específicas.
+> **Claude Code Users:** If you're using Claude Code CLI, read [`CLAUDE.md`](CLAUDE.md) for specific instructions.
+> **Gemini Users:** If you're using Gemini in VS Code, read [`GEMINI.md`](GEMINI.md) for specific instructions.
 
 > **Skills Reference**: For detailed patterns, use these skills:
 > - [`skill-sync`](skills/skill-sync/SKILL.md) - Keep AGENTS.md in sync with skill metadata
@@ -23,7 +24,7 @@ When a task falls into a specific domain, **route to the specialized agent** whi
 | **Auth** | [`/auth/AGENTS.md`](auth/AGENTS.md) | [`agents/auth.md`](agents/auth.md) | database, security, error-handling, nextjs-core |
 | **Testing** | [`/testing/AGENTS.md`](testing/AGENTS.md) | [`agents/testing.md`](agents/testing.md) | testing, typescript, react-patterns |
 
-> **Note:** Los archivos en `/agents/` son versiones optimizadas para Claude Code CLI.
+> **Note:** Files in `/agents/` are optimized versions for Claude Code CLI. Gemini users can use them identically.
 
 ### Agent Hierarchy
 ```
@@ -50,9 +51,9 @@ AGENTS.md (Orchestrator Agent - OA)
 ## 🎯 Auto-invoke Skills
 
 > ⚠️ **CRITICAL RULE - NON-NEGOTIABLE:**
-> **SIEMPRE cargá y leé los skills relevantes ANTES de escribir código.**
-> No importa cuán "simple" parezca la tarea. Sin excepciones.
-> Si no seguís los patrones de los skills, el código será rechazado.
+> **ALWAYS load and read the relevant skills BEFORE writing code.**
+> No matter how "simple" the task seems. No exceptions.
+> If you don't follow the skill patterns, the code will be rejected.
 
 When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
@@ -92,6 +93,9 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Locale handling | `i18n` |
 | Logging and monitoring | `error-handling` |
 | Making commits | `git-workflow` |
+| Working with Prisma schema | `prisma` |
+| Writing Prisma queries | `prisma` |
+| Working with PostgreSQL via Neon | `prisma` |
 | Meta tags / Open Graph | `seo` |
 | Mocking with MSW | `testing` |
 | Multi-language support | `i18n` |
@@ -100,6 +104,9 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Regenerate AGENTS.md Auto-invoke tables | `skill-sync` |
 | Security headers | `security` |
 | State management patterns | `react-patterns` |
+| Managing global state | `state-management` |
+| Creating Zustand stores | `state-management` |
+| Shared state across components | `state-management` |
 | Test setup and configuration | `testing` |
 | Using Shadcn UI components | `ui-engineering` |
 | Webhook handlers | `api-design` |
@@ -141,7 +148,9 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | `i18n` | Multi-language support with next-intl | [SKILL.md](skills/generic/i18n/SKILL.md) |
 | `accessibility` | WCAG 2.1, ARIA, keyboard navigation | [SKILL.md](skills/generic/accessibility/SKILL.md) |
 | `performance` | Core Web Vitals, lazy loading, optimization | [SKILL.md](skills/generic/performance/SKILL.md) |
+| `prisma` | Prisma ORM, PostgreSQL, Neon serverless, service layer | [SKILL.md](skills/generic/prisma/SKILL.md) |
 | `seo` | Meta tags, Open Graph, structured data, sitemap | [SKILL.md](skills/generic/seo/SKILL.md) |
+| `state-management` | Zustand vs Context decision matrix, stores, persistence | [SKILL.md](skills/generic/state-management/SKILL.md) |
 | `remotion` | Video creation in React, programmatic videos | [SKILL.md](skills/generic/remotion/SKILL.md) |
 
 ### Meta Skills
@@ -266,4 +275,4 @@ pnpm test
 
 ---
 
-*Last Updated: 2026-01-22 | Version: 2.2.0*
+*Last Updated: 2026-02-25 | Version: 2.3.0*
