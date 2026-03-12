@@ -24,7 +24,7 @@ const DAY_NAMES: Record<string, string> = {
 }
 
 const DAY_ORDER = ['1', '2', '3', '4', '5', '6', '0']
-const INTERVAL_OPTIONS = [15, 30, 45, 60]
+const INTERVAL_OPTIONS = [15, 30, 45, 60, 90]
 const BUFFER_OPTIONS = [0, 5, 10, 15]
 
 // Calculate stats

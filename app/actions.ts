@@ -900,10 +900,52 @@ export async function getAvailableSlots(
       return { success: true, data: [] }
     }
 
+    // Convert appointments to local-time minute ranges for comparison
+    // Appointments are stored as UTC in the DB but were entered in local (ART) time by users.
+    // On a UTC server, createSlotTimeUTC("2026-03-12", "10:30") produces 10:30Z, but the
+    // appointment was saved as 13:30Z (ART=UTC-3). So we compare in local time minutes instead.
+    const TZ = 'America/Argentina/Buenos_Aires'
+    const aptMinuteRanges = (appointments || []).map(apt => {
+      const startLocal = new Date(apt.start_time)
+      const endLocal   = new Date(apt.end_time)
+      // Extract local HH:mm for this timezone
+      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
+      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
+      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      return {
+        startMin: startH * 60 + parseInt(startM),
+        endMin:   endH   * 60 + parseInt(endM),
+      }
+    })
+
+    const blockedMinuteRanges = (blocked || []).map(block => {
+      const startLocal = new Date(block.start_time)
+      const endLocal   = new Date(block.end_time)
+      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
+      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
+      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      return {
+        startMin: startH * 60 + parseInt(startM),
+        endMin:   endH   * 60 + parseInt(endM),
+      }
+    })
+
+    const nowLocalMin = (() => {
+      const now = new Date()
+      const h = parseInt(now.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
+      const m = parseInt(now.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }))
+      return h * 60 + m
+    })()
+
+    // Is today? (compare date in local timezone)
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ }) // YYYY-MM-DD
+    const isToday = date === todayStr
+
     // Generate time slots based on business hours and interval
     const slots: TimeSlot[] = []
 
-    // Generate slots using interval (startMinutes/endMinutes are already in minutes from midnight)
     let currentMinutes = dayConfig.startMinutes
     const endMinutes = dayConfig.endMinutes
 
@@ -911,24 +953,20 @@ export async function getAvailableSlots(
       const hour = Math.floor(currentMinutes / 60)
       const minute = currentMinutes % 60
       const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      const slotEndMin = currentMinutes + service.duration_minutes
 
-      // Create slot times in UTC for comparison with database records
-      // The date string and time are in local timezone, we convert to UTC for consistency
-      const slotStartUTC = createSlotTimeUTC(date, slotTime)
-      const slotEndUTC = addMinutesToUTC(slotStartUTC, service.duration_minutes)
+      // Past: only check if today, with 30 min buffer
+      const isPast = isToday && (currentMinutes < nowLocalMin + 30)
 
-      // Check if slot is in the past (with 30 min buffer)
-      const isPast = isPastDate(slotStartUTC, 30)
+      // Booked: slot overlaps with any appointment (in local minutes)
+      const isBooked = aptMinuteRanges.some(apt =>
+        currentMinutes < apt.endMin && slotEndMin > apt.startMin
+      )
 
-      // Check if slot conflicts with appointments (both times are UTC)
-      const isBooked = appointments?.some(apt => {
-        return doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time)
-      })
-
-      // Check if slot conflicts with blocked slots (both times are UTC)
-      const isBlocked = blocked?.some(block => {
-        return doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time)
-      })
+      // Blocked: slot overlaps with any blocked range (in local minutes)
+      const isBlocked = blockedMinuteRanges.some(block =>
+        currentMinutes < block.endMin && slotEndMin > block.startMin
+      )
 
       slots.push({
         time: slotTime,
