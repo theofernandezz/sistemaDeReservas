@@ -37,9 +37,9 @@ export default function MarketingLayout({
         />
         <div className="container relative mx-auto flex h-20 items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90 relative z-10">
-            <Image src={logo} alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
+            <Image src={logo} alt="Devora Buki" width={100} height={60} className="h-8 w-auto object-contain" />
             <span className="font-bold tracking-tight text-xl hidden sm:inline-block">
-              Buki
+              Devora Buki
             </span>
           </Link>
 
@@ -81,8 +81,8 @@ export default function MarketingLayout({
             {/* Brand */}
             <div className="max-w-xs">
               <Link href="/" className="flex items-center gap-2 mb-3">
-                <Image src={logo} alt="Buki" width={100} height={60} className="h-7 w-auto object-contain" />
-                <span className="font-bold text-lg">Buki</span>
+                <Image src={logo} alt="Devora Buki" width={100} height={60} className="h-7 w-auto object-contain" />
+                <span className="font-bold text-lg">Devora Buki</span>
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 La plataforma de gestión de reservas diseñada para profesionales independientes.
@@ -136,7 +136,7 @@ export default function MarketingLayout({
 
           <div className="mt-6 pt-6 border-t">
             <p className="text-xs text-muted-foreground text-center">
-              © 2026 Buki. Todos los derechos reservados.
+              © 2026 Devora Buki. Todos los derechos reservados.
             </p>
           </div>
         </div>
