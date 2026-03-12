@@ -52,24 +52,13 @@ export default function BookingCalendar({
 
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
-  const getBusinessHours = (): string | undefined => {
-    if (typeof window === 'undefined') return undefined
-    try {
-      return localStorage.getItem('luxenail_business_hours') || undefined
-    } catch {
-      return undefined
-    }
-  }
-
   const handleDateSelect = async (newDate: Date | undefined) => {
     if (!newDate) return
     setDate(newDate)
     setSelectedTime(null)
     setLoading(true)
     const dateStr = format(newDate, 'yyyy-MM-dd')
-    // Use memberId if provided (team flow), otherwise fall back to localStorage (solo flow)
-    const businessHours = memberId ? undefined : getBusinessHours()
-    const result = await getAvailableSlots(serviceId, dateStr, businessHours, memberId)
+    const result = await getAvailableSlots(serviceId, dateStr, undefined, memberId)
     if (result.success && result.data) {
       setSlots(result.data)
     }

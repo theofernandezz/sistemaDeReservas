@@ -685,6 +685,9 @@ export async function getAvailableSlots(
   try {
     const supabase = await createClient()
 
+    const [dateYear, dateMonth, dateDay] = date.split('-').map(Number)
+    const requestedDateLocal = new Date(dateYear, dateMonth - 1, dateDay)
+
     // Get the service to know duration
     const { data: service, error: serviceError } = await supabase
       .from('services')
@@ -700,7 +703,7 @@ export async function getAvailableSlots(
 
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
-      .select('start_time, end_time')
+      .select('start_time, end_time, team_member_id')
       .gte('start_time', dayStartUTC)
       .lte('start_time', dayEndUTC)
       .eq('business_id', service.business_id)
@@ -755,9 +758,15 @@ export async function getAvailableSlots(
         // Have team members → compute slots from their schedules
         teamPathHandled = true
 
-        const dayKey = String(new Date(date).getDay())
+        const dayKey = String(requestedDateLocal.getDay())
 
-        type MinuteRange = { startMin: number; endMin: number; interval: number; memberId: string }
+        type MinuteRange = {
+          startMin: number
+          endMin: number
+          interval: number
+          memberId: string
+          breaks: { startMin: number; endMin: number }[]
+        }
         const ranges: MinuteRange[] = []
 
         for (const member of members) {
@@ -766,11 +775,21 @@ export async function getAvailableSlots(
 
           const [sh, sm = 0] = daySchedule.startTime.split(':').map(Number)
           const [eh, em = 0] = daySchedule.endTime.split(':').map(Number)
+          const breaks = (daySchedule.breaks || []).map((rest) => {
+            const [bsh, bsm = 0] = rest.start.split(':').map(Number)
+            const [beh, bem = 0] = rest.end.split(':').map(Number)
+            return {
+              startMin: bsh * 60 + bsm,
+              endMin: beh * 60 + bem,
+            }
+          })
+
           ranges.push({
             startMin: sh * 60 + sm,
             endMin:   eh * 60 + em,
             interval: member.slot_interval || 30,
             memberId: member.id,
+            breaks,
           })
         }
 
@@ -797,8 +816,9 @@ export async function getAvailableSlots(
             const isPast    = isPastDate(slotStartUTC, 30)
             const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
             const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
+            const isBreak = range.breaks.some(rest => cur < rest.endMin && (cur + service.duration_minutes) > rest.startMin)
 
-            const available = !isPast && !isBooked && !isBlocked
+            const available = !isPast && !isBooked && !isBlocked && !isBreak
             if (available || !slotMap.has(slotTime)) {
               slotMap.set(slotTime, available)
             }
@@ -819,7 +839,7 @@ export async function getAvailableSlots(
     // ─── End Team Member Path ─────────────────────────────────────────────────
 
     // Parse business hours or use defaults
-    const dayOfWeek = new Date(date).getDay() // 0 = Sunday, 1 = Monday, etc.
+    const dayOfWeek = requestedDateLocal.getDay() // 0 = Sunday, 1 = Monday, etc.
 
     // Default schedule (fallback only if DB has no config)
     // startMinutes/endMinutes: total minutes from midnight for precision
@@ -835,6 +855,7 @@ export async function getAvailableSlots(
 
     let dayConfig = defaultSchedule[dayOfWeek]
     let slotInterval = 30 // default 30 minutes
+    let dayBreaks: { startMin: number; endMin: number }[] = []
 
     // Priority 1: use businessHoursJson if provided (legacy / cookie path)
     if (businessHoursJson) {
@@ -843,7 +864,13 @@ export async function getAvailableSlots(
         const schedule = Array.isArray(config) ? config : config.schedule
         slotInterval = config.slotInterval || 30
 
-        const dayHours = schedule?.find((h: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string }) => h.dayOfWeek === dayOfWeek)
+        const dayHours = schedule?.find((h: {
+          dayOfWeek: number
+          isOpen: boolean
+          startTime: string
+          endTime: string
+          breaks?: { name: string; start: string; end: string }[]
+        }) => h.dayOfWeek === dayOfWeek)
         if (dayHours) {
           const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
           const [endH,   endM   = 0] = dayHours.endTime.split(':').map(Number)
@@ -852,6 +879,14 @@ export async function getAvailableSlots(
             startMinutes: startH * 60 + startM,
             endMinutes:   endH   * 60 + endM,
           }
+          dayBreaks = (dayHours.breaks || []).map((rest) => {
+            const [bsh, bsm = 0] = rest.start.split(':').map(Number)
+            const [beh, bem = 0] = rest.end.split(':').map(Number)
+            return {
+              startMin: bsh * 60 + bsm,
+              endMin: beh * 60 + bem,
+            }
+          })
         }
       } catch (e) {
         console.warn('Could not parse business hours JSON, will try DB')
@@ -869,7 +904,7 @@ export async function getAvailableSlots(
           .single()
 
         const settings = businessData?.settings as {
-          businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string }[]
+          businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string; breaks?: { name: string; start: string; end: string }[] }[]
           slotInterval?: number
           bufferTime?: number
         } | undefined
@@ -888,6 +923,12 @@ export async function getAvailableSlots(
               startMinutes: startH * 60 + startM,
               endMinutes:   endH   * 60 + endM,
             }
+            // Store breaks for this day
+            dayBreaks = (dayHours.breaks || []).map(b => {
+              const [bsh, bsm = 0] = b.start.split(':').map(Number)
+              const [beh, bem = 0] = b.end.split(':').map(Number)
+              return { startMin: bsh * 60 + bsm, endMin: beh * 60 + bem }
+            })
           }
         }
       } catch (e) {
@@ -968,10 +1009,15 @@ export async function getAvailableSlots(
         currentMinutes < block.endMin && slotEndMin > block.startMin
       )
 
+      // Break: slot overlaps with configured rest ranges for that weekday
+      const isBreak = dayBreaks.some(rest =>
+        currentMinutes < rest.endMin && slotEndMin > rest.startMin
+      )
+
       slots.push({
         time: slotTime,
-        available: !isBooked && !isBlocked && !isPast,
-        reason: isPast ? 'past' : isBooked ? 'booked' : isBlocked ? 'blocked' : undefined
+        available: !isBooked && !isBlocked && !isPast && !isBreak,
+        reason: isPast ? 'past' : isBooked ? 'booked' : isBlocked ? 'blocked' : isBreak ? 'blocked' : undefined
       })
 
       currentMinutes += slotInterval
