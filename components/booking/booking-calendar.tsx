@@ -17,13 +17,15 @@ interface BookingCalendarProps {
   serviceId: string
   initialDate: string
   initialSlots: TimeSlot[]
+  memberId?: string // "any" or specific team member ID
 }
 
 export default function BookingCalendar({
   service,
   serviceId,
   initialDate,
-  initialSlots
+  initialSlots,
+  memberId,
 }: BookingCalendarProps) {
   const router = useRouter()
   const params = useParams()
@@ -65,8 +67,9 @@ export default function BookingCalendar({
     setSelectedTime(null)
     setLoading(true)
     const dateStr = format(newDate, 'yyyy-MM-dd')
-    const businessHours = getBusinessHours()
-    const result = await getAvailableSlots(serviceId, dateStr, businessHours)
+    // Use memberId if provided (team flow), otherwise fall back to localStorage (solo flow)
+    const businessHours = memberId ? undefined : getBusinessHours()
+    const result = await getAvailableSlots(serviceId, dateStr, businessHours, memberId)
     if (result.success && result.data) {
       setSlots(result.data)
     }
@@ -76,9 +79,9 @@ export default function BookingCalendar({
   const handleContinue = () => {
     if (selectedTime && date) {
       const dateStr = format(date, 'yyyy-MM-dd')
-      // Use slug if available (multi-tenant route), otherwise fallback
       const basePath = slug ? `/${slug}/booking` : '/booking'
-      router.push(`${basePath}/${serviceId}/confirm?date=${dateStr}&time=${selectedTime}`)
+      const memberParam = memberId ? `&member=${memberId}` : ''
+      router.push(`${basePath}/${serviceId}/confirm?date=${dateStr}&time=${selectedTime}${memberParam}`)
     }
   }
 

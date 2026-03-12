@@ -32,6 +32,7 @@ export const createAppointmentSchema = z.object({
     price: z.number().nonnegative(),
     duration_minutes: z.number().nonnegative(),
   })).optional(),
+  team_member_id: z.string().uuid('ID de miembro inválido').optional().nullable(),
 }).refine(data => {
   const start = new Date(data.start_time)
   const end = new Date(data.end_time)

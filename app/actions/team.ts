@@ -333,3 +333,30 @@ export async function getSoloAvailability(): Promise<ServerActionResponse<{
     return { success: false, error: err.message }
   }
 }
+
+/**
+ * Get active team members for a business (public — no auth needed)
+ * Used by the public booking flow to display specialist selection
+ */
+export async function getActiveTeamMembersForBusiness(businessId: string): Promise<ServerActionResponse<TeamMember[]>> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching team members for business:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data as TeamMember[] }
+  } catch (error) {
+    const err = error as Error
+    console.error('Error in getActiveTeamMembersForBusiness:', err)
+    return { success: false, error: err.message }
+  }
+}

@@ -99,6 +99,7 @@ export interface Appointment {
   reschedule_count: number;
   last_rescheduled_at: string | null;
   google_event_id: string | null;
+  team_member_id: string | null;
 }
 
 export interface BlockedSlot {
@@ -158,6 +159,7 @@ export interface CreateAppointmentInput {
   status?: string;
   service_id: string;
   addons?: SelectedAddon[];
+  team_member_id?: string | null;
 }
 
 export interface UpdateAppointmentInput {

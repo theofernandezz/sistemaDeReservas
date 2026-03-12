@@ -34,6 +34,9 @@ export default function CompactConfirmPage() {
   const slug = params.slug as string
   const date = searchParams.get('date')
   const time = searchParams.get('time')
+  // member: specific team member ID, "any" = no preference, null = solo business
+  const memberParam = searchParams.get('member')
+  const teamMemberId = memberParam && memberParam !== 'any' ? memberParam : null
 
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(true)
@@ -266,7 +269,8 @@ export default function CompactConfirmPage() {
       client_phone: phone.trim(),
       client_email: email.trim(),
       status: 'confirmed',
-      addons: selectedAddons
+      addons: selectedAddons,
+      team_member_id: teamMemberId,
     })
 
     if (!result.success || !result.data) {

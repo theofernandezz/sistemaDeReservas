@@ -509,7 +509,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
         client_email: validatedInput.client_email,
         status: validatedInput.status || 'pending',
         service_id: validatedInput.service_id,
-        business_id: businessId
+        business_id: businessId,
+        team_member_id: validatedInput.team_member_id ?? null,
       }])
       .select()
       .single()
@@ -678,7 +679,8 @@ export async function deleteAppointment(id: string): Promise<ServerActionRespons
 export async function getAvailableSlots(
   serviceId: string,
   date: string,
-  businessHoursJson?: string // Optional: pass business hours as JSON string
+  businessHoursJson?: string, // Optional: pass business hours as JSON string (legacy/cookie)
+  teamMemberId?: string        // Optional: "any" = no preference (union), or specific member ID
 ): Promise<ServerActionResponse<TimeSlot[]>> {
   try {
     const supabase = await createClient()
@@ -716,41 +718,180 @@ export async function getAvailableSlots(
 
     if (blockedError) throw blockedError
 
+    // ─── Team Member Schedule Path ───────────────────────────────────────────
+    // Only enter this path when a teamMemberId is provided AND real members are found.
+    // If member=any but there are 0 team members → skip and fall through to business hours.
+    let teamPathHandled = false
+
+    if (teamMemberId) {
+      // Fetch member(s)
+      let members: { id: string; slot_interval: number; buffer_time: number; weekly_schedule: Record<string, { isOpen: boolean; startTime: string; endTime: string; breaks: { name: string; start: string; end: string }[] }> }[] = []
+
+      if (teamMemberId === 'any') {
+        const { data: allMembers, error: membersErr } = await supabase
+          .from('team_members')
+          .select('id, slot_interval, buffer_time, weekly_schedule')
+          .eq('business_id', service.business_id)
+          .eq('is_active', true)
+        if (membersErr) throw membersErr
+        members = allMembers || []
+      } else {
+        const { data: member, error: memberErr } = await supabase
+          .from('team_members')
+          .select('id, slot_interval, buffer_time, weekly_schedule')
+          .eq('id', teamMemberId)
+          .eq('business_id', service.business_id)
+          .single()
+        if (memberErr) throw memberErr
+        if (member) members = [member]
+      }
+
+      if (members.length === 0 && teamMemberId !== 'any') {
+        // Specific member not found
+        return { success: true, data: [] }
+      }
+
+      if (members.length > 0) {
+        // Have team members → compute slots from their schedules
+        teamPathHandled = true
+
+        const dayKey = String(new Date(date).getDay())
+
+        type MinuteRange = { startMin: number; endMin: number; interval: number; memberId: string }
+        const ranges: MinuteRange[] = []
+
+        for (const member of members) {
+          const daySchedule = member.weekly_schedule?.[dayKey]
+          if (!daySchedule?.isOpen) continue
+
+          const [sh, sm = 0] = daySchedule.startTime.split(':').map(Number)
+          const [eh, em = 0] = daySchedule.endTime.split(':').map(Number)
+          ranges.push({
+            startMin: sh * 60 + sm,
+            endMin:   eh * 60 + em,
+            interval: member.slot_interval || 30,
+            memberId: member.id,
+          })
+        }
+
+        if (ranges.length === 0) {
+          return { success: true, data: [] }
+        }
+
+        const slotMap = new Map<string, boolean>()
+
+        for (const range of ranges) {
+          const memberAppts = teamMemberId === 'any'
+            ? (appointments || []).filter(a => (a as unknown as { team_member_id?: string }).team_member_id === range.memberId)
+            : (appointments || [])
+
+          let cur = range.startMin
+          while (cur < range.endMin) {
+            const hour   = Math.floor(cur / 60)
+            const minute = cur % 60
+            const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+
+            const slotStartUTC = createSlotTimeUTC(date, slotTime)
+            const slotEndUTC   = addMinutesToUTC(slotStartUTC, service.duration_minutes)
+
+            const isPast    = isPastDate(slotStartUTC, 30)
+            const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
+            const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
+
+            const available = !isPast && !isBooked && !isBlocked
+            if (available || !slotMap.has(slotTime)) {
+              slotMap.set(slotTime, available)
+            }
+
+            cur += range.interval
+          }
+        }
+
+        const slots: TimeSlot[] = Array.from(slotMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([time, available]) => ({ time, available }))
+
+        return { success: true, data: slots }
+      }
+      // members.length === 0 && teamMemberId === 'any' → fall through to business hours
+    }
+    void teamPathHandled
+    // ─── End Team Member Path ─────────────────────────────────────────────────
+
     // Parse business hours or use defaults
     const dayOfWeek = new Date(date).getDay() // 0 = Sunday, 1 = Monday, etc.
 
-    // Default schedule
-    const defaultSchedule: Record<number, { isOpen: boolean; start: number; end: number }> = {
-      0: { isOpen: false, start: 10, end: 14 }, // Sunday
-      1: { isOpen: true, start: 9, end: 18 },   // Monday
-      2: { isOpen: true, start: 9, end: 18 },   // Tuesday
-      3: { isOpen: true, start: 9, end: 18 },   // Wednesday
-      4: { isOpen: true, start: 9, end: 18 },   // Thursday
-      5: { isOpen: true, start: 9, end: 18 },   // Friday
-      6: { isOpen: true, start: 10, end: 14 },  // Saturday
+    // Default schedule (fallback only if DB has no config)
+    // startMinutes/endMinutes: total minutes from midnight for precision
+    const defaultSchedule: Record<number, { isOpen: boolean; startMinutes: number; endMinutes: number }> = {
+      0: { isOpen: false, startMinutes: 10 * 60, endMinutes: 14 * 60 }, // Sunday
+      1: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Monday
+      2: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Tuesday
+      3: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Wednesday
+      4: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Thursday
+      5: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Friday
+      6: { isOpen: true,  startMinutes: 10 * 60, endMinutes: 14 * 60 }, // Saturday
     }
 
     let dayConfig = defaultSchedule[dayOfWeek]
-
-    // Try to parse business hours from JSON if provided
     let slotInterval = 30 // default 30 minutes
+
+    // Priority 1: use businessHoursJson if provided (legacy / cookie path)
     if (businessHoursJson) {
       try {
         const config = JSON.parse(businessHoursJson)
-        // Support both old format (array) and new format (object with schedule + slotInterval)
         const schedule = Array.isArray(config) ? config : config.schedule
         slotInterval = config.slotInterval || 30
 
         const dayHours = schedule?.find((h: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string }) => h.dayOfWeek === dayOfWeek)
         if (dayHours) {
+          const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
+          const [endH,   endM   = 0] = dayHours.endTime.split(':').map(Number)
           dayConfig = {
             isOpen: dayHours.isOpen,
-            start: parseInt(dayHours.startTime.split(':')[0]),
-            end: parseInt(dayHours.endTime.split(':')[0])
+            startMinutes: startH * 60 + startM,
+            endMinutes:   endH   * 60 + endM,
           }
         }
       } catch (e) {
-        console.warn('Could not parse business hours, using defaults')
+        console.warn('Could not parse business hours JSON, will try DB')
+      }
+    }
+
+    // Priority 2 (primary path): fetch business settings directly from DB
+    // This is the source of truth set by the dashboard availability editor
+    if (!businessHoursJson) {
+      try {
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('settings')
+          .eq('id', service.business_id)
+          .single()
+
+        const settings = businessData?.settings as {
+          businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string }[]
+          slotInterval?: number
+          bufferTime?: number
+        } | undefined
+
+        if (settings?.slotInterval) {
+          slotInterval = settings.slotInterval
+        }
+
+        if (settings?.businessHours && settings.businessHours.length > 0) {
+          const dayHours = settings.businessHours.find(h => h.dayOfWeek === dayOfWeek)
+          if (dayHours) {
+            const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
+            const [endH,   endM   = 0] = dayHours.endTime.split(':').map(Number)
+            dayConfig = {
+              isOpen: dayHours.isOpen,
+              startMinutes: startH * 60 + startM,
+              endMinutes:   endH   * 60 + endM,
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch business settings from DB, using defaults')
       }
     }
 
@@ -761,12 +902,10 @@ export async function getAvailableSlots(
 
     // Generate time slots based on business hours and interval
     const slots: TimeSlot[] = []
-    const businessStartHour = dayConfig.start
-    const businessEndHour = dayConfig.end
 
-    // Generate slots using interval
-    let currentMinutes = businessStartHour * 60 // Convert to minutes for easier math
-    const endMinutes = businessEndHour * 60
+    // Generate slots using interval (startMinutes/endMinutes are already in minutes from midnight)
+    let currentMinutes = dayConfig.startMinutes
+    const endMinutes = dayConfig.endMinutes
 
     while (currentMinutes < endMinutes) {
       const hour = Math.floor(currentMinutes / 60)

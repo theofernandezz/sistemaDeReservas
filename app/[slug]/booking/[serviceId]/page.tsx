@@ -1,41 +1,50 @@
-import { getServiceById, getAvailableSlots } from '@/app/actions'
-import { dbServiceToFrontend } from '@/lib/adapters'
-import { notFound } from 'next/navigation'
-import { cookies } from 'next/headers'
-import BookingCalendar from '@/components/booking/booking-calendar'
+import { notFound, redirect } from 'next/navigation'
+import { getServiceById } from '@/app/actions'
+import { getActiveTeamMembersForBusiness } from '@/app/actions/team'
+import { getBusinessBySlug } from '@/app/actions/auth'
+import SpecialistSelector from '@/components/booking/specialist-selector'
 
-export default async function BookingPage({
-  params
-}: {
-  params: Promise<{ serviceId: string }>
-}) {
-  const { serviceId } = await params
+interface PageProps {
+  params: Promise<{ slug: string; serviceId: string }>
+}
 
-  // Fetch service data
+export default async function SpecialistSelectionPage({ params }: PageProps) {
+  const { slug, serviceId } = await params
+
+  // Fetch business to get businessId
+  const businessResult = await getBusinessBySlug(slug)
+  if (!businessResult.success || !businessResult.data) {
+    notFound()
+  }
+
+  const business = businessResult.data
+
+  // Fetch service to show info
   const serviceResult = await getServiceById(serviceId)
-
   if (!serviceResult.success || !serviceResult.data) {
     notFound()
   }
 
-  const service = dbServiceToFrontend(serviceResult.data)
-  const today = new Date().toISOString().split('T')[0]
+  const service = serviceResult.data
 
-  // Try to get business hours from cookies (set by admin availability page)
-  const cookieStore = await cookies()
-  const businessHoursCookie = cookieStore.get('business_hours')
-  const businessHours = businessHoursCookie?.value ? decodeURIComponent(businessHoursCookie.value) : undefined
+  // Fetch active team members
+  const membersResult = await getActiveTeamMembersForBusiness(business.id)
+  const members = (membersResult.success && membersResult.data) ? membersResult.data : []
 
-  // Fetch available slots for today with business hours config
-  const slotsResult = await getAvailableSlots(serviceId, today, businessHours)
-  const initialSlots = slotsResult.success ? slotsResult.data : []
+  // If no team members → skip specialist step, go straight to calendar with "any"
+  if (members.length === 0) {
+    redirect(`/${slug}/booking/${serviceId}/calendar?member=any`)
+  }
+
+  const accentColor = business.settings?.accentColor || '#f97316'
 
   return (
-    <BookingCalendar
-      service={service}
+    <SpecialistSelector
+      slug={slug}
       serviceId={serviceId}
-      initialDate={today}
-      initialSlots={initialSlots || []}
+      serviceName={service.name}
+      members={members}
+      accentColor={accentColor}
     />
   )
 }
