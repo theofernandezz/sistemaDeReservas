@@ -879,7 +879,7 @@ export async function getAvailableSlots(
             startMinutes: startH * 60 + startM,
             endMinutes:   endH   * 60 + endM,
           }
-          dayBreaks = (dayHours.breaks || []).map((rest) => {
+          dayBreaks = (dayHours.breaks || []).map((rest: { start: string; end: string }) => {
             const [bsh, bsm = 0] = rest.start.split(':').map(Number)
             const [beh, bem = 0] = rest.end.split(':').map(Number)
             return {
