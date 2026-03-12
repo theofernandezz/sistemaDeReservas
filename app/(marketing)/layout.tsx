@@ -103,6 +103,12 @@ export default function MarketingLayout({
               <Link href="/signup" className="text-muted-foreground hover:text-foreground transition-colors">
                 Comenzar
               </Link>
+              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                Privacidad
+              </Link>
+              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                Términos
+              </Link>
             </div>
           </div>
 
