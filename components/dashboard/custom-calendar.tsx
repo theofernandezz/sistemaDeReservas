@@ -15,12 +15,12 @@ interface CustomCalendarProps {
   initialBlockedSlots: BlockedSlot[]
 }
 
-// Status color mapping
+// Status color mapping (Glassmorphism style)
 const statusColors: Record<string, { bg: string; border: string }> = {
-  pending: { bg: 'bg-amber-500/20', border: 'border-l-amber-500' },
-  confirmed: { bg: 'bg-blue-500/20', border: 'border-l-blue-500' },
-  completed: { bg: 'bg-emerald-500/20', border: 'border-l-emerald-500' },
-  cancelled: { bg: 'bg-zinc-500/20', border: 'border-l-zinc-500' },
+  pending: { bg: 'bg-amber-500/10 backdrop-blur-sm', border: 'border-l-amber-500 border-t-amber-500/20 border-r-amber-500/20 border-b-amber-500/20' },
+  confirmed: { bg: 'bg-emerald-500/10 backdrop-blur-sm', border: 'border-l-emerald-500 border-t-emerald-500/20 border-r-emerald-500/20 border-b-emerald-500/20' },
+  completed: { bg: 'bg-blue-500/10 backdrop-blur-sm', border: 'border-l-blue-500 border-t-blue-500/20 border-r-blue-500/20 border-b-blue-500/20' },
+  cancelled: { bg: 'bg-zinc-500/10 backdrop-blur-sm', border: 'border-l-zinc-500 border-t-zinc-500/20 border-r-zinc-500/20 border-b-zinc-500/20' },
 }
 
 // Get week days starting from a date
@@ -67,9 +67,9 @@ const statusLabels: Record<string, string> = {
 }
 
 const blockedStyles = {
-  bg: 'bg-destructive/10',
-  border: 'border-l-destructive',
-  badge: 'bg-destructive/10 text-destructive'
+  bg: 'bg-zinc-500/5 backdrop-blur-sm repeating-linear-gradient-45',
+  border: 'border-l-muted-foreground/30 border-t-border/20 border-r-border/20 border-b-border/20',
+  badge: 'bg-secondary text-muted-foreground'
 }
 
 export default function CustomCalendar({ initialAppointments, initialBlockedSlots }: CustomCalendarProps) {
@@ -230,26 +230,38 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
           <h2 className="text-lg font-semibold capitalize ml-2">{monthYear}</h2>
         </div>
 
-        {/* Center: View Toggle (absolutely centered) */}
-        <div className="hidden md:flex items-center bg-secondary rounded-lg p-1 absolute left-1/2 -translate-x-1/2">
+        {/* Center: View Toggle (Segmented Control style) */}
+        <div className="hidden md:flex items-center bg-secondary/80 backdrop-blur-md rounded-lg p-1 border border-border/50 absolute left-1/2 -translate-x-1/2 shadow-sm">
           <button
             onClick={() => setView('day')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'day' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-              }`}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+              view === 'day' 
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
           >
             Día
           </button>
           <button
             onClick={() => setView('week')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'week' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-              }`}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+              view === 'week' 
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
           >
             Semana
           </button>
           <button
             onClick={() => setView('month')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'month' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-              }`}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+              view === 'month' 
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
           >
             Mes
           </button>
@@ -302,9 +314,9 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
 
       {/* Desktop Day Header */}
       {!isMobile && view === 'day' && (
-        <div className="border-b border-border mb-1 pb-2">
+        <div className="border-b border-border/40 mb-2 pb-3 pt-2">
           <div className="text-center">
-            <span className="text-lg font-semibold">
+            <span className="text-xl font-medium tracking-tight text-foreground">
               {selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </span>
           </div>
@@ -313,18 +325,23 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
 
       {/* Desktop Week Header */}
       {!isMobile && view === 'week' && (
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border mb-1">
+        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/40 mb-2 pt-2">
           <div /> {/* Time column spacer */}
           {weekDays.map((day, idx) => {
             const isToday = isSameDay(day, new Date())
             return (
-              <div key={idx} className="text-center py-2">
-                <span className="text-xs text-muted-foreground uppercase">
+              <div key={idx} className="text-center pb-3">
+                <span className={cn(
+                  "text-[11px] font-medium uppercase tracking-wider",
+                  isToday ? "text-primary" : "text-muted-foreground"
+                )}>
                   {day.toLocaleDateString('es-AR', { weekday: 'short' })}
                 </span>
                 <div
-                  className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full text-sm font-semibold ${isToday ? 'bg-primary text-primary-foreground' : ''
-                    }`}
+                  className={cn(
+                    "w-9 h-9 mx-auto mt-1 flex items-center justify-center rounded-full text-sm font-medium transition-colors",
+                    isToday ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "text-foreground"
+                  )}
                 >
                   {day.getDate()}
                 </div>
@@ -436,12 +453,16 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
               const isToday = isSameDay(selectedDate, new Date())
 
               return (
-                <div key={hour} className="contents">
-                  <div className="h-20 text-xs text-muted-foreground text-right pr-2 pt-1">
+                <div key={hour} className="contents group">
+                  <div className="h-20 text-[11px] font-medium text-muted-foreground/60 text-right pr-3 pt-1">
                     {String(hour).padStart(2, '0')}:00
                   </div>
                   <div
-                    className={`h-20 border-t border-l border-border/30 p-0.5 relative ${isToday ? 'bg-primary/5' : ''}`}
+                    className={cn(
+                      "h-20 border-t border-border/20 p-0.5 relative transition-colors",
+                      isToday ? "bg-primary/[0.02]" : "",
+                      "group-hover:bg-secondary/10"
+                    )}
                   >
                     {dayBlockedSlots.map(slot => {
                       const startMinutes = new Date(slot.start_time).getMinutes()
@@ -481,18 +502,23 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
                         <button
                           key={apt.id}
                           onClick={() => setSelectedAppointment(apt)}
-                          className={`absolute left-0.5 right-0.5 p-2 rounded-lg border-l-3 ${colors.bg} ${colors.border} overflow-hidden cursor-pointer hover:brightness-110 transition-all text-left`}
+                          className={cn(
+                            "absolute left-1 right-1 p-2 rounded-lg border overflow-hidden cursor-pointer",
+                            "hover:scale-[1.01] hover:shadow-lg transition-all duration-200 hover:z-20 text-left",
+                            colors.bg,
+                            colors.border
+                          )}
                           style={{
                             top: `${(startMinutes / 60) * 80}px`,
                             height: `${height}px`,
                             minHeight: '44px'
                           }}
                         >
-                          <p className="text-sm font-medium text-foreground truncate">
+                          <p className="text-sm font-medium text-foreground truncate drop-shadow-sm">
                             {apt.client_name}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {formatTime(apt.start_time)} - {formatTime(apt.end_time)} • {apt.service?.name}
+                          <p className="text-xs text-foreground/80 truncate mt-0.5">
+                            {formatTime(apt.start_time)} - {formatTime(apt.end_time)} <span className="opacity-50 mx-1">•</span> {apt.service?.name}
                           </p>
                         </button>
                       )
@@ -520,7 +546,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
           <div className="grid grid-cols-[60px_repeat(7,1fr)]">
             {HOURS.map(hour => (
               <div key={hour} className="contents">
-                <div className="h-20 text-xs text-muted-foreground text-right pr-2 pt-1">
+                <div className="h-20 text-[11px] font-medium text-muted-foreground/60 text-right pr-3 pt-1">
                   {String(hour).padStart(2, '0')}:00
                 </div>
                 {weekDays.map((day, dayIdx) => {
@@ -537,8 +563,10 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
                   return (
                     <div
                       key={dayIdx}
-                      className={`h-20 border-t border-l border-border/30 p-0.5 relative ${isToday ? 'bg-primary/5' : ''
-                        }`}
+                      className={cn(
+                        "h-20 border-t border-l border-border/20 p-0.5 relative transition-colors hover:bg-secondary/10",
+                        isToday ? "bg-primary/[0.02]" : ""
+                      )}
                     >
                       {dayBlockedSlots.map(slot => {
                         const startMinutes = new Date(slot.start_time).getMinutes()
@@ -578,18 +606,23 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
                           <button
                             key={apt.id}
                             onClick={() => setSelectedAppointment(apt)}
-                            className={`absolute left-0.5 right-0.5 p-1.5 rounded-lg border-l-3 ${colors.bg} ${colors.border} overflow-hidden cursor-pointer hover:brightness-110 transition-all text-left`}
+                            className={cn(
+                              "absolute left-0.5 right-0.5 p-1.5 rounded-lg border overflow-hidden cursor-pointer",
+                              "hover:scale-[1.02] hover:shadow-lg transition-all duration-200 hover:z-20 text-left",
+                              colors.bg,
+                              colors.border
+                            )}
                             style={{
                               top: `${(startMinutes / 60) * 80}px`,
                               height: `${height}px`,
                               minHeight: '40px'
                             }}
                           >
-                            <p className="text-xs font-medium text-foreground truncate">
+                            <p className="text-xs font-medium text-foreground truncate drop-shadow-sm">
                               {apt.client_name}
                             </p>
-                            <p className="text-[10px] text-muted-foreground truncate">
-                              {formatTime(apt.start_time)} • {apt.service?.name}
+                            <p className="text-[10px] text-foreground/80 truncate mt-0.5">
+                              {formatTime(apt.start_time)} <span className="opacity-50 mx-0.5">•</span> {apt.service?.name}
                             </p>
                           </button>
                         )
@@ -674,19 +707,22 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
 
       {/* Appointment Details Modal */}
       {selectedAppointment && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedAppointment(null)}>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in" 
+          onClick={() => setSelectedAppointment(null)}
+        >
           <div
-            className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200"
+            className="bg-card/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-md animate-in zoom-in-95 duration-200 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="text-lg font-semibold">Detalles de la cita</h3>
+            <div className="flex items-center justify-between p-4 border-b border-border/50 bg-background/50">
+              <h3 className="text-lg font-medium tracking-tight text-foreground">Detalles de la cita</h3>
               <button
                 onClick={() => setSelectedAppointment(null)}
-                className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                className="p-1.5 rounded-full bg-secondary/50 hover:bg-secondary text-muted-foreground transition-colors"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -753,7 +789,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
 
             {/* Actions */}
             {selectedAppointment.status !== 'cancelled' && selectedAppointment.status !== 'completed' && (
-              <div className="p-4 border-t border-border space-y-2">
+              <div className="p-5 border-t border-border/50 bg-background/30 space-y-3">
                 {selectedAppointment.status === 'pending' && (
                   <Button
                     onClick={() => handleStatusChange(selectedAppointment.id, 'confirmed')}

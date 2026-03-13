@@ -15,7 +15,7 @@ export function HeroDashboardMockup() {
           {/* Logo + Business Name */}
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 flex items-center justify-center">
-              <Image src={logo} alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" />
+              <Image src={logo} alt="Buki" width={100} height={60} className="h-8 w-auto object-contain" priority />
             </div>
             <span className="font-semibold text-sm hidden sm:inline">Mi Negocio</span>
           </div>

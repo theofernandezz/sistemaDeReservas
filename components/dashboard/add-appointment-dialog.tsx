@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Loader2, Plus, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
-import { getServices, createAppointment } from '@/app/actions'
-import type { Service, CreateAppointmentInput, AppointmentWithService } from '@/types/database.types'
+import { getServices, createAppointment, getBusinessSettings } from '@/app/actions'
+import type { Service, CreateAppointmentInput, AppointmentWithService, BusinessSettings } from '@/types/database.types'
 
 interface AddAppointmentDialogProps {
   open: boolean
@@ -31,18 +31,39 @@ interface AddAppointmentDialogProps {
   selectedDate?: Date
 }
 
-// Generate time slots from 8:00 to 20:00 with 30 minute intervals
-function generateTimeSlots(): string[] {
-  const slots: string[] = []
-  for (let hour = 8; hour < 20; hour++) {
-    slots.push(`${String(hour).padStart(2, '0')}:00`)
-    slots.push(`${String(hour).padStart(2, '0')}:30`)
+function generateTimeSlotsForDay(date: Date, settings: BusinessSettings): string[] {
+  const dayOfWeek = date.getDay()
+  const dayHours = settings.businessHours?.find(h => h.dayOfWeek === dayOfWeek)
+
+  let startMinutes = 8 * 60
+  let endMinutes = 20 * 60
+  const interval = settings.slotInterval ?? 30
+
+  if (dayHours) {
+    if (!dayHours.isOpen) return []
+    const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
+    const [endH, endM = 0] = dayHours.endTime.split(':').map(Number)
+    startMinutes = startH * 60 + startM
+    endMinutes = endH * 60 + endM
   }
-  slots.push('20:00')
+
+  const breaks = (dayHours?.breaks ?? []).map(b => {
+    const [bsh, bsm = 0] = b.start.split(':').map(Number)
+    const [beh, bem = 0] = b.end.split(':').map(Number)
+    return { start: bsh * 60 + bsm, end: beh * 60 + bem }
+  })
+
+  const slots: string[] = []
+  for (let min = startMinutes; min <= endMinutes; min += interval) {
+    const inBreak = breaks.some(b => min >= b.start && min < b.end)
+    if (!inBreak) {
+      const h = Math.floor(min / 60)
+      const m = min % 60
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+  }
   return slots
 }
-
-const TIME_SLOTS = generateTimeSlots()
 
 export function AddAppointmentDialog({
   open,
@@ -51,6 +72,7 @@ export function AddAppointmentDialog({
   selectedDate: initialDate,
 }: AddAppointmentDialogProps) {
   const [services, setServices] = useState<Service[]>([])
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({})
   const [loadingServices, setLoadingServices] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +88,19 @@ export function AddAppointmentDialog({
   const [clientPhone, setClientPhone] = useState('')
   const [clientEmail, setClientEmail] = useState('')
 
+  // Time slots derived from business hours for the selected day
+  const timeSlots = useMemo(
+    () => generateTimeSlotsForDay(selectedDate ?? new Date(), businessSettings),
+    [selectedDate, businessSettings]
+  )
+
+  // Clear selected time if it's no longer in the available slots
+  useEffect(() => {
+    if (selectedTime && !timeSlots.includes(selectedTime)) {
+      setSelectedTime('')
+    }
+  }, [timeSlots, selectedTime])
+
   // Update selectedDate when initialDate changes
   useEffect(() => {
     if (initialDate) {
@@ -74,22 +109,28 @@ export function AddAppointmentDialog({
     }
   }, [initialDate])
 
-  // Load services
+  // Load services and business settings
   useEffect(() => {
-    async function loadServices() {
+    async function loadData() {
       setLoadingServices(true)
-      const result = await getServices()
-      if (result.success && result.data) {
-        setServices(result.data)
-        if (result.data.length > 0) {
-          setSelectedServiceId(result.data[0].id)
+      const [servicesResult, settingsResult] = await Promise.all([
+        getServices(),
+        getBusinessSettings(),
+      ])
+      if (servicesResult.success && servicesResult.data) {
+        setServices(servicesResult.data)
+        if (servicesResult.data.length > 0) {
+          setSelectedServiceId(servicesResult.data[0].id)
         }
+      }
+      if (settingsResult.success && settingsResult.data) {
+        setBusinessSettings(settingsResult.data)
       }
       setLoadingServices(false)
     }
 
     if (open) {
-      loadServices()
+      loadData()
     }
   }, [open])
 
@@ -178,196 +219,251 @@ export function AddAppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-125 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 bg-card/90 backdrop-blur-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+        <DialogHeader className="px-6 py-5 border-b border-border/50 bg-background/50">
+          <DialogTitle className="flex items-center gap-2 text-xl font-medium tracking-tight">
+            <Plus className="h-5 w-5 text-primary" />
             Nuevo turno manual
           </DialogTitle>
-          <DialogDescription>
-            Agregá un turno manualmente para un cliente
+          <DialogDescription className="text-muted-foreground pt-1.5">
+            Agendá un turno rápidamente para un cliente seleccionando el servicio y horario.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Service Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="service">Servicio *</Label>
-            {loadingServices ? (
-              <div className="h-9 flex items-center justify-center bg-secondary/50 rounded-md">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <Select
-                value={selectedServiceId}
-                onValueChange={setSelectedServiceId}
-              >
-                <SelectTrigger id="service">
-                  <SelectValue placeholder="Seleccioná un servicio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map(service => (
-                    <SelectItem key={service.id} value={service.id}>
-                      <div className="flex items-center justify-between gap-4 w-full">
-                        <span>{service.name}</span>
-                        <span className="text-muted-foreground text-xs">
-                          {service.duration_minutes} min • ${service.price.toLocaleString('es-AR')}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {selectedService && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Duración: {selectedService.duration_minutes} minutos
-              </p>
-            )}
-          </div>
-
-          {/* Date and Time Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date */}
-            <div className="space-y-2">
-              <Label>Fecha *</Label>
-              <div className="border border-input rounded-md p-2 bg-background">
-                <div className="flex items-center justify-between mb-2">
-                  <button
-                    type="button"
-                    onClick={handlePrevMonth}
-                    className="h-8 w-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary transition-colors"
-                    aria-label="Mes anterior"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm font-medium capitalize text-foreground">
-                    {monthLabel}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleNextMonth}
-                    className="h-8 w-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-secondary transition-colors"
-                    aria-label="Mes siguiente"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  month={calendarMonth}
-                  onMonthChange={setCalendarMonth}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  className="mx-auto"
-                  classNames={{
-                    nav: 'hidden',
-                    month_caption: 'hidden',
-                    caption_label: 'hidden'
-                  }}
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="px-6 pt-6 pb-0 overflow-y-auto max-h-[75vh] space-y-6">
+          {/* Section 1: Service Selection */}
+          <div className="bg-secondary/20 border border-border/30 rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</div>
+              <h3 className="text-sm font-semibold text-foreground">Detalles del Servicio</h3>
             </div>
-
-            {/* Time */}
+            
             <div className="space-y-2">
-              <Label htmlFor="time">Hora *</Label>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger id="time">
-                  <SelectValue placeholder="Seleccioná una hora" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIME_SLOTS.map(time => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedDate && (
-                <p className="text-xs text-muted-foreground">
-                  {selectedDate.toLocaleDateString('es-AR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}
-                </p>
+              <Label htmlFor="service" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Servicio *</Label>
+              {loadingServices ? (
+                <div className="h-10 flex items-center justify-center bg-secondary/50 rounded-lg border border-border/50">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Select
+                  value={selectedServiceId}
+                  onValueChange={setSelectedServiceId}
+                >
+                  <SelectTrigger id="service" className="h-12 bg-background border-border hover:border-border/80 transition-colors">
+                    <SelectValue placeholder="Seleccioná un servicio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {services.map(service => (
+                      <SelectItem key={service.id} value={service.id} className="py-2.5">
+                        <div className="flex items-center justify-between gap-4 w-full pr-2">
+                          <span className="font-medium text-foreground">{service.name}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-muted-foreground text-xs flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {service.duration_minutes} min
+                            </span>
+                            <span className="text-foreground font-medium text-sm">
+                              ${service.price.toLocaleString('es-AR')}
+                            </span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </div>
 
-          {/* Client Information */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Nombre del cliente *</Label>
-              <Input
-                id="clientName"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Ej: María García"
-                required
-              />
+          {/* Section 2: Date and Time Selection */}
+          <div className="bg-secondary/20 border border-border/30 rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</div>
+              <h3 className="text-sm font-semibold text-foreground">Fecha y Hora</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Date */}
               <div className="space-y-2">
-                <Label htmlFor="clientPhone">Teléfono</Label>
+                <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Fecha *</Label>
+                <div className="border border-border/50 rounded-lg p-2 bg-background shadow-sm">
+                  <div className="flex items-center justify-between mb-2 px-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={handlePrevMonth}
+                      className="h-7 w-7 flex items-center justify-center rounded-md border border-border/50 bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Mes anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm font-medium capitalize text-foreground tracking-tight">
+                      {monthLabel}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleNextMonth}
+                      className="h-7 w-7 flex items-center justify-center rounded-md border border-border/50 bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Mes siguiente"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    className="mx-auto w-full [&_table]:w-full"
+                    classNames={{
+                      nav: 'hidden',
+                      month_caption: 'hidden',
+                      caption_label: 'hidden',
+                      day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-bold shadow-md shadow-primary/20",
+                      day_today: "bg-secondary text-foreground"
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Time */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="time" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Hora De Inicio *</Label>
+                  {timeSlots.length === 0 ? (
+                    <div className="h-12 flex items-center px-3 rounded-md border border-border bg-secondary/30 text-sm text-muted-foreground">
+                      Este día no tiene horario de atención configurado
+                    </div>
+                  ) : (
+                    <Select value={selectedTime} onValueChange={setSelectedTime}>
+                      <SelectTrigger id="time" className="h-12 bg-background border-border hover:border-border/80 transition-colors">
+                        <SelectValue placeholder="Seleccioná una hora" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {timeSlots.map(time => (
+                          <SelectItem key={time} value={time}>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              {time}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {selectedTime && selectedDate && selectedService && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5 animate-in fade-in zoom-in-95 duration-200">
+                    <p className="text-sm font-medium text-primary">Resumen del horario</p>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-sm text-foreground flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                        {selectedDate.toLocaleDateString('es-AR', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                        })}
+                      </p>
+                      <p className="text-sm text-foreground flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                        {selectedTime} a {
+                          (() => {
+                            const [h, m] = selectedTime.split(':').map(Number);
+                            const endD = new Date();
+                            endD.setHours(h, m + selectedService.duration_minutes);
+                            return `${String(endD.getHours()).padStart(2, '0')}:${String(endD.getMinutes()).padStart(2, '0')}`;
+                          })()
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Client Information */}
+          <div className="bg-secondary/20 border border-border/30 rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</div>
+              <h3 className="text-sm font-semibold text-foreground">Datos del Cliente</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="clientName" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Nombre del cliente *</Label>
                 <Input
-                  id="clientPhone"
-                  type="tel"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="Ej: 11 1234-5678"
+                  id="clientName"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Ej: María García"
+                  className="h-11 bg-background border-border"
+                  required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="clientEmail">Email</Label>
-                <Input
-                  id="clientEmail"
-                  type="email"
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  placeholder="Ej: maria@email.com"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientPhone" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Teléfono</Label>
+                  <Input
+                    id="clientPhone"
+                    type="tel"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="Ej: 11 1234-5678"
+                    className="h-11 bg-background border-border"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientEmail" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Email <span className="text-muted-foreground/50 lowercase normal-case text-[10px] ml-1">(opcional)</span></Label>
+                  <Input
+                    id="clientEmail"
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="Ej: maria@email.com"
+                    className="h-11 bg-background border-border"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-sm font-medium text-destructive animate-in slide-in-from-top-2">
               {error}
             </div>
           )}
 
           {/* Actions */}
-          <DialogFooter className="gap-3">
+          <DialogFooter className="sticky bottom-0 pt-4 pb-6 items-center border-t border-border/50 bg-background/90 backdrop-blur-xl mt-4 -mx-6 px-6">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto h-11 px-6 rounded-lg hover:bg-secondary/80 transition-all duration-200"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={submitting || loadingServices}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto h-11 px-8 rounded-lg shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all duration-200"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Creando...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4" />
-                  Crear turno
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agendar Turno
                 </>
               )}
             </Button>

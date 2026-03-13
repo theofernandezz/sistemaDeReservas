@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { cn } from '@/lib/utils'
 import { TeamMember, CreateTeamMemberInput, WeeklySchedule } from '@/types/database.types'
 import TeamMemberList from '@/components/availability/team-member-list'
 import TeamConsolidatedView from '@/components/availability/team-consolidated-view'
@@ -128,12 +129,12 @@ export default function AvailabilityPage() {
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Gestión de Disponibilidad</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="mb-8 p-6 bg-card/30 backdrop-blur-md rounded-3xl border border-white/5 shadow-sm">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestión de Disponibilidad</h1>
+        <p className="text-sm text-muted-foreground/80 mt-1 max-w-xl">
           {viewMode === 'team' 
-            ? 'Configura los horarios de cada miembro del equipo'
-            : 'Configura tus horarios de atención y bloquea fechas específicas'
+            ? 'Configura los horarios y la disponibilidad diaria de cada miembro del equipo.'
+            : 'Personaliza tus bloques de tiempo, define tus descansos y configura límites.'
           }
         </p>
       </div>
@@ -141,24 +142,26 @@ export default function AvailabilityPage() {
       {/* View Mode Toggle */}
       <div className="flex flex-wrap gap-4 mb-8">
         {/* Main Tabs */}
-        <div className="flex bg-secondary/30 rounded-xl p-1.5">
+        <div className="flex bg-secondary/40 backdrop-blur-md rounded-full p-1.5 border border-white/5 shadow-inner">
           <button
-            className={`flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+            className={cn(
+              "flex items-center gap-2 py-2 px-5 rounded-full text-sm font-semibold transition-all duration-300",
               activeTab === 'schedule' 
-                ? 'bg-background shadow-sm text-foreground' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+                ? "bg-background shadow-md text-foreground scale-100" 
+                : "text-muted-foreground/70 hover:text-foreground hover:bg-background/50 scale-95 hover:scale-100"
+            )}
             onClick={() => setActiveTab('schedule')}
           >
             {viewMode === 'team' ? <Users size={16} /> : <User size={16} />}
             Horarios
           </button>
           <button
-            className={`flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+            className={cn(
+              "flex items-center gap-2 py-2 px-5 rounded-full text-sm font-semibold transition-all duration-300",
               activeTab === 'blocked' 
-                ? 'bg-background shadow-sm text-foreground' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+                ? "bg-background shadow-md text-foreground scale-100" 
+                : "text-muted-foreground/70 hover:text-foreground hover:bg-background/50 scale-95 hover:scale-100"
+            )}
             onClick={() => setActiveTab('blocked')}
           >
             <CalendarX size={16} />
@@ -168,24 +171,26 @@ export default function AvailabilityPage() {
 
         {/* View Mode Toggle */}
         {activeTab === 'schedule' && (
-          <div className="flex bg-secondary/30 rounded-xl p-1.5">
+          <div className="flex bg-secondary/40 backdrop-blur-md rounded-full p-1.5 border border-white/5 shadow-inner ml-auto">
             <button
-              className={`flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              className={cn(
+                "flex items-center gap-2 py-2 px-5 rounded-full text-sm font-semibold transition-all duration-300",
                 viewMode === 'solo' 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+                  ? "bg-background shadow-md text-foreground scale-100" 
+                  : "text-muted-foreground/70 hover:text-foreground hover:bg-background/50 scale-95 hover:scale-100"
+              )}
               onClick={() => setViewMode('solo')}
             >
               <User size={16} />
               Trabajo solo
             </button>
             <button
-              className={`flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              className={cn(
+                "flex items-center gap-2 py-2 px-5 rounded-full text-sm font-semibold transition-all duration-300",
                 viewMode === 'team' 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+                  ? "bg-background shadow-md text-foreground scale-100" 
+                  : "text-muted-foreground/70 hover:text-foreground hover:bg-background/50 scale-95 hover:scale-100"
+              )}
               onClick={() => setViewMode('team')}
             >
               <Users size={16} />
@@ -233,11 +238,13 @@ export default function AvailabilityPage() {
               />
             ) : (
               // Empty state
-              <div className="bg-card border border-border rounded-xl p-12 text-center">
-                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium text-foreground mb-2">Selecciona un miembro</h3>
-                <p className="text-sm text-muted-foreground">
-                  Elige un miembro del equipo para configurar sus horarios
+              <div className="bg-card/30 backdrop-blur-xl border border-white/5 rounded-3xl p-16 text-center shadow-sm">
+                <div className="h-20 w-20 rounded-full bg-secondary/50 border border-border/50 mx-auto mb-6 flex items-center justify-center shadow-inner">
+                  <Users className="h-10 w-10 text-muted-foreground/70" />
+                </div>
+                <h3 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Selecciona un miembro</h3>
+                <p className="text-muted-foreground/80 max-w-sm mx-auto">
+                  Elige un miembro del equipo del panel lateral para configurar sus días de trabajo y horarios.
                 </p>
               </div>
             )}

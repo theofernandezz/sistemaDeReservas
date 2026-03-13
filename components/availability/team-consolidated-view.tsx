@@ -89,7 +89,7 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
       </div>
 
       {/* Schedule Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-3xl shadow-sm overflow-hidden mb-8">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -116,7 +116,7 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          'h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0',
+                          'h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 shadow-sm border border-white/10',
                           member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
                         )}>
                           {getInitials(member.name)}
@@ -162,21 +162,21 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div className="bg-card border border-border rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-foreground">{stats.memberCount}</p>
-          <p className="text-xs text-muted-foreground mt-2">Miembros del<br/>equipo</p>
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
+          <p className="text-3xl font-bold tracking-tight text-foreground">{stats.memberCount}</p>
+          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Miembros del<br/>equipo</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-pink-500">{stats.totalHours}h</p>
-          <p className="text-xs text-muted-foreground mt-2">Total horas/semana</p>
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
+          <p className="text-3xl font-bold tracking-tight text-pink-500">{stats.totalHours}h</p>
+          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Total horas/semana</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-cyan-500">~{stats.totalSlots}</p>
-          <p className="text-xs text-muted-foreground mt-2">Turnos semanales</p>
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
+          <p className="text-3xl font-bold tracking-tight text-cyan-500">~{stats.totalSlots}</p>
+          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Turnos semanales</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5 text-center">
-          <p className="text-3xl font-bold text-emerald-500">{stats.coveragePercent}%</p>
-          <p className="text-xs text-muted-foreground mt-2">Cobertura<br/>promedio</p>
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
+          <p className="text-3xl font-bold tracking-tight text-emerald-500">{stats.coveragePercent}%</p>
+          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Cobertura<br/>promedio</p>
         </div>
       </div>
 

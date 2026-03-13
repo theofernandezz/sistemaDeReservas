@@ -15,24 +15,26 @@ Skills are structured instructions that give AI assistants the context they need
 
 ### Generic Skills (Any Project)
 
-| Skill | Description |
-|-------|-------------|
-| `typescript` | Const types, flat interfaces, utility types |
-| `react-patterns` | Compound components, hooks, composition |
-| `nextjs-core` | App Router, Server Actions, streaming |
-| `ui-engineering` | Linear-style design, Tailwind v4, Shadcn |
-| `database` | Supabase, RLS, Zod schemas, service layer |
-| `security` | XSS/CSRF prevention, input validation, auth |
-| `error-handling` | Custom errors, boundaries, logging, recovery |
-| `testing` | Vitest, Testing Library, MSW |
-| `git-workflow` | Conventional Commits, branching, PRs |
+| Skill            | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| `typescript`     | Const types, flat interfaces, utility types       |
+| `react-patterns` | Compound components, hooks, composition           |
+| `nextjs-core`    | App Router, Server Actions, streaming             |
+| `ui-engineering` | Distinctive UI systems, Tailwind v4, Shadcn       |
+| `ux`             | Product UX flows, CRUD patterns, recovery states  |
+| `database`       | Supabase, RLS, Zod schemas, service layer         |
+| `security`       | XSS/CSRF prevention, input validation, auth       |
+| `error-handling` | Custom errors, boundaries, logging, recovery      |
+| `testing`        | Vitest, Testing Library, MSW                      |
+| `git-workflow`   | Conventional Commits, branching, PRs              |
+| `react-native`   | Expo, navigation, native APIs, mobile performance |
 
 ### Meta Skills
 
-| Skill | Description |
-|-------|-------------|
-| `skill-creator` | Create new AI agent skills |
-| `skill-sync` | Sync skill metadata to AGENTS.md |
+| Skill           | Description                      |
+| --------------- | -------------------------------- |
+| `skill-creator` | Create new AI agent skills       |
+| `skill-sync`    | Sync skill metadata to AGENTS.md |
 
 ## Setup
 
@@ -50,6 +52,7 @@ Skills are structured instructions that give AI assistants the context they need
 ```
 
 This creates symlinks in the appropriate directories:
+
 - `.claude/skills/`
 - `.codex/skills/`
 - `.github/skills/`
@@ -115,6 +118,24 @@ metadata:
 ./skill-sync/assets/sync.sh --scope ui
 ```
 
+## Freshness Governance
+
+Use the governance module to prevent stale skill content:
+
+```bash
+# Full strict check (metadata + live source checks)
+node skills/governance/check-skills-freshness.mjs --strict
+
+# Fast local check without network
+node skills/governance/check-skills-freshness.mjs --strict --no-fetch
+```
+
+Registry and process docs:
+
+- `skills/governance/skill-release-registry.json`
+- `skills/governance/README.md`
+- `.github/workflows/skills-freshness.yml`
+
 ---
 
-*Last Updated: 2026-01-16*
+_Last Updated: 2026-01-16_

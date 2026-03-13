@@ -158,6 +158,8 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
         businessHours: validatedData.businessHours,
         slotInterval: validatedData.slotInterval,
       },
+      // Set admin notification email to owner's email only on first-time creation
+      ...(!business && user.email ? { admin_notification_email: user.email } : {}),
     })
     .eq('id', businessId)
 

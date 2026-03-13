@@ -261,45 +261,45 @@ export default function ServicesAndAddons({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Tabs */}
-          <div className="flex items-center bg-secondary rounded-lg p-1">
+          {/* Tabs (Segmented Control Style) */}
+          <div className="flex items-center bg-secondary/40 backdrop-blur-md rounded-full p-1 border border-white/5 shadow-sm">
             <button
               onClick={() => setActiveTab('services')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'services'
-                ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground'
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${activeTab === 'services'
+                ? 'bg-background shadow-sm text-foreground border border-border/50'
+                : 'text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40'
                 }`}
             >
               Servicios
             </button>
             <button
               onClick={() => setActiveTab('addons')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'addons'
-                ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground'
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${activeTab === 'addons'
+                ? 'bg-background shadow-sm text-foreground border border-border/50'
+                : 'text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40'
                 }`}
             >
               Add-ons
             </button>
           </div>
 
-          <Button onClick={() => handleOpenModal()} className="gap-2">
+          <Button onClick={() => handleOpenModal()} className="gap-2 rounded-full shadow-md hover:shadow-lg transition-all">
             <Plus size={18} />
             <span className="hidden sm:inline">
-              Nuevo {activeTab === 'services' ? 'Servicio' : 'Add-on'}
+              Nuevo
             </span>
           </Button>
         </div>
       </div>
 
       {/* Grid of Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {activeTab === 'services' ? (
           <>
             {services.map(service => (
               <div
                 key={service.id}
-                className={`bg-card border border-border rounded-xl overflow-hidden transition-all hover:shadow-md hover:border-primary/30 flex flex-col ${service.active === false ? 'opacity-50' : ''
+                className={`bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 flex flex-col group ${service.active === false ? 'opacity-50 grayscale-[50%]' : ''
                   }`}
               >
                 {/* Service Image */}
@@ -349,34 +349,38 @@ export default function ServicesAndAddons({
                   </div>
 
                   {/* Actions row */}
-                  <div className="flex items-center justify-end gap-1 mt-auto pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-end gap-2 mt-auto pt-3 border-t border-border/30 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleOpenModal(service)}
-                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded transition-colors"
+                      className="p-2 text-muted-foreground hover:text-primary hover:bg-secondary/80 rounded-lg transition-colors"
                       title="Editar"
                     >
-                      <Edit2 size={14} />
+                      <Edit2 size={16} />
                     </button>
                     <button
                       onClick={() => handleDelete(service)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                      className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                       title="Eliminar"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
               </div>
             ))}
 
-            {/* Add New Service Card */}
+            {/* Add New Service Card (Dashed) */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-35"
+              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-all min-h-[14rem] shadow-sm hover:shadow-md hover:-translate-y-0.5"
             >
-              <Plus size={24} />
-              <span className="font-medium">Agregar Servicio</span>
-              <span className="text-xs">Creá un nuevo servicio para ofrecer</span>
+              <div className="p-3 bg-background rounded-full border border-border shadow-sm">
+                <Plus size={24} />
+              </div>
+              <div className="text-center">
+                <span className="font-semibold block text-foreground">Crear Servicio</span>
+                <span className="text-xs mt-1 block max-w-[160px] mx-auto opacity-70">Añade un nuevo servicio a tu catálogo</span>
+              </div>
             </button>
           </>
         ) : (
@@ -384,46 +388,46 @@ export default function ServicesAndAddons({
             {addons.map(addon => (
               <div
                 key={addon.id}
-                className="bg-card border border-border rounded-xl p-4 transition-all hover:shadow-md hover:border-primary/30 flex flex-col"
+                className="bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 flex flex-col group"
               >
                 {/* Title */}
-                <h3 className="font-semibold text-sm text-foreground mb-2">
+                <h3 className="font-semibold text-base tracking-tight text-foreground mb-1.5">
                   {addon.name}
                 </h3>
 
                 {/* Description */}
-                <p className="text-xs text-muted-foreground mb-3 min-h-8">
+                <p className="text-sm text-muted-foreground mb-4 min-h-[3rem] leading-relaxed">
                   {addon.description || 'Sin descripción'}
                 </p>
 
                 {/* Info row */}
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   {addon.duration_minutes && addon.duration_minutes > 0 && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded">
-                      <Clock size={12} />
-                      +{addon.duration_minutes}m
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-foreground bg-secondary px-2.5 py-1 rounded-md border border-border/50">
+                      <Clock size={14} className="text-muted-foreground" />
+                      +{addon.duration_minutes} min
                     </span>
                   )}
-                  <span className="flex items-center gap-0.5 text-xs font-medium text-foreground bg-primary/10 px-2 py-0.5 rounded">
+                  <span className="flex items-center gap-0.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md">
                     +${addon.price.toLocaleString()}
                   </span>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-1 mt-auto pt-2 border-t border-border/50">
+                <div className="flex items-center justify-end gap-2 mt-auto pt-3 border-t border-border/30 opacity-60 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleOpenModal(addon)}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded transition-colors"
+                    className="p-2 text-muted-foreground hover:text-primary hover:bg-secondary/80 rounded-lg transition-colors"
                     title="Editar"
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(addon)}
-                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                     title="Eliminar"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
@@ -432,34 +436,38 @@ export default function ServicesAndAddons({
             {/* Add New Addon Card */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary hover:text-primary transition-colors min-h-35"
+              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-all min-h-[14rem] shadow-sm hover:shadow-md hover:-translate-y-0.5"
             >
-              <Plus size={20} />
-              <span className="text-sm font-medium">Agregar Add-on</span>
+              <div className="p-3 bg-background rounded-full border border-border shadow-sm">
+                <Plus size={24} />
+              </div>
+              <span className="font-semibold block text-foreground">Crear Add-on</span>
             </button>
           </>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal / Dialog (Glassmorphism Immersive Style) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl w-full max-w-md shadow-xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}></div>
+          
+          <div className="relative bg-card/90 backdrop-blur-2xl border border-white/10 rounded-2xl w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-in fade-in zoom-in-95 slide-in-from-bottom-[2%] duration-300">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold">
+            <div className="flex items-center justify-between p-5 border-b border-border/30 bg-secondary/20 rounded-t-2xl">
+              <h2 className="text-xl font-semibold tracking-tight">
                 {editingItem ? 'Editar' : 'Nuevo'} {activeTab === 'services' ? 'Servicio' : 'Add-on'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:bg-secondary/80 hover:text-foreground rounded-full transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-4 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
                   Nombre *
@@ -535,14 +543,14 @@ export default function ServicesAndAddons({
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-border">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            {/* Modal Footer (Sticky-style glass) */}
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-border/30 bg-background/50 rounded-b-2xl">
+              <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="hover:bg-secondary border border-transparent hover:border-border/50">
                 Cancelar
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={saving} className="shadow-lg hover:-translate-y-0.5 transition-all">
                 {saving && <Loader2 size={16} className="animate-spin mr-2" />}
-                {editingItem ? 'Guardar' : 'Crear'}
+                {editingItem ? 'Guardar Cambios' : 'Crear'}
               </Button>
             </div>
           </div>

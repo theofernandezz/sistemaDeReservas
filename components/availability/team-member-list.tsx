@@ -42,20 +42,20 @@ export default function TeamMemberList({
   const activeMembers = members.filter(m => m.is_active)
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 w-full">
+    <div className="bg-card/30 backdrop-blur-md border border-white/5 rounded-3xl p-6 w-full shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Equipo</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Equipo</h2>
+          <p className="text-sm text-muted-foreground/80">
             {activeMembers.length} miembro{activeMembers.length !== 1 ? 's' : ''} activo{activeMembers.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={onAddMember}
-          className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 hover:bg-primary/20 transition-all hover:scale-105"
         >
-          <Plus size={20} />
+          <Plus size={18} />
         </button>
       </div>
 
@@ -87,13 +87,13 @@ export default function TeamMemberList({
             className={cn(
               'w-full flex items-center gap-3 p-3 rounded-xl transition-all',
               selectedMemberId === member.id
-                ? 'bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30'
-                : 'hover:bg-secondary/50',
+                ? 'bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30 shadow-sm'
+                : 'hover:bg-secondary/40 border border-transparent',
               !member.is_active && 'opacity-60'
             )}
           >
             <div className={cn(
-              'h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-sm',
+              'h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm border border-white/10 filter drop-shadow-sm',
               member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
             )}>
               {getInitials(member.name)}
@@ -116,7 +116,7 @@ export default function TeamMemberList({
       {/* Manage Team Button */}
       <button
         onClick={onManageTeam}
-        className="w-full mt-5 py-3 rounded-xl bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors font-medium text-sm"
+        className="w-full mt-6 py-2.5 rounded-xl bg-background/50 border border-white/5 text-muted-foreground/80 hover:bg-background hover:text-foreground shadow-sm transition-all font-medium text-sm flex items-center justify-center"
       >
         Gestionar equipo
       </button>

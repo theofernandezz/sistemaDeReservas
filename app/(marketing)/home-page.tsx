@@ -1,14 +1,22 @@
-'use client'
-
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import { ContainerScroll } from '@/components/ui/container-scroll-animation'
 import { FlipWords } from '@/components/ui/flip-words'
-import { InteractiveFeatureCards } from '@/components/marketing/feature-cards'
 import { HeroDashboardMockup } from '@/components/marketing/hero-dashboard-mockup'
 import { AuroraBackground } from '@/components/ui/aurora-background'
-import { FAQ } from '@/components/marketing/faq'
+import dynamic from 'next/dynamic'
+
+// Lazy load heavy interactive components below the fold
+const InteractiveFeatureCards = dynamic(
+  () => import('@/components/marketing/feature-cards').then((mod) => mod.InteractiveFeatureCards),
+  { loading: () => <div className="h-[600px] w-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary/50" /></div> }
+)
+
+const FAQ = dynamic(
+  () => import('@/components/marketing/faq').then((mod) => mod.FAQ),
+  { loading: () => <div className="h-[400px] w-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary/50" /></div> }
+)
 
 export default function HomePage() {
   const words = ["Inteligente", "Rápida", "Elegante", "Sin\u00A0Estrés"]

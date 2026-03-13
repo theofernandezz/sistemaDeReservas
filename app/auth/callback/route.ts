@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
               owner_id: user.id,
               name: 'Mi Negocio', // Placeholder, will be updated in onboarding
               slug: `negocio-${user.id.slice(0, 8)}`, // Temp slug
+              admin_notification_email: user.email ?? null,
             })
             .select('id, settings')
             .single()

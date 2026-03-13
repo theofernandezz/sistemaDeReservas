@@ -227,7 +227,7 @@ export default function SettingsPage({
           </div>
         ) : (
           <div>
-            <h1 className="text-2xl font-bold mb-6">Configuración</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-6">Configuración</h1>
             <div className="space-y-2">
               {sections.map(section => (
                 <button
@@ -236,16 +236,18 @@ export default function SettingsPage({
                     setActiveSection(section.id)
                     setShowMobileMenu(false)
                   }}
-                  className="w-full flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:bg-secondary/50 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:bg-secondary/40 hover:shadow-sm transition-all group"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="text-muted-foreground">{section.icon}</div>
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary/80 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shadow-inner border border-white/5">
+                      {section.icon}
+                    </div>
                     <div className="text-left">
-                      <div className="font-medium">{section.label}</div>
-                      <div className="text-xs text-muted-foreground">{section.description}</div>
+                      <div className="font-semibold text-foreground tracking-tight">{section.label}</div>
+                      <div className="text-xs text-muted-foreground/80 mt-0.5">{section.description}</div>
                     </div>
                   </div>
-                  <ChevronRight size={18} className="text-muted-foreground" />
+                  <ChevronRight size={18} className="text-muted-foreground/50 group-hover:text-primary transition-colors hover:translate-x-0.5" />
                 </button>
               ))}
             </div>
@@ -258,35 +260,41 @@ export default function SettingsPage({
   // Desktop: sidebar + content
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Configuración</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-8">Configuración</h1>
 
-      <div className="flex gap-6">
+      <div className="flex gap-8">
         {/* Sidebar */}
-        <div className="w-56 shrink-0">
-          <nav className="space-y-1 sticky top-6">
-            {sections.map(section => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${activeSection === section.id
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+        <div className="w-64 shrink-0">
+          <nav className="space-y-1.5 sticky top-8">
+            {sections.map(section => {
+              const isActive = activeSection === section.id
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-card/60 backdrop-blur-xl shadow-sm border border-white/10 text-primary font-semibold'
+                      : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground border border-transparent'
                   }`}
-              >
-                {section.icon}
-                <span className="text-sm">{section.label}</span>
-              </button>
-            ))}
+                >
+                  <div className={`transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-foreground'}`}>
+                    {section.icon}
+                  </div>
+                  <span className="text-sm tracking-tight">{section.label}</span>
+                </button>
+              )
+            })}
           </nav>
         </div>
 
         {/* Content */}
         <div className="flex-1 max-w-2xl">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-1">
+          <div className="bg-card/20 backdrop-blur-md border border-white/5 rounded-[2rem] p-8 shadow-sm">
+            <h2 className="text-xl font-bold tracking-tight mb-1.5 text-foreground">
               {sections.find(s => s.id === activeSection)?.label}
             </h2>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground/80 mb-8 pb-6 border-b border-border/40">
               {sections.find(s => s.id === activeSection)?.description}
             </p>
             {renderContent()}
@@ -333,42 +341,49 @@ function ProfileSection({ business }: { business?: SettingsProps['business'] }) 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Nombre del negocio</label>
-        <Input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Mi Negocio"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium mb-1.5 block">URL pública (slug)</label>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">reservar.app/</span>
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Nombre del negocio</label>
+        <div className="bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
           <Input
-            value={slug}
-            onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s/g, '-'))}
-            placeholder="mi-negocio"
-            className="flex-1"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Mi Negocio"
+            className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Descripción</label>
-        <textarea
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          placeholder="Contá brevemente de qué se trata tu negocio..."
-          rows={3}
-          className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
-        />
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">URL pública (slug)</label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground/60">reservar.app/</span>
+          <div className="flex-1 bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Input
+              value={slug}
+              onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s/g, '-'))}
+              placeholder="mi-negocio"
+              className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="pt-4">
-        <Button onClick={handleSave} disabled={saving}>
+      <div>
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Descripción</label>
+        <div className="bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Contá brevemente de qué se trata tu negocio..."
+            rows={3}
+            className="w-full px-3 py-2 border-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none resize-none"
+          />
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <Button onClick={handleSave} disabled={saving} className="rounded-xl px-6 hover:-translate-y-0.5 shadow transition-all duration-300">
           {saving && <Loader2 size={16} className="animate-spin mr-2" />}
           Guardar cambios
         </Button>
@@ -409,61 +424,61 @@ function ContactSection({ business }: { business?: SettingsProps['business'] }) 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Teléfono / WhatsApp</label>
-        <div className="relative">
-          <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Teléfono / WhatsApp</label>
+        <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+          <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
           <Input
             value={phone}
             onChange={e => setPhone(e.target.value)}
             placeholder="+54 11 1234-5678"
-            className="pl-9"
+            className="pl-10 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Email del negocio</label>
-        <div className="relative">
-          <AtSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Email del negocio</label>
+        <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+          <AtSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
           <Input
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="contacto@minegocio.com"
-            className="pl-9"
+            className="pl-10 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Instagram</label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Instagram</label>
+        <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 text-sm font-bold">@</span>
           <Input
             value={instagram}
             onChange={e => setInstagram(e.target.value)}
             placeholder="mi_negocio"
-            className="pl-7"
+            className="pl-8 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Dirección (opcional)</label>
-        <div className="relative">
-          <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Dirección (opcional)</label>
+        <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+          <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
           <Input
             value={address}
             onChange={e => setAddress(e.target.value)}
             placeholder="Av. Corrientes 1234, CABA"
-            className="pl-9"
+            className="pl-10 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
           />
         </div>
       </div>
 
-      <div className="pt-4">
-        <Button onClick={handleSave} disabled={saving}>
+      <div className="pt-2">
+        <Button onClick={handleSave} disabled={saving} className="rounded-xl px-6 hover:-translate-y-0.5 shadow transition-all duration-300">
           {saving && <Loader2 size={16} className="animate-spin mr-2" />}
           Guardar cambios
         </Button>
@@ -513,20 +528,20 @@ function AppearanceSection({ businessSettings }: { businessSettings?: SettingsPr
     <div className="space-y-6">
       {/* Color de acento */}
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Color de tu marca</label>
-        <p className="text-xs text-muted-foreground mb-4">
+        <label className="text-sm font-semibold tracking-tight mb-1.5 block text-foreground">Color de tu marca</label>
+        <p className="text-sm text-muted-foreground/80 mb-5">
           Se usa en botones, precios y elementos destacados de tu página de reservas
         </p>
 
         {/* Colores preset */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2.5 mb-5 p-3 bg-card/40 backdrop-blur-xl border border-white/5 shadow-sm rounded-[1rem] inline-flex">
           {PRESET_COLORS.map(color => (
             <button
               key={color.value}
               onClick={() => setAccentColor(color.value)}
-              className={`w-9 h-9 rounded-full border-2 transition-all ${accentColor === color.value
-                  ? 'border-foreground scale-110 ring-2 ring-offset-2 ring-foreground/20'
-                  : 'border-border hover:scale-105 hover:border-foreground/50'
+              className={`w-10 h-10 rounded-full border-2 transition-all duration-300 ${accentColor === color.value
+                  ? 'border-foreground scale-110 shadow-[0_0_15px_rgba(0,0,0,0.2)] dark:shadow-[0_0_15px_rgba(255,255,255,0.2)] z-10'
+                  : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100 hover:shadow-md'
                 }`}
               style={{ backgroundColor: color.value }}
               title={color.name}
@@ -536,42 +551,44 @@ function AppearanceSection({ businessSettings }: { businessSettings?: SettingsPr
 
         {/* Color picker custom */}
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative overflow-hidden rounded-xl h-11 w-12 border border-border shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all shrink-0">
             <input
               type="color"
               value={accentColor}
               onChange={e => setAccentColor(e.target.value)}
-              className="w-12 h-10 rounded-lg border border-border cursor-pointer"
+              className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer"
             />
           </div>
-          <Input
-            value={accentColor}
-            onChange={e => setAccentColor(e.target.value)}
-            placeholder="#f97316"
-            className="w-28 font-mono text-sm"
-          />
-          <span className="text-xs text-muted-foreground">o elegí un color personalizado</span>
+          <div className="bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Input
+              value={accentColor}
+              onChange={e => setAccentColor(e.target.value)}
+              placeholder="#f97316"
+              className="w-28 font-mono text-[15px] font-medium border-0 bg-transparent focus-visible:ring-0 shadow-none uppercase"
+            />
+          </div>
+          <span className="text-xs font-medium text-muted-foreground/60 tracking-tight">o elegí un color personalizado</span>
         </div>
       </div>
 
       {/* Preview */}
-      <div className="pt-4 border-t border-border">
-        <label className="text-sm font-medium mb-3 block">Vista previa</label>
-        <div className="p-4 rounded-xl border border-border bg-background">
-          <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border/50">
+      <div className="pt-6 mt-2 border-t border-border/40">
+        <label className="text-sm font-semibold tracking-tight mb-3 block text-foreground">Vista previa</label>
+        <div className="p-5 rounded-2xl border border-white/5 shadow-inner bg-card/30 backdrop-blur-sm">
+          <div className="flex items-center justify-between p-4 bg-card/60 backdrop-blur-xl rounded-xl border border-white/10 shadow-sm transition-transform hover:-translate-y-0.5 duration-300">
             <div>
-              <p className="font-medium text-sm text-foreground">Corte de cabello</p>
-              <p className="text-xs text-muted-foreground">30 min</p>
+              <p className="font-semibold tracking-tight text-[15px] text-foreground">Corte de cabello</p>
+              <p className="text-xs font-medium text-muted-foreground/80 mt-0.5">30 min</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <span
-                className="font-bold"
+                className="font-bold tracking-tight text-lg drop-shadow-sm"
                 style={{ color: accentColor }}
               >
                 $25
               </span>
               <button
-                className="px-3 py-1.5 text-sm font-medium text-white rounded-md transition-opacity hover:opacity-90"
+                className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-md shadow-sm"
                 style={{ backgroundColor: accentColor }}
               >
                 Reservar
@@ -581,8 +598,8 @@ function AppearanceSection({ businessSettings }: { businessSettings?: SettingsPr
         </div>
       </div>
 
-      <div className="pt-4">
-        <Button onClick={handleSave} disabled={saving}>
+      <div className="pt-2">
+        <Button onClick={handleSave} disabled={saving} className="rounded-xl px-6 hover:-translate-y-0.5 shadow transition-all duration-300">
           {saving && <Loader2 size={16} className="animate-spin mr-2" />}
           Guardar cambios
         </Button>
@@ -639,49 +656,49 @@ function ReservationsSection({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Anticipación mínima</label>
-        <p className="text-xs text-muted-foreground mb-2">
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Anticipación mínima</label>
+        <p className="text-sm text-muted-foreground/80 mb-3">
           Cuántas horas antes del turno se puede reservar
         </p>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               type="number"
               value={minAdvance}
               onChange={e => setMinAdvance(e.target.value)}
-              className="pl-9 w-24"
+              className="pl-10 w-28 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
               min="0"
             />
           </div>
-          <span className="text-sm text-muted-foreground">horas</span>
+          <span className="text-sm font-medium text-muted-foreground/60 tracking-tight">horas</span>
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Cancelación permitida hasta</label>
-        <p className="text-xs text-muted-foreground mb-2">
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Cancelación permitida hasta</label>
+        <p className="text-sm text-muted-foreground/80 mb-3">
           Hasta cuántas horas antes se puede cancelar sin penalidad
         </p>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               type="number"
               value={cancelHours}
               onChange={e => setCancelHours(e.target.value)}
-              className="pl-9 w-24"
+              className="pl-10 w-28 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
               min="0"
             />
           </div>
-          <span className="text-sm text-muted-foreground">horas antes</span>
+          <span className="text-sm font-medium text-muted-foreground/60 tracking-tight">horas antes</span>
         </div>
       </div>
 
-      <div className="pt-4">
-        <Button onClick={handleSave} disabled={saving}>
+      <div className="pt-2">
+        <Button onClick={handleSave} disabled={saving} className="rounded-xl px-6 hover:-translate-y-0.5 shadow transition-all duration-300">
           {saving && <Loader2 size={16} className="animate-spin mr-2" />}
           Guardar cambios
         </Button>
@@ -741,48 +758,50 @@ function PaymentsSection({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* MercadoPago Connection */}
-      <div className="flex items-start gap-4 pb-6 border-b border-border">
-        <img
-          src="/integrations/mercadopago.png"
-          alt="Mercado Pago"
-          className="w-10 h-10 rounded-lg shrink-0 object-contain"
-        />
+      <div className="flex items-start gap-5 pb-8 border-b border-border/40">
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-2.5 shadow-sm">
+          <img
+            src="/integrations/mercadopago.png"
+            alt="Mercado Pago"
+            className="w-12 h-12 rounded-xl object-contain drop-shadow-sm"
+          />
+        </div>
         <div className="flex-1">
-          <h3 className="font-medium">Mercado Pago</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h3 className="text-[17px] font-semibold tracking-tight text-foreground">Mercado Pago</h3>
+          <p className="text-sm font-medium text-muted-foreground/80 mt-1">
             Recibí pagos directamente en tu cuenta
           </p>
           {isMPConnected && mpTokenValid === false && (
-            <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-800">
+            <div className="mt-4 flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 shadow-sm">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                 La conexión con Mercado Pago expiró o fue revocada. Reconectá tu cuenta para seguir recibiendo pagos.
               </p>
             </div>
           )}
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-5 flex items-center gap-3">
             {isMPConnected ? (
               <>
                 {mpTokenValid === false ? (
-                  <Button size="sm" onClick={handleConnectMP} className="bg-amber-500 hover:bg-amber-600 text-white">
-                    <ExternalLink className="w-4 h-4 mr-1.5" />
+                  <Button size="sm" onClick={handleConnectMP} className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm hover:-translate-y-0.5 transition-all">
+                    <ExternalLink className="w-4 h-4 mr-2" />
                     Reconectar
                   </Button>
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                  <div className="flex items-center gap-2.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl shadow-inner">
                     <Check className="w-4 h-4" />
-                    Conectado {mpUserId && <span className="text-xs opacity-75">({mpUserId})</span>}
+                    Conectado {mpUserId && <span className="opacity-60 font-semibold tracking-tight">({mpUserId})</span>}
                   </div>
                 )}
-                <Button variant="outline" size="sm" onClick={handleDisconnectMP} disabled={disconnecting}>
-                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                  <span className="ml-1">Desconectar</span>
+                <Button variant="outline" size="sm" onClick={handleDisconnectMP} disabled={disconnecting} className="rounded-xl border border-white/5 hover:bg-secondary/40 shadow-sm transition-all hover:text-destructive">
+                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 mr-1.5" />}
+                  <span>Desconectar</span>
                 </Button>
               </>
             ) : (
-              <Button onClick={handleConnectMP}>
+              <Button onClick={handleConnectMP} className="rounded-xl px-5 hover:-translate-y-0.5 shadow transition-all duration-300">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Vincular Mercado Pago
               </Button>
@@ -793,36 +812,39 @@ function PaymentsSection({
 
       {/* Deposit Percentage */}
       {isMPConnected && businessId && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Percent className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">Porcentaje de seña</span>
+        <div className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-3xl p-6 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-2">
+            <Percent className="w-4 h-4 text-primary" />
+            <span className="font-semibold tracking-tight text-[15px] text-foreground">Porcentaje de seña</span>
           </div>
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-sm font-medium text-muted-foreground/80 mb-5">
             Este porcentaje del total se cobra al momento de reservar
           </p>
           <div className="flex items-center gap-3">
-            <Input
-              type="number"
-              min="10"
-              max="100"
-              step="5"
-              value={depositPercent}
-              onChange={(e) => setDepositPercent(Number(e.target.value))}
-              className="w-20 text-center"
-            />
-            <span className="text-muted-foreground">%</span>
+            <div className="bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all flex items-center">
+              <Input
+                type="number"
+                min="10"
+                max="100"
+                step="5"
+                value={depositPercent}
+                onChange={(e) => setDepositPercent(Number(e.target.value))}
+                className="w-20 text-center border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-semibold"
+              />
+              <span className="text-muted-foreground/60 font-semibold pr-3">%</span>
+            </div>
+            
             <Button
               variant="outline"
-              size="sm"
               onClick={handleSaveDeposit}
               disabled={savingDeposit || depositPercent === depositPercentage}
+              className="rounded-xl border border-white/5 bg-secondary/20 hover:bg-secondary hover:shadow-sm transition-all"
             >
-              {savingDeposit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+              {savingDeposit ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar porcentaje'}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Ej: Servicio de $10,000 → Seña de ${Math.round(10000 * depositPercent / 100).toLocaleString()}
+          <p className="text-[13px] font-medium text-muted-foreground/60 mt-4 bg-background/30 p-3 rounded-xl border border-white/5 inline-block">
+            <span className="text-foreground/80">Ejemplo:</span> Servicio de $10,000 → Se cobrará una seña de <strong className="text-primary">${Math.round(10000 * depositPercent / 100).toLocaleString()}</strong>
           </p>
         </div>
       )}
@@ -855,35 +877,37 @@ function IntegrationsSection({ isGoogleConnected }: { isGoogleConnected: boolean
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Google Calendar */}
-      <div className="flex items-start gap-4">
-        <img
-          src="/integrations/google-calendar.svg"
-          alt="Google Calendar"
-          className="w-10 h-10 rounded-lg shrink-0"
-        />
+      <div className="flex items-start gap-5">
+        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-2.5 shadow-sm bg-white dark:bg-card/40">
+          <img
+            src="/integrations/google-calendar.svg"
+            alt="Google Calendar"
+            className="w-12 h-12 rounded-xl object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
+          />
+        </div>
         <div className="flex-1">
-          <h3 className="font-medium">Google Calendar</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Sincronizá citas automáticamente con tu calendario
+          <h3 className="text-[17px] font-semibold tracking-tight text-foreground">Google Calendar</h3>
+          <p className="text-sm font-medium text-muted-foreground/80 mt-1">
+            Sincronizá citas automáticamente con tu calendario personal o de trabajo
           </p>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-5 flex items-center gap-3">
             {isGoogleConnected ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                <div className="flex items-center gap-2.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl shadow-inner">
                   <Check className="w-4 h-4" />
                   Conectado
                 </div>
-                <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
-                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                  <span className="ml-1">Desconectar</span>
+                <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting} className="rounded-xl border border-white/5 hover:bg-secondary/40 shadow-sm transition-all hover:text-destructive">
+                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 mr-1.5" />}
+                  <span>Desconectar</span>
                 </Button>
               </>
             ) : (
-              <Button onClick={handleConnect}>
+              <Button onClick={handleConnect} className="rounded-xl px-5 hover:-translate-y-0.5 shadow transition-all duration-300">
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Conectar Google Calendar
+                Conectar con Google
               </Button>
             )}
           </div>
@@ -891,10 +915,15 @@ function IntegrationsSection({ isGoogleConnected }: { isGoogleConnected: boolean
       </div>
 
       {/* Future integrations placeholder */}
-      <div className="pt-4 border-t border-border">
-        <p className="text-sm text-muted-foreground">
-          Próximamente: WhatsApp Business, Outlook, y más...
-        </p>
+      <div className="pt-6 border-t border-border/40">
+        <div className="bg-secondary/20 border border-white/5 rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold tracking-tight text-[15px]">Próximamente</h4>
+            <p className="text-sm font-medium text-muted-foreground/80 mt-1">
+              Integraciones con WhatsApp Business, Microsoft Outlook y Zoom.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -929,34 +958,38 @@ function NotificationsSection({ initialEmail }: { initialEmail: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Email para notificaciones</label>
-        <p className="text-xs text-muted-foreground mb-2">
-          Acá recibirás avisos de nuevas reservas y cancelaciones
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Email para notificaciones administrativas</label>
+        <p className="text-sm font-medium text-muted-foreground/80 mb-4">
+          Acá vas a recibir avisos inmediatos cuando un cliente reserve o cancele un turno
         </p>
         <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative flex-1 bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              className="pl-9"
+              className="pl-10 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
             />
           </div>
-          <Button onClick={handleSave} disabled={saving}>
+        </div>
+        <div className="pt-4">
+          <Button onClick={handleSave} disabled={saving} className="rounded-xl px-6 hover:-translate-y-0.5 shadow transition-all duration-300">
             {saving && <Loader2 size={16} className="animate-spin mr-2" />}
-            Guardar
+            Guardar email
           </Button>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-border">
-        <h4 className="font-medium mb-2">Recordatorios automáticos</h4>
-        <p className="text-sm text-muted-foreground">
-          Próximamente: Configurá recordatorios por WhatsApp o email para tus clientes
-        </p>
+      <div className="pt-6 border-t border-border/40">
+        <div className="bg-secondary/20 border border-white/5 rounded-2xl p-5">
+          <h4 className="font-semibold tracking-tight text-[15px] mb-1">Recordatorios automáticos a clientes</h4>
+          <p className="text-sm font-medium text-muted-foreground/80">
+            Esta función te permitirá configurar recordatorios automáticos por WhatsApp y Email para reducir el ausentismo corporativo. (Próximamente)
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -1013,36 +1046,41 @@ function AccountSection({ businessName }: { businessName?: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h4 className="font-medium mb-2">Cambiar contraseña</h4>
-        <p className="text-sm text-muted-foreground mb-3">
-          Te enviaremos un email para restablecer tu contraseña
+        <h4 className="font-semibold tracking-tight text-[15px] text-foreground mb-2">Seguridad y acceso</h4>
+        <p className="text-sm font-medium text-muted-foreground/80 mb-5">
+          Te enviaremos un email seguro para que puedas establecer una nueva contraseña de administrador
         </p>
-        <Button variant="outline" onClick={handleSendResetEmail} disabled={sendingReset}>
-          {sendingReset && <Loader2 size={16} className="animate-spin mr-2" />}
+        <Button variant="outline" onClick={handleSendResetEmail} disabled={sendingReset} className="rounded-xl border border-white/5 hover:bg-secondary/40 shadow-sm transition-all focus-visible:ring-primary/40">
+          {sendingReset ? <Loader2 size={16} className="animate-spin mr-2" /> : <Mail size={16} className="mr-2 text-muted-foreground" />}
           Enviar email de recuperación
         </Button>
       </div>
 
-      <div className="pt-4 border-t border-border">
-        <h4 className="font-medium text-destructive mb-2">Zona de peligro</h4>
-        <p className="text-sm text-muted-foreground mb-3">
-          Eliminar tu cuenta borrará todos tus datos permanentemente
+      <div className="pt-6 border-t border-border/40">
+        <h4 className="font-semibold tracking-tight text-[15px] text-destructive mb-2 flex items-center gap-2">
+          <AlertTriangle size={16} /> Zona de peligro
+        </h4>
+        <p className="text-sm font-medium text-muted-foreground/80 mb-6">
+          Eliminar tu cuenta borrará todos tus datos visuales, clientes y reservas de manera permanente e irreversible.
         </p>
-        <Button
-          variant="outline"
-          className="text-destructive border-destructive hover:bg-destructive/10"
-          onClick={() => setShowDeleteDialog(true)}
-          disabled={!expectedName}
-        >
-          Eliminar cuenta
-        </Button>
-        {!expectedName && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Completá el perfil de tu negocio antes de solicitar la eliminación.
-          </p>
-        )}
+        
+        <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5">
+          <Button
+            variant="destructive"
+            className="rounded-xl px-6 font-semibold shadow-sm hover:bg-destructive/90 w-full sm:w-auto"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={!expectedName}
+          >
+            Eliminar cuenta permanentemente
+          </Button>
+          {!expectedName && (
+            <p className="text-xs font-semibold text-destructive mt-3 opacity-80">
+              Debes completar el perfil básico de tu negocio (Nombre) para poder realizar esta acción administrativa.
+            </p>
+          )}
+        </div>
       </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

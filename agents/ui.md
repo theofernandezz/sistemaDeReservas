@@ -7,6 +7,7 @@
 ## When to Load This Agent
 
 Load this agent when the task involves:
+
 - Creating or modifying React components
 - Working with styles (Tailwind, CSS)
 - Using shadcn/ui or Aceternity UI
@@ -22,83 +23,96 @@ Load this agent when the task involves:
 
 **Load these skills after reading this file:**
 
-| Skill | Path | When |
-|-------|------|------|
-| `ui-engineering` | `skills/generic/ui-engineering/SKILL.md` | Always for UI |
-| `react-patterns` | `skills/generic/react-patterns/SKILL.md` | React components |
-| `typescript` | `skills/generic/typescript/SKILL.md` | Always |
-| `accessibility` | `skills/generic/accessibility/SKILL.md` | Interactive components |
-| `performance` | `skills/generic/performance/SKILL.md` | Optimizations |
-| `seo` | `skills/generic/seo/SKILL.md` | Meta tags, structured data |
-| `i18n` | `skills/generic/i18n/SKILL.md` | Translatable text |
-| `testing` | `skills/generic/testing/SKILL.md` | Component tests |
+| Skill            | Path                                     | When                                    |
+| ---------------- | ---------------------------------------- | --------------------------------------- |
+| `ui-engineering` | `skills/generic/ui-engineering/SKILL.md` | Always for UI                           |
+| `ux`             | `skills/generic/ux/SKILL.md`             | User flows, CRUD interfaces, state UX   |
+| `react-patterns` | `skills/generic/react-patterns/SKILL.md` | React components                        |
+| `typescript`     | `skills/generic/typescript/SKILL.md`     | Always                                  |
+| `accessibility`  | `skills/generic/accessibility/SKILL.md`  | Interactive components                  |
+| `performance`    | `skills/generic/performance/SKILL.md`    | Optimizations                           |
+| `seo`            | `skills/generic/seo/SKILL.md`            | Meta tags, structured data              |
+| `i18n`           | `skills/generic/i18n/SKILL.md`           | Translatable text                       |
+| `testing`        | `skills/generic/testing/SKILL.md`        | Component tests                         |
+| `react-native`   | `skills/generic/react-native/SKILL.md`   | Native mobile screens, navigation, APIs |
 
 ---
 
 ## Auto-invoke Skills
 
-| Action | Skill |
-|--------|-------|
+| Action                         | Skill            |
+| ------------------------------ | ---------------- |
 | Adding animations (Aceternity) | `ui-engineering` |
-| Adding meta tags | `seo` |
-| ARIA attributes | `accessibility` |
-| Core Web Vitals optimization | `performance` |
-| Creating custom hooks | `react-patterns` |
-| Creating/styling components | `ui-engineering` |
-| Defining types and interfaces | `typescript` |
-| Design system work | `ui-engineering` |
-| Image optimization | `performance` |
-| Internationalizing content | `i18n` |
-| Keyboard navigation | `accessibility` |
-| Language switcher | `i18n` |
-| Lazy loading components | `performance` |
-| Multi-language support | `i18n` |
-| Open Graph tags | `seo` |
-| React composition patterns | `react-patterns` |
-| State management patterns | `react-patterns` |
-| Using Shadcn UI components | `ui-engineering` |
-| Working with Tailwind classes | `ui-engineering` |
-| Writing React components | `react-patterns` |
-| Writing tests | `testing` |
-| Screen reader support | `accessibility` |
-| Structured data / JSON-LD | `seo` |
+| Adding meta tags               | `seo`            |
+| ARIA attributes                | `accessibility`  |
+| Core Web Vitals optimization   | `performance`    |
+| Creating custom hooks          | `react-patterns` |
+| Creating/styling components    | `ui-engineering` |
+| Designing user flows           | `ux`             |
+| Improving dashboard UX         | `ux`             |
+| Designing CRUD interfaces      | `ux`             |
+| Defining types and interfaces  | `typescript`     |
+| Design system work             | `ui-engineering` |
+| Image optimization             | `performance`    |
+| Internationalizing content     | `i18n`           |
+| Keyboard navigation            | `accessibility`  |
+| Language switcher              | `i18n`           |
+| Lazy loading components        | `performance`    |
+| Multi-language support         | `i18n`           |
+| Open Graph tags                | `seo`            |
+| React composition patterns     | `react-patterns` |
+| State management patterns      | `react-patterns` |
+| Using Shadcn UI components     | `ui-engineering` |
+| Working with Tailwind classes  | `ui-engineering` |
+| Writing React components       | `react-patterns` |
+| Writing tests                  | `testing`        |
+| Screen reader support          | `accessibility`  |
+| Structured data / JSON-LD      | `seo`            |
 
 ---
 
 ## Critical Rules
 
 ### React
+
 ```typescript
 // REQUIRED - Named imports
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 
 // FORBIDDEN - Default import
-import React from 'react'
-import * as React from 'react'
+import React from "react";
+import * as React from "react";
 ```
 
 ### No Manual Memoization
+
 ```typescript
 // FORBIDDEN - React 19 Compiler handles this
-const memoized = useMemo(() => expensive(), [dep])
-const callback = useCallback(() => action(), [dep])
+const memoized = useMemo(() => expensive(), [dep]);
+const callback = useCallback(() => action(), [dep]);
 
 // REQUIRED - Use directly
-const result = expensive()
-const handler = () => action()
+const result = expensive();
+const handler = () => action();
 ```
 
 ### Types with as const
+
 ```typescript
 // FORBIDDEN - String literal unions
-type Status = 'idle' | 'loading' | 'success'
+type Status = "idle" | "loading" | "success";
 
 // REQUIRED - Const assertion
-const STATUSES = { Idle: 'idle', Loading: 'loading', Success: 'success' } as const
-type Status = typeof STATUSES[keyof typeof STATUSES]
+const STATUSES = {
+  Idle: "idle",
+  Loading: "loading",
+  Success: "success",
+} as const;
+type Status = (typeof STATUSES)[keyof typeof STATUSES];
 ```
 
 ### Styling
+
 ```typescript
 // Static classes
 className="bg-slate-800 text-white"
@@ -115,6 +129,7 @@ className="bg-#ff0000"           // No hex colors
 ```
 
 ### Component Library Decision
+
 - **shadcn/ui**: Forms, primitives, data display
 - **Aceternity UI**: Animations, effects, hero sections
 
@@ -123,6 +138,7 @@ className="bg-#ff0000"           // No hex colors
 ## Decision Trees
 
 ### Component Placement
+
 ```
 Is it a UI primitive (Button, Input, Card)?
   └─► components/ui/ (from shadcn)
@@ -135,6 +151,7 @@ Is it used in 2+ features?
 ```
 
 ### Styling Decision
+
 ```
 Need a dynamic value (calculated at runtime)?
   └─► style prop: style={{ width: `${percent}%` }}
@@ -170,4 +187,4 @@ Zod 4.x | React Hook Form 7.x
 
 ---
 
-*Agent Version: 2.2.0*
+_Agent Version: 2.2.0_

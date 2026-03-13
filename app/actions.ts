@@ -129,6 +129,22 @@ export async function updateBusinessSettings(settings: Partial<BusinessSettings>
   }
 }
 
+/**
+ * Get business settings (hours, slot interval, etc.) for the current business
+ */
+export async function getBusinessSettings(): Promise<ServerActionResponse<BusinessSettings>> {
+  try {
+    const businessResult = await getCurrentBusiness()
+    if (!businessResult.success || !businessResult.data) {
+      return { success: false, error: 'No business found' }
+    }
+    return { success: true, data: businessResult.data.settings || {} }
+  } catch (error: unknown) {
+    console.error('Error fetching business settings:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error al obtener la configuración' }
+  }
+}
+
 // ============================================
 // SERVICES - CRUD Operations
 // ============================================
@@ -538,11 +554,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
           endDateTime: endDate
         }
 
-        // Email to admin
-        // Fetch admin email from settings
-        const { getAdminNotificationEmail } = await import('@/app/actions')
-        const adminEmail = await getAdminNotificationEmail()
-        await sendNewAppointmentNotification(emailData, businessId, adminEmail)
+        // Email to admin (uses business-specific admin_notification_email from businesses table)
+        await sendNewAppointmentNotification(emailData, businessId)
 
         // Email to client (if email provided)
         if (input.client_email) {

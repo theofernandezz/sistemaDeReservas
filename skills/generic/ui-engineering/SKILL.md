@@ -1,13 +1,13 @@
 ---
-name: ui-engineering
+name: UI Engineering - Distinctive Design
 description: |
   Premium UI patterns with distinctive aesthetics. Anti "AI slop" design principles.
-  Combines Linear-style, Tailwind v4, Shadcn UI, and Aceternity UI.
+  Combines Tailwind v4, Shadcn UI, and Aceternity UI.
   Trigger: Activated when creating/styling components or working on UI patterns.
 license: MIT
 metadata:
   author: ai-library (merged with anthropics/skills frontend-design)
-  version: "3.0"
+  version: "3.3"
   scope: [root, ui]
   auto_invoke:
     - "Creating/styling components"
@@ -35,14 +35,14 @@ Before writing ANY UI code, establish a **bold aesthetic direction**. Generic de
 
 ### The AI Slop Checklist (NEVER DO THESE)
 
-| Anti-Pattern | Why It's Bad |
-|--------------|--------------|
-| Purple/blue gradients on white | Overused, screams "AI generated" |
-| Inter, Roboto, system fonts | Generic, no personality |
-| Symmetric card grids | Predictable, boring |
-| Generic hero with centered text | Seen a million times |
-| Rounded corners everywhere | Safe but forgettable |
-| Stock-photo-style illustrations | Impersonal, corporate |
+| Anti-Pattern                    | Why It's Bad                     |
+| ------------------------------- | -------------------------------- |
+| Purple/blue gradients on white  | Overused, screams "AI generated" |
+| Inter, Roboto, system fonts     | Generic, no personality          |
+| Symmetric card grids            | Predictable, boring              |
+| Generic hero with centered text | Seen a million times             |
+| Rounded corners everywhere      | Safe but forgettable             |
+| Stock-photo-style illustrations | Impersonal, corporate            |
 
 ### Design Thinking Process
 
@@ -68,13 +68,117 @@ Before coding, answer these questions:
 
 ### Distinctive Design Principles
 
-| Element | Generic (BAD) | Distinctive (GOOD) |
-|---------|---------------|-------------------|
-| **Typography** | Inter, system-ui | Space Grotesk, Clash Display, custom fonts |
-| **Color** | Safe blue/purple | Bold monochrome, unexpected accents, dark themes |
-| **Layout** | Centered, symmetric | Asymmetric, overlapping, diagonal flow |
-| **Motion** | Fade in/out | Staggered reveals, scroll-triggered, physics-based |
-| **Details** | Plain backgrounds | Textures, grain, gradients, decorative elements |
+| Element        | Generic (BAD)       | Distinctive (GOOD)                                 |
+| -------------- | ------------------- | -------------------------------------------------- |
+| **Typography** | Inter, system-ui    | Space Grotesk, Clash Display, custom fonts         |
+| **Color**      | Safe blue/purple    | Bold monochrome, unexpected accents, dark themes   |
+| **Layout**     | Centered, symmetric | Asymmetric, overlapping, diagonal flow             |
+| **Motion**     | Fade in/out         | Staggered reveals, scroll-triggered, physics-based |
+| **Details**    | Plain backgrounds   | Textures, grain, gradients, decorative elements    |
+
+### Creative Direction Contract (REQUIRED)
+
+Before implementing UI, the AI must define this mini-brief and follow it:
+
+```
+1. DESIGN INTENT (1 sentence)
+  Example: "Build a high-contrast editorial UI that feels like a modern magazine cover."
+
+2. VISUAL PILLARS (pick exactly 3)
+  - Typography attitude
+  - Color attitude
+  - Layout attitude
+  - Motion attitude
+  - Surface/background attitude
+
+3. RISKY CHOICE (pick at least 1)
+  A non-default decision that makes the design memorable.
+  Example: giant left-aligned headline, monochrome palette + one neon accent,
+  asymmetric section spacing, unconventional navigation placement.
+
+4. USABILITY GUARDRAIL (pick at least 1)
+  Keep accessibility and clarity intact despite bold visuals.
+```
+
+If this contract is missing, the design is considered incomplete.
+
+### Variation Budget Rule
+
+To avoid repetitive outputs, each new UI task must significantly differ from the previous baseline in at least 3 of these 5 axes:
+
+1. Typography system
+2. Color strategy
+3. Layout structure
+4. Motion language
+5. Background/surface treatment
+
+Do not reuse the same "safe" combination task after task.
+
+### Reference Pool Strategy (REQUIRED)
+
+References are encouraged for quality, but must be used for principles, not cloning.
+
+#### Approved Reference Pool
+
+Use these as inspiration sources:
+
+- Stripe (structure, hierarchy, SaaS conversion clarity)
+- Linear (product minimalism, typography discipline)
+- Framer (expressive layout and motion)
+- Vercel (technical clarity and restraint)
+- Notion (content readability and calm interaction)
+- Apple (storytelling rhythm and focus)
+- Airbnb (conversion-driven UX and trust patterns)
+- Figma (product communication and onboarding)
+- Awwwards (bold visual direction; selective use)
+- Mobbin / Land-book (pattern libraries and comparative references)
+
+#### Reference Usage Rules
+
+1. Pick at most 2 references per task:
+
+- 1 for structure/UX
+- 1 for visual/motion language
+
+2. Never copy full layouts, section order, or component styling 1:1.
+3. Extract principles only:
+
+- hierarchy
+- spacing rhythm
+- interaction model
+- motion pacing
+
+4. Do not reuse the same reference pair in consecutive tasks.
+5. If a reference is used repeatedly, force a different style family in the next task.
+
+#### Style Family Rotation
+
+Rotate across style families to maintain creativity:
+
+- editorial
+- brutalist
+- playful
+- luxury
+- retro-futurist
+- minimal
+
+Avoid anchoring every task to one aesthetic.
+
+### UI Response Format (REQUIRED)
+
+For any UI implementation request, the AI response must include this block before code:
+
+```text
+UI_DIRECTION
+- Intent: <1 sentence>
+- Pillars: <exactly 3 pillars>
+- References: <up to 2 from Approved Reference Pool, with what is borrowed from each>
+- Risky Choice: <at least 1>
+- Usability Guardrail: <at least 1>
+- Variation Proof: <list at least 3 of the 5 variation axes changed>
+```
+
+If this block is missing, the UI response is considered non-compliant.
 
 ### Typography That Stands Out
 
@@ -131,18 +235,18 @@ Before coding, answer these questions:
 
 ---
 
-## 🎨 Design Philosophy: Linear Style
+## 🎨 Design Philosophy: Distinctive Systems
 
-The "Linear Style" is characterized by:
+High-quality UI systems are characterized by:
 
-| Aspect | Description |
-|--------|-------------|
-| **Subtle Borders** | 1px borders with low opacity (`border-white/10`) |
-| **Glassmorphism** | Backdrop blur with translucent backgrounds |
-| **Micro-interactions** | Smooth transitions on every interactive element |
-| **Dark-first** | Designed for dark mode, light mode as adaptation |
-| **Depth through Shadow** | Layered shadows for elevation hierarchy |
-| **Precision Spacing** | 4px grid system, consistent rhythm |
+| Aspect                   | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| **Subtle Borders**       | 1px borders with low opacity (`border-white/10`) |
+| **Glassmorphism**        | Backdrop blur with translucent backgrounds       |
+| **Micro-interactions**   | Smooth transitions on every interactive element  |
+| **Dark-first**           | Designed for dark mode, light mode as adaptation |
+| **Depth through Shadow** | Layered shadows for elevation hierarchy          |
+| **Precision Spacing**    | 4px grid system, consistent rhythm               |
 
 ---
 
@@ -154,59 +258,59 @@ Use **both libraries** strategically based on their strengths:
 
 Use Shadcn for **functional, accessible components** that need to be reliable and composable.
 
-| Component Type | Examples |
-|---------------|----------|
-| **Form Controls** | Input, Textarea, Select, Checkbox, Radio, Switch, Slider |
-| **Dialogs & Overlays** | Dialog, Sheet, Popover, Tooltip, Dropdown Menu |
-| **Data Display** | Table, Accordion, Tabs, Separator |
-| **Feedback** | Alert, Toast, Progress, Skeleton |
-| **Navigation** | Navigation Menu, Breadcrumb, Pagination |
-| **Buttons & Actions** | Button, Toggle, Toggle Group |
+| Component Type         | Examples                                                 |
+| ---------------------- | -------------------------------------------------------- |
+| **Form Controls**      | Input, Textarea, Select, Checkbox, Radio, Switch, Slider |
+| **Dialogs & Overlays** | Dialog, Sheet, Popover, Tooltip, Dropdown Menu           |
+| **Data Display**       | Table, Accordion, Tabs, Separator                        |
+| **Feedback**           | Alert, Toast, Progress, Skeleton                         |
+| **Navigation**         | Navigation Menu, Breadcrumb, Pagination                  |
+| **Buttons & Actions**  | Button, Toggle, Toggle Group                             |
 
 ```tsx
 // ✅ Use Shadcn for forms and core UI
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem } from '@/components/ui/select'
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem } from "@/components/ui/select";
 ```
 
 ### Aceternity UI — Animations & Visual Impact
 
 Use Aceternity for **eye-catching, animated components** that create visual wow-factor.
 
-| Component Type | Examples |
-|---------------|----------|
-| **Hero Sections** | Spotlight, Lamp, Vortex, Aurora Background |
-| **Backgrounds** | Dot Background, Grid Background, Beams, Particles |
-| **Cards & Containers** | 3D Card, Hover Effect Cards, Glowing Cards |
-| **Text Effects** | Text Generate, Typewriter, Text Reveal, Wavy Text |
-| **Scroll Effects** | Scroll Reveal, Parallax Scroll, Sticky Scroll |
-| **Interactive Elements** | Floating Dock, Moving Border, Sparkles |
-| **Navigation** | Floating Navbar, Sidebar with animation |
+| Component Type           | Examples                                          |
+| ------------------------ | ------------------------------------------------- |
+| **Hero Sections**        | Spotlight, Lamp, Vortex, Aurora Background        |
+| **Backgrounds**          | Dot Background, Grid Background, Beams, Particles |
+| **Cards & Containers**   | 3D Card, Hover Effect Cards, Glowing Cards        |
+| **Text Effects**         | Text Generate, Typewriter, Text Reveal, Wavy Text |
+| **Scroll Effects**       | Scroll Reveal, Parallax Scroll, Sticky Scroll     |
+| **Interactive Elements** | Floating Dock, Moving Border, Sparkles            |
+| **Navigation**           | Floating Navbar, Sidebar with animation           |
 
 ```tsx
 // ✅ Use Aceternity for visual impact
-import { SpotlightCard } from '@/components/aceternity/spotlight-card'
-import { BackgroundBeams } from '@/components/aceternity/background-beams'
-import { TextGenerateEffect } from '@/components/aceternity/text-generate-effect'
-import { FloatingDock } from '@/components/aceternity/floating-dock'
+import { SpotlightCard } from "@/components/aceternity/spotlight-card";
+import { BackgroundBeams } from "@/components/aceternity/background-beams";
+import { TextGenerateEffect } from "@/components/aceternity/text-generate-effect";
+import { FloatingDock } from "@/components/aceternity/floating-dock";
 ```
 
 ### Decision Matrix
 
-| Need | Use | Reason |
-|------|-----|--------|
-| Form with validation | **Shadcn** | Accessible, works with react-hook-form |
-| Hero section for landing | **Aceternity** | Visual impact, animations |
-| Modal/Dialog | **Shadcn** | Proper focus management, a11y |
-| Animated card hover effects | **Aceternity** | 3D transforms, glow effects |
-| Data table | **Shadcn** | Sorting, filtering, pagination |
-| Background effects | **Aceternity** | Beams, particles, grids |
-| Dropdown menu | **Shadcn** | Keyboard navigation, ARIA |
-| Text animations | **Aceternity** | Typewriter, reveal effects |
-| Toast notifications | **Shadcn** | Consistent, accessible |
-| Floating navigation | **Aceternity** | Dock effect, animations |
+| Need                        | Use            | Reason                                 |
+| --------------------------- | -------------- | -------------------------------------- |
+| Form with validation        | **Shadcn**     | Accessible, works with react-hook-form |
+| Hero section for landing    | **Aceternity** | Visual impact, animations              |
+| Modal/Dialog                | **Shadcn**     | Proper focus management, a11y          |
+| Animated card hover effects | **Aceternity** | 3D transforms, glow effects            |
+| Data table                  | **Shadcn**     | Sorting, filtering, pagination         |
+| Background effects          | **Aceternity** | Beams, particles, grids                |
+| Dropdown menu               | **Shadcn**     | Keyboard navigation, ARIA              |
+| Text animations             | **Aceternity** | Typewriter, reveal effects             |
+| Toast notifications         | **Shadcn**     | Consistent, accessible                 |
+| Floating navigation         | **Aceternity** | Dock effect, animations                |
 
 ### File Organization
 
@@ -256,6 +360,16 @@ components/
     <span className="text-zinc-500">Break nothing.</span>
   </h1>
 </div>
+```
+
+### 1.1 Never Fall Back to Default Safe Theme
+
+```typescript
+// ❌ FORBIDDEN - Reused default recipe
+// Same centered hero + same neutral cards + same blue CTA every time
+
+// ✅ REQUIRED - Commit to a distinctive direction per task
+// Change at least 3 axes: type, color, layout, motion, surface
 ```
 
 ### 2. Never Use `@apply` in CSS
@@ -312,7 +426,7 @@ Every state change needs smooth transitions.
 <button className="bg-primary hover:bg-primary-dark transition-colors duration-150">
 
 // ✅ BETTER - Include transform for depth
-<button className="bg-primary hover:bg-primary-dark hover:scale-[1.02] 
+<button className="bg-primary hover:bg-primary-dark hover:scale-[1.02]
                    transition-all duration-150 active:scale-[0.98]">
 ```
 
@@ -326,11 +440,11 @@ All className assemblies MUST use the `cn()` utility for merge conflict resoluti
 
 ```typescript
 // lib/utils.ts
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 ```
 
@@ -380,16 +494,16 @@ export function GlassCard({ children, className }: GlassCardProps) {
         "bg-gradient-to-br from-white/10 to-white/5",
         "border border-white/10",
         "backdrop-blur-xl",
-        
+
         // Subtle inner glow
         "before:absolute before:inset-0",
         "before:bg-gradient-to-br before:from-white/5 before:to-transparent",
         "before:rounded-2xl before:pointer-events-none",
-        
+
         // Shadow for depth
         "shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
         "shadow-black/20",
-        
+
         className
       )}
     >
@@ -434,7 +548,7 @@ const shimmer = `
   relative overflow-hidden
   before:absolute before:inset-0
   before:-translate-x-full before:animate-[shimmer_2s_infinite]
-  before:bg-gradient-to-r before:from-transparent 
+  before:bg-gradient-to-r before:from-transparent
   before:via-white/10 before:to-transparent
 `
 
@@ -467,39 +581,50 @@ export function InteractiveCard({ children }: { children: React.ReactNode }) {
 }
 
 @keyframes shimmer {
-  100% { transform: translateX(100%); }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
 @keyframes scale-in {
-  from { 
+  from {
     opacity: 0;
     transform: scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: scale(1);
   }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 ```
 
@@ -565,9 +690,9 @@ export function InteractiveCard({ children }: { children: React.ReactNode }) {
     --muted-foreground: 240 3.8% 46.1%;
     --border: 240 5.9% 90%;
   }
-  
+
   .dark {
-    /* Dark mode - Linear inspired */
+    /* Dark mode - high contrast baseline */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 6%;
@@ -577,7 +702,7 @@ export function InteractiveCard({ children }: { children: React.ReactNode }) {
     --muted: 240 5% 15%;
     --muted-foreground: 240 5% 55%;
     --border: 240 5% 15%;
-    
+
     /* Accent colors */
     --accent-blue: 217 91% 60%;
     --accent-purple: 262 83% 58%;
@@ -599,7 +724,7 @@ Follow an 8px base grid with 4px for fine adjustments.
 const spacing = {
   px: '1px',
   0.5: '2px',   // Fine adjustment
-  1: '4px',     // Fine adjustment  
+  1: '4px',     // Fine adjustment
   2: '8px',     // Base unit
   3: '12px',
   4: '16px',    // 2x base
@@ -767,17 +892,19 @@ const breakpoints = {
       Saving...
     </>
   ) : (
-    'Save changes'
+    "Save changes"
   )}
-</Button>
+</Button>;
 
 // ✅ REQUIRED - Success/error feedback after submit
-{submitStatus === 'success' && (
-  <Alert variant="success">
-    <CheckCircle className="h-4 w-4" />
-    <AlertDescription>Changes saved successfully</AlertDescription>
-  </Alert>
-)}
+{
+  submitStatus === "success" && (
+    <Alert variant="success">
+      <CheckCircle className="h-4 w-4" />
+      <AlertDescription>Changes saved successfully</AlertDescription>
+    </Alert>
+  );
+}
 ```
 
 ### Input Types & Autocomplete
@@ -822,15 +949,24 @@ const breakpoints = {
 
 ```tsx
 // ✅ REQUIRED - Visual feedback on touch
-<button className={cn(
-  "transition-all duration-150",
-  // Touch feedback
-  "active:scale-95 active:opacity-80",
-  // Hover only on devices with hover
-  "@media (hover: hover) { hover:bg-accent }"
-)}>
+<button
+  className={cn(
+    "transition-all duration-150",
+    // Touch feedback
+    "active:scale-95 active:opacity-80",
+    // Hover styles should be separated with media queries in CSS when needed
+    "hover:bg-accent"
+  )}
+>
   Action
 </button>
+
+/* Optional CSS gate for hover-capable devices */
+@media (hover: none) {
+  .touch-no-hover:hover {
+    background: inherit;
+  }
+}
 ```
 
 ### Swipe & Gestures
@@ -918,13 +1054,21 @@ const breakpoints = {
 ## 📋 UI Checklist Before Commit
 
 ### Design Quality
+
 - [ ] Design has a clear, intentional aesthetic direction
+- [ ] Creative Direction Contract is explicitly defined before implementation
+- [ ] References are chosen from the approved pool and used as principles only
 - [ ] No purple/blue gradient heroes (AI slop)
 - [ ] Typography is distinctive (not Inter/Roboto/system)
 - [ ] Layout has intentional asymmetry or visual interest
 - [ ] Color palette is committed, not safe/generic
+- [ ] At least one risky visual choice is present
+- [ ] Output differs from baseline in at least 3/5 variation axes
+- [ ] Response includes the required `UI_DIRECTION` block
+- [ ] Reference pair is not reused from the immediately previous task
 
 ### Technical Quality
+
 - [ ] All classNames use `cn()` utility
 - [ ] No `@apply` in CSS files
 - [ ] No hardcoded color values (use tokens)
@@ -936,6 +1080,7 @@ const breakpoints = {
 - [ ] Focus states are accessible (visible ring)
 
 ### Forms UX
+
 - [ ] All inputs have visible labels (not just placeholders)
 - [ ] Error messages are specific and associated with fields
 - [ ] Submit button shows loading state during submission
@@ -944,6 +1089,7 @@ const breakpoints = {
 - [ ] Autocomplete attributes for faster form filling
 
 ### Touch & Mobile UX
+
 - [ ] Touch targets are minimum 44x44px
 - [ ] Touch feedback on interactive elements (active:scale)
 - [ ] Safe areas respected (notches, home indicators)
@@ -951,9 +1097,10 @@ const breakpoints = {
 - [ ] Gestures have button alternatives
 
 ### Final Check
+
 Ask yourself: **"Would this design be memorable or forgettable?"**
 If forgettable, iterate on the aesthetic direction.
 
 ---
 
-*Skill Version: 3.0.0 | Merged with Anthropic frontend-design | Tailwind v4, Shadcn UI & Aceternity UI*
+_Skill Version: 3.3.0 | Merged with Anthropic frontend-design | Tailwind v4, Shadcn UI & Aceternity UI_

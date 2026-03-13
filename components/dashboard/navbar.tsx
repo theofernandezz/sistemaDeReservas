@@ -42,6 +42,13 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   const initial = business.name.charAt(0).toUpperCase()
+  const accentColor = business.settings?.accentColor || '#f97316' // Default orange if not set
+
+  // Generate a dynamic gradient style based on the accent color
+  const avatarStyle = {
+    background: `linear-gradient(135deg, ${accentColor}dd 0%, ${accentColor}80 100%)`,
+    boxShadow: `0 4px 14px 0 ${accentColor}40`,
+  }
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -57,23 +64,26 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
   return (
     <>
       {/* Desktop & Mobile Navbar */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/60 backdrop-blur-2xl">
         <div className="flex h-16 items-center justify-between px-4 md:px-6">
           {/* Left: Logo/Business Name */}
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 group-hover:shadow-primary/40 transition-shadow">
-                {initial}
+            <Link href="/dashboard" className="flex items-center gap-3.5 group">
+              <div 
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-[15px] transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
+                style={avatarStyle}
+              >
+                <span className="drop-shadow-md">{initial}</span>
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-sm font-semibold text-foreground">{business.name}</h1>
-                <p className="text-xs text-muted-foreground">/{business.slug}</p>
+                <h1 className="text-[15px] font-bold tracking-tight text-foreground/90 group-hover:text-foreground transition-colors leading-none mb-1">{business.name}</h1>
+                <p className="text-[10px] uppercase font-medium tracking-wider text-muted-foreground/60">Dashboard</p>
               </div>
             </Link>
           </div>
 
-          {/* Center: Navigation (Desktop) */}
-          <nav className="hidden md:flex items-center gap-1">
+          {/* Center: Navigation (Desktop - Floating Pill Style) */}
+          <nav className="hidden md:flex items-center gap-1 bg-secondary/30 backdrop-blur-md rounded-full p-1 border border-white/5 shadow-sm">
             {navItems.map(item => {
               const isActive = pathname === item.href ||
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -82,12 +92,12 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                    ? 'bg-secondary text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${isActive
+                    ? 'bg-background text-foreground shadow-sm border border-border/50'
+                    : 'text-muted-foreground/70 hover:text-foreground hover:bg-secondary/40'
                     }`}
                 >
-                  <item.icon size={16} />
+                  <item.icon size={15} className={isActive ? "text-primary/80" : ""} />
                   {item.label}
                 </Link>
               )
@@ -95,15 +105,15 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
           </nav>
 
           {/* Right: User Menu & Mobile Toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {/* External link to public page */}
             <Link
               href={`/${business.slug}`}
               target="_blank"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all border border-transparent hover:border-border/50"
             >
               <ExternalLink size={14} />
-              Ver página
+              <span className="opacity-80">Ver página</span>
             </Link>
 
             {/* Notification Center - hidden on mobile, use hamburger menu */}
@@ -112,42 +122,78 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
             </div>
 
             {/* User Avatar Dropdown - hidden on mobile, use hamburger menu instead */}
-            <div className="relative hidden sm:block" ref={userMenuRef}>
+            <div className="relative hidden sm:block ml-2" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-secondary/50 transition-colors"
+                className={`flex items-center gap-1.5 p-1 pr-2 rounded-full transition-all border outline-none ${isUserMenuOpen ? 'bg-secondary/80 border-white/10 shadow-sm' : 'hover:bg-secondary/50 border-transparent'}`}
               >
-                <div className="h-8 w-8 rounded-full bg-linear-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                  {initial}
+                <div 
+                  className="h-8 w-8 rounded-full flex items-center justify-center text-[13px] font-bold text-white transition-all shadow-sm"
+                  style={avatarStyle}
+                >
+                  <span className="drop-shadow-sm">{initial}</span>
                 </div>
-                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-muted-foreground/70 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180 text-foreground' : ''}`} />
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown Menu (Premium Glassmorphism Card) */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 sm:w-48 rounded-xl border border-border bg-background shadow-lg py-1 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                  <div className="px-3 py-2 border-b border-border">
-                    <p className="text-sm font-medium text-foreground">{business.name}</p>
-                    <p className="text-xs text-muted-foreground">/{business.slug}</p>
-                  </div>
-                  <Link
-                    href={`/${business.slug}`}
-                    target="_blank"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="sm:hidden flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
-                  >
-                    <ExternalLink size={14} />
-                    Ver página pública
-                  </Link>
-                  <form action="/api/auth/logout" method="POST">
-                    <button
-                      type="submit"
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                <div className="absolute right-0 top-full mt-3 w-64 rounded-[1.5rem] border border-white/10 bg-card/80 backdrop-blur-3xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] p-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 z-50 overflow-hidden origin-top-right">
+                  {/* Glowing header section */}
+                  <div className="relative px-4 py-5 rounded-2xl bg-secondary/30 mb-2 overflow-hidden flex flex-col items-center text-center">
+                    {/* Background glow effect */}
+                    <div 
+                      className="absolute top-0 inset-x-0 h-24 opacity-20 dark:opacity-30 blur-2xl" 
+                      style={{ backgroundColor: accentColor }} 
+                    />
+                    
+                    <div 
+                      className="relative h-14 w-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white mb-3 shadow-md ring-4 ring-background"
+                      style={avatarStyle}
                     >
-                      <LogOut size={14} />
-                      Cerrar sesión
-                    </button>
-                  </form>
+                      <span className="drop-shadow-md">{initial}</span>
+                    </div>
+                    
+                    <div className="relative z-10 w-full">
+                      <p className="text-[17px] font-bold tracking-tight text-foreground mb-0.5 truncate">{business.name}</p>
+                      <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full inline-flex w-fit mx-auto shadow-inner">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Online
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="px-1 space-y-1">
+                    <Link
+                      href={`/${business.slug}`}
+                      target="_blank"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex sm:hidden items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground/80 hover:bg-secondary/60 hover:text-foreground transition-all group"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-background border border-white/5 shadow-inner flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <ExternalLink size={14} className="text-foreground" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-foreground font-semibold tracking-tight">Ver página pública</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">reservar.app/{business.slug}</span>
+                      </div>
+                    </Link>
+                    
+                    <div className="h-px bg-border/40 my-1 mx-2 sm:hidden" />
+                    
+                    <form action="/api/auth/logout" method="POST">
+                      <button
+                        type="submit"
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-all group"
+                      >
+                         <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                          <LogOut size={14} className="text-destructive" />
+                        </div>
+                        Cerrar sesión
+                      </button>
+                    </form>
+                  </div>
                 </div>
               )}
             </div>
@@ -168,80 +214,87 @@ export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: Dashb
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
+          {/* Backdrop (Darkened) */}
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
-          {/* Menu Panel */}
-          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-background shadow-xl animate-in slide-in-from-right duration-200 flex flex-col">
+          {/* Menu Panel (Glassmorphism Offcanvas) */}
+          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-card/90 backdrop-blur-2xl border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-background/50">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm flex items-center justify-center">
-                  {initial}
+                <div 
+                  className="h-11 w-11 rounded-2xl text-white font-bold text-lg flex items-center justify-center shadow-lg"
+                  style={avatarStyle}
+                >
+                  <span className="drop-shadow-md">{initial}</span>
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold">{business.name}</h2>
-                  <p className="text-xs text-muted-foreground">/{business.slug}</p>
+                  <h2 className="text-sm font-semibold tracking-tight">{business.name}</h2>
+                  <p className="text-xs text-muted-foreground/80 font-medium">Dashboard</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="rounded-full hover:bg-secondary/50">
                 <X size={20} />
               </Button>
             </div>
 
             {/* Nav Items */}
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-5 space-y-1 overflow-y-auto">
               {/* Notifications - mobile only, shown first */}
               <Link
                 href="/dashboard/notifications"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-border mb-2"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-border/50 mb-3 shadow-sm bg-background/50"
               >
-                <Bell size={18} />
+                <div className="bg-primary/10 text-primary p-1 rounded-md">
+                  <Bell size={16} />
+                </div>
                 Notificaciones
               </Link>
 
-              {navItems.map(item => {
-                const isActive = pathname === item.href ||
-                  (item.href !== '/dashboard' && pathname.startsWith(item.href))
+              <div className="pt-2 space-y-1">
+                {navItems.map(item => {
+                  const isActive = pathname === item.href ||
+                    (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${isActive
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
-                      }`}
-                  >
-                    <item.icon size={18} />
-                    {item.label}
-                  </Link>
-                )
-              })}
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
+                        ? 'bg-secondary text-foreground shadow-sm border border-border/50'
+                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                        }`}
+                    >
+                      <item.icon size={18} className={isActive ? "text-primary/80" : "opacity-70"} />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border space-y-2">
+            <div className="p-5 border-t border-border/50 bg-background/50 space-y-3">
               <Link
                 href={`/${business.slug}`}
                 target="_blank"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground bg-secondary/50 border border-border/50 hover:bg-secondary hover:text-foreground transition-all"
               >
-                <ExternalLink size={18} />
+                <ExternalLink size={16} />
                 Ver página pública
               </Link>
-              <form action="/api/auth/logout" method="POST">
+              <form action="/api/auth/logout" method="POST" className="w-full">
                 <button
                   type="submit"
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-destructive/80 bg-destructive/5 hover:bg-destructive/10 hover:text-destructive transition-all border border-transparent hover:border-destructive/20"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={16} />
                   Cerrar sesión
                 </button>
               </form>

@@ -133,13 +133,15 @@ export default function WhatsAppRemindersPanel() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Smartphone size={20} className="text-green-500" />
-          <h2 className="text-lg font-semibold text-foreground">
-            Recordatorios WhatsApp
+          <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+            <Smartphone size={16} className="text-green-500" />
+          </div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            WhatsApp Masivo
           </h2>
           {totalCount > 0 && (
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400">
-              {sentCount}/{totalCount} enviados
+            <span className="ml-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+              {sentCount} / {totalCount} env.
             </span>
           )}
         </div>
@@ -175,25 +177,25 @@ export default function WhatsAppRemindersPanel() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {/* Content (Glassmorphic Window) */}
+      <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="p-8 text-center">
+          <div className="p-12 text-center">
             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
             <p className="text-sm text-muted-foreground mt-2">Cargando turnos...</p>
           </div>
         ) : appointments.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="h-12 w-12 rounded-full bg-secondary mx-auto mb-3 flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-muted-foreground" />
+          <div className="p-12 text-center">
+            <div className="h-16 w-16 rounded-full bg-secondary/50 border border-border/50 mx-auto mb-4 flex items-center justify-center shadow-inner">
+              <Calendar className="h-8 w-8 text-muted-foreground/70" />
             </div>
-            <h3 className="font-semibold text-foreground mb-1">Sin turnos</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-xl font-semibold text-foreground tracking-tight mb-2">Sin turnos</h3>
+            <p className="text-sm text-muted-foreground/80 max-w-sm mx-auto">
               No hay turnos {statusFilter === 'pending' ? 'pendientes de envío' : ''} para {dateFilter === 'today' ? 'hoy' : dateFilter === 'tomorrow' ? 'mañana' : 'esta semana'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border/40">
             {appointments.map(apt => {
               const startTime = new Date(apt.start_time)
               const isToday = new Date().toDateString() === startTime.toDateString()
@@ -204,39 +206,42 @@ export default function WhatsAppRemindersPanel() {
               })()
 
               return (
-                <div key={apt.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div key={apt.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/20 transition-colors duration-200 group">
                   {/* Time & Date */}
                   <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="text-center min-w-16">
-                      <p className="text-sm font-semibold text-foreground">
+                    <div className="text-center min-w-[4.5rem] bg-background/50 py-2 rounded-xl border border-border/50 shadow-sm group-hover:border-primary/20 transition-colors">
+                      <p className="text-sm font-semibold text-foreground tracking-tight">
                         {format(startTime, 'HH:mm')}
                       </p>
                       <p className={cn(
-                        "text-xs capitalize",
-                        isToday ? "text-amber-500 font-medium" :
-                          isTomorrow ? "text-primary font-medium" :
-                            "text-muted-foreground"
+                        "text-[11px] font-medium uppercase tracking-wider mt-0.5",
+                        isToday ? "text-amber-500" :
+                          isTomorrow ? "text-primary" :
+                            "text-muted-foreground/80"
                       )}>
-                        {isToday ? 'Hoy' : isTomorrow ? 'Mañana' : format(startTime, 'EEE d', { locale: es })}
+                        {isToday ? 'Hoy' : isTomorrow ? 'Mañ' : format(startTime, 'MMM d', { locale: es })}
                       </p>
                     </div>
 
-                    {/* Divider */}
-                    <div className={cn(
-                      "w-1 h-12 rounded-full",
-                      apt.whatsapp_reminder_sent ? "bg-green-500/30" : "bg-primary/20"
-                    )} />
-
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
+                    <div className={cn(
+                      "flex-1 min-w-0 pl-3 border-l-[3px] py-0.5 rounded-sm",
+                      apt.whatsapp_reminder_sent ? "border-green-500/30" : "border-primary/40"
+                    )}>
+                      <p className="font-semibold text-foreground truncate text-[15px] tracking-tight">
                         {apt.client_name}
                       </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="truncate">💅 {apt.service?.name || 'Servicio'}</span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
+                        <span className="truncate flex items-center gap-1.5">
+                          <span className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            apt.whatsapp_reminder_sent ? "bg-green-500/40" : "bg-primary/40"
+                          )}></span>
+                          {apt.service?.name || 'Servicio'}
+                        </span>
                         <span className="text-border">·</span>
-                        <span className="flex items-center gap-1 shrink-0">
-                          <Phone size={12} />
+                        <span className="flex items-center gap-1.5 shrink-0 text-[13px]">
+                          <Phone size={12} className="opacity-70" />
                           {apt.client_phone}
                         </span>
                       </div>
@@ -249,23 +254,23 @@ export default function WhatsAppRemindersPanel() {
                       size="sm"
                       onClick={() => handleWhatsAppClick(apt)}
                       disabled={sendingId === apt.id}
-                      className="bg-green-600 hover:bg-green-700 text-white gap-1.5 shadow-lg shadow-green-600/25 shrink-0"
+                      className="h-9 px-4 bg-green-600/90 hover:bg-green-600 text-white gap-2 shadow-sm hover:shadow-md hover:shadow-green-600/20 hover:-translate-y-0.5 transition-all shrink-0"
                     >
                       {sendingId === apt.id ? (
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 size={16} className="animate-spin" />
                       ) : (
                         <>
-                          <MessageCircle size={14} />
-                          <span>Enviar</span>
-                          <ExternalLink size={12} />
+                          <MessageCircle size={16} />
+                          <span className="hidden sm:inline font-medium">Lanzar</span>
+                          <ExternalLink size={12} className="ml-1 opacity-70" />
                         </>
                       )}
                     </Button>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-green-500 text-sm px-3 shrink-0">
-                      <Check size={16} />
+                    <div className="h-9 px-4 flex items-center justify-center gap-1.5 text-emerald-500 font-medium text-sm bg-emerald-500/5 rounded-md border border-emerald-500/10 shrink-0">
+                      <Check size={16} strokeWidth={2.5} />
                       Enviado
-                    </span>
+                    </div>
                   )}
                 </div>
               )

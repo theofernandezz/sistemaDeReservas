@@ -1,5 +1,5 @@
 ---
-name: typescript
+name: TypeScript Senior Patterns
 description: |
   Enforces production-grade TypeScript patterns for type-safe development.
   Trigger: Activated when creating or editing any .ts or .tsx file.
