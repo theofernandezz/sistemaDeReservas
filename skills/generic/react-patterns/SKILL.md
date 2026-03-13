@@ -1,5 +1,5 @@
 ---
-name: React 19 Patterns & Architecture
+name: react-patterns
 description: |
   Modern React 19 patterns, hooks design, composition, and state management for 2026.
   Trigger: Activated when creating React components, hooks, or discussing React architecture.

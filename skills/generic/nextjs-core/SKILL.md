@@ -1,5 +1,5 @@
 ---
-name: Next.js 16 Core Patterns
+name: nextjs-core
 description: |
   Production patterns for Next.js 16 with App Router architecture.
   Trigger: Activated when working with app/ directory, routes, layouts, or server actions.

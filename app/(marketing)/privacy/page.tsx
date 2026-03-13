@@ -10,7 +10,7 @@ export default function PrivacyPage() {
   const updatedAt = '12 de marzo de 2026'
 
   return (
-    <section className="bg-gradient-to-b from-background to-muted/30 py-28 sm:py-32">
+    <section className="bg-linear-to-b from-background to-muted/30 py-28 sm:py-32">
       <div className="container mx-auto max-w-4xl px-4 sm:px-6">
         <div className="rounded-2xl border border-border/50 bg-card/70 p-6 shadow-sm backdrop-blur-sm sm:p-10">
           <p className="text-sm font-medium text-primary">Documentación legal</p>

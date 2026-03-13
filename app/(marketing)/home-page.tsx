@@ -27,7 +27,7 @@ export default function HomePage() {
               <div className="flex flex-col items-center justify-center space-y-8 mb-10 md:mb-20">
                 <h1 className="text-4xl md:text-7xl font-bold text-foreground leading-tight text-center max-w-4xl">
                   Gestiona tu negocio de forma <br />
-                  <span className="text-primary inline-block min-w-[200px] md:min-w-[400px]">
+                  <span className="text-primary inline-block min-w-50 md:min-w-100">
                     <FlipWords words={words} className="text-indigo-600 dark:text-indigo-400" />
                   </span>
                 </h1>
@@ -62,7 +62,7 @@ export default function HomePage() {
 
       {/* Features Grid */}
       <section id="features" className="container px-4 py-24 md:py-32 relative bg-background scroll-mt-20">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[1000px] bg-primary/5 blur-[120px] rounded-full -z-10" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-250 bg-primary/5 blur-[120px] rounded-full -z-10" />
 
         <div className="text-center max-w-2xl mx-auto mb-20 space-y-4">
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Todo lo que necesitas. <br /><span className="text-muted-foreground font-normal">Nada que sobre.</span></h2>
@@ -81,7 +81,7 @@ export default function HomePage() {
           {/* Subtle gradient background */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute inset-0 bg-linear-to-b from-transparent via-primary/5 to-transparent" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 blur-[100px] rounded-full" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-100 bg-primary/10 blur-[100px] rounded-full" />
           </div>
 
           <div className="text-center max-w-2xl mx-auto space-y-6">

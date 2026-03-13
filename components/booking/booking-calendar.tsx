@@ -239,8 +239,8 @@ export default function BookingCalendar({
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
-        <div className="w-full max-w-[1400px] mx-auto px-12 py-12">
+      <div className="hidden lg:flex min-h-screen bg-linear-to-br from-background via-background to-secondary/20">
+        <div className="w-full max-w-350 mx-auto px-12 py-12">
           <div className="flex items-center justify-between mb-10">
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reserva</p>
@@ -253,7 +253,7 @@ export default function BookingCalendar({
 
           <div className="w-full bg-card/60 rounded-3xl shadow-2xl shadow-black/10 overflow-hidden border border-border/50 flex gap-0 backdrop-blur-sm">
             {/* Left Column - Calendar (40%) */}
-            <div className="w-2/5 bg-gradient-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-6 flex flex-col border-r border-border/30">
+            <div className="w-2/5 bg-linear-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-6 flex flex-col border-r border-border/30">
               <button
                 onClick={() => router.back()}
                 className={cn(
@@ -281,7 +281,7 @@ export default function BookingCalendar({
                 </div>
 
                 {/* Divider */}
-                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
 
                 {/* Calendar */}
                 <div className="flex-1 flex flex-col space-y-4">

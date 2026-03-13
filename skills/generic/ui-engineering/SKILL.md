@@ -1,5 +1,5 @@
 ---
-name: UI Engineering - Distinctive Design
+name: ui-engineering
 description: |
   Premium UI patterns with distinctive aesthetics. Anti "AI slop" design principles.
   Combines Linear-style, Tailwind v4, Shadcn UI, and Aceternity UI.

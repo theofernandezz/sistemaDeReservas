@@ -110,7 +110,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
         'group relative flex h-full flex-col rounded-2xl border p-8 transition-all duration-300',
         'hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5',
         plan.popular
-          ? 'border-primary/50 bg-gradient-to-b from-primary/10 to-primary/5 scale-[1.02]'
+          ? 'border-primary/50 bg-linear-to-b from-primary/10 to-primary/5 scale-[1.02]'
           : 'border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30'
       )}
       style={{
@@ -154,7 +154,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       </div>
 
       {/* Price - Fixed height to align across cards */}
-      <div className="mb-6 h-[72px]">
+      <div className="mb-6 h-18">
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold tracking-tight">${plan.price}</span>
           <span className="text-muted-foreground">/mes</span>
@@ -326,7 +326,7 @@ export default function PricingPage() {
     <div className="relative pb-24 pt-16">
       {/* Background gradient */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[120px]" />
+        <div className="absolute left-1/2 top-0 h-125 w-200 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[120px]" />
       </div>
 
       <div className="container relative px-4">
@@ -340,7 +340,7 @@ export default function PricingPage() {
 
           <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
             Precios{' '}
-            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               simples
             </span>
           </h1>
@@ -371,7 +371,7 @@ export default function PricingPage() {
 
         {/* FAQ or CTA Section */}
         <div className="mx-auto mt-24 max-w-2xl text-center">
-          <div className="rounded-2xl border border-border/50 bg-gradient-to-b from-card/80 to-card/40 p-8 backdrop-blur-sm">
+          <div className="rounded-2xl border border-border/50 bg-linear-to-b from-card/80 to-card/40 p-8 backdrop-blur-sm">
             <h3 className="mb-2 text-xl font-semibold">
               ¿Tienes preguntas sobre el pricing?
             </h3>
