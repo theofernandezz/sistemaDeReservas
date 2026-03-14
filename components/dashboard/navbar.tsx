@@ -35,7 +35,7 @@ interface DashboardNavbarProps {
   isSuperAdmin?: boolean
 }
 
-export function DashboardNavbar({ business, allBusinesses, isSuperAdmin }: DashboardNavbarProps) {
+export function DashboardNavbar({ business }: DashboardNavbarProps) {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)

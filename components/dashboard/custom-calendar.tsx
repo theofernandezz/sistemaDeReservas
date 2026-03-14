@@ -104,7 +104,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
 
   const blockedForSelectedDay = useMemo(
     () => getBlockedSlotsForDay(selectedDate),
-    [blockedSlots, selectedDate]
+    [getBlockedSlotsForDay, selectedDate]
   )
 
   // Display days for mobile (5 days from selected)

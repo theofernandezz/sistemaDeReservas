@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle, Loader2, Copy, Link2 } from 'lucide-react'
+import { Check, CalendarCheck, Calendar, ExternalLink, Clock, AlertCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -93,7 +93,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
   }
 
   // Determine payment status
-  // @ts-ignore - payment_status may exist
+  // @ts-expect-error - payment_status may exist
   const paymentStatus = appointment?.payment_status as string | undefined
   const appointmentStatus = appointment?.status
   const pendingStatus = pendingBooking?.status
@@ -105,10 +105,10 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
 
   const startDate = appointment ? new Date(appointment.start_time) : (pendingBooking ? new Date(pendingBooking.start_time) : null)
   const endDate = appointment ? new Date(appointment.end_time) : (pendingBooking ? new Date(pendingBooking.end_time) : null)
-  const serviceName = appointment?.service?.name || (pendingBooking?.service as any)?.name || 'Cita'
+  const serviceName = appointment?.service?.name || (pendingBooking?.service as { name: string; price: number } | null)?.name || 'Cita'
   const clientName = appointment?.client_name || pendingBooking?.client_name
   const clientEmail = appointment?.client_email || pendingBooking?.client_email
-  const servicePrice = appointment?.service?.price || (pendingBooking?.service as any)?.price
+  const servicePrice = appointment?.service?.price || (pendingBooking?.service as { name: string; price: number } | null)?.price
 
   const googleCalendarUrl = startDate && endDate && isConfirmed
     ? generateGoogleCalendarUrl(

@@ -29,73 +29,60 @@ export default async function PublicBookingLayout({
       <>
         <LocalBusinessSchema business={business} />
         <div className="min-h-dvh flex flex-col bg-background">
-        {/* Premium header with glass effect and accent */}
+        {/* Premium minimal header */}
         <header 
           className={cn(
             "sticky top-0 z-50 w-full",
-            "bg-background/80 backdrop-blur-xl",
-            "border-b border-border/40",
-            "supports-[backdrop-filter]:bg-background/60"
+            "bg-background/70 backdrop-blur-2xl",
+            "border-b border-border/30",
+            "supports-[backdrop-filter]:bg-background/60 transition-colors duration-300"
           )}
         >
-          {/* Subtle accent line at top */}
-          <div 
-            className="absolute top-0 left-0 right-0 h-px opacity-30"
-            style={{
-              background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`
-            }}
-            aria-hidden="true"
-          />
-          
-          <div className="max-w-3xl mx-auto flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:max-w-[1400px] lg:px-12">
+          <div className="max-w-5xl mx-auto flex h-16 sm:h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Business branding */}
             <a 
               href={`/${slug}`}
               className={cn(
-                "flex items-center gap-2.5 sm:gap-3",
+                "group flex items-center gap-3",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg p-1 -m-1"
               )}
             >
               {business.logo ? (
-                <div className="relative">
+                <div className="relative overflow-hidden rounded-xl bg-muted/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={business.logo}
                     alt=""
-                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl object-cover ring-1 ring-border/50"
+                    className="h-10 w-10 sm:h-12 sm:w-12 object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  {/* Subtle glow behind logo */}
-                  <div 
-                    className="absolute inset-0 -z-10 blur-lg opacity-30 rounded-xl"
-                    style={{ backgroundColor: accentColor }}
-                    aria-hidden="true"
-                  />
+                  <div className="absolute inset-0 ring-1 ring-inset ring-foreground/10 rounded-xl pointer-events-none" aria-hidden="true" />
                 </div>
               ) : (
                 <div 
                   className={cn(
-                    "flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl",
-                    "font-bold text-sm sm:text-base text-white",
-                    "shadow-md transition-transform duration-200 hover:scale-105"
+                    "flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl",
+                    "font-medium text-lg text-background bg-foreground shadow-sm",
+                    "transition-transform duration-500 group-hover:scale-105"
                   )}
-                  style={{ backgroundColor: accentColor }}
                   aria-hidden="true"
                 >
                   {business.name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="font-semibold tracking-tight text-base sm:text-lg text-foreground truncate max-w-[200px] sm:max-w-none">
-                {business.name}
-              </span>
+              <div className="flex flex-col">
+                <span className="font-semibold tracking-tight text-lg sm:text-xl text-foreground truncate max-w-[200px] sm:max-w-[300px] group-hover:text-foreground/80 transition-colors">
+                  {business.name}
+                </span>
+              </div>
             </a>
 
-            {/* Right side - could add menu or actions here */}
-            <div className="flex items-center gap-2">
-              {/* Powered by badge - subtle */}
-              <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground/60">
-                <span className="inline-block w-1 h-1 rounded-full bg-current" aria-hidden="true" />
-                Reservas online
-              </span>
+            {/* Right side */}
+            <div className="flex items-center gap-4">
+              {/* Powered by badge - subtle editorial */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/30 border border-border/50 text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} aria-hidden="true" />
+                Reservas Online
+              </div>
             </div>
           </div>
         </header>
@@ -103,7 +90,7 @@ export default async function PublicBookingLayout({
         {/* Main Content */}
         <main 
           id="main-content"
-          className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:max-w-none lg:px-0 lg:py-0"
+          className="flex-1 w-full"
           tabIndex={-1}
         >
           {children}

@@ -5,7 +5,7 @@ import { getAppUrl } from '@/lib/config'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Default brand settings
-const DEFAULT_BRAND_COLOR = '#db2777'
+const DEFAULT_BRAND_COLOR = '#6366f1'
 const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_MAIL || 'reservas@example.com'
 const DEFAULT_FROM_NAME = 'Sistema de Reservas'
 
@@ -64,15 +64,14 @@ export interface AppointmentRescheduleEmailData {
  */
 export async function getBusinessEmailConfig(businessId: string): Promise<BusinessEmailConfig> {
   const supabase = await createClient()
-  
+
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color, owner_email')
     .eq('id', businessId)
     .single()
-  
+
   if (error || !business) {
-    // Return defaults if business not found
     return {
       emailFrom: DEFAULT_FROM_EMAIL,
       emailFromName: 'Sistema de Reservas',
@@ -81,11 +80,11 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
       brandName: 'Sistema de Reservas',
     }
   }
-  
+
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || business.owner_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }
@@ -96,13 +95,13 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
  */
 export async function getBusinessEmailConfigBySlug(slug: string): Promise<BusinessEmailConfig> {
   const supabase = await createClient()
-  
+
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color, owner_email')
     .eq('slug', slug)
     .single()
-  
+
   if (error || !business) {
     return {
       emailFrom: DEFAULT_FROM_EMAIL,
@@ -112,75 +111,142 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
       brandName: 'Sistema de Reservas',
     }
   }
-  
+
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || business.owner_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }
 }
 
-export async function sendPasswordResetEmailViaResend(
-  data: PasswordResetEmailData
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { error } = await resend.emails.send({
-      from: `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
-      to: data.email,
-      subject: 'Restablecer contrasena',
-      html: `
-        <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; padding: 0;">
-          <div style="padding: 32px 24px; text-align: center; border-bottom: 1px solid #e5e7eb;">
-            <h1 style="margin: 0; font-size: 24px; color: #111827;">Restablecer contrasena</h1>
-            <p style="margin: 12px 0 0; font-size: 14px; color: #6b7280;">
-              Si no solicitaste este cambio, ignora este correo.
-            </p>
-          </div>
+// ─── Shared template shell ────────────────────────────────────────────────────
 
-          <div style="padding: 32px 24px;">
-            <p style="margin: 0 0 20px; font-size: 15px; color: #374151;">
-              Haz clic en el boton para crear una nueva contrasena.
-            </p>
+/**
+ * Universal email wrapper — dark header with brand accent line, white body, light footer.
+ * Works for any business type: medical, beauty, fitness, legal, etc.
+ */
+export function baseEmailTemplate({
+  brandName,
+  brandColor,
+  title,
+  subtitle,
+  body,
+  footerText,
+}: {
+  brandName: string
+  brandColor: string
+  title: string
+  subtitle?: string
+  body: string
+  footerText?: string
+}): string {
+  const year = new Date().getFullYear()
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>${title}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f4f6; padding: 32px 16px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
 
-            <div style="text-align: center; margin: 24px 0;">
-              <a href="${data.resetLink}"
-                 target="_blank"
-                 style="display: inline-block; padding: 12px 24px; background: #db2777; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;">
-                 Restablecer contrasena
-              </a>
-            </div>
+              <!-- Header -->
+              <tr>
+                <td style="background-color: #111827; padding: 0;">
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="padding: 28px 32px 20px;">
+                        <p style="margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: ${brandColor};">${brandName}</p>
+                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #f9fafb; letter-spacing: -0.3px; line-height: 1.3;">${title}</h1>
+                        ${subtitle ? `<p style="margin: 8px 0 0; font-size: 14px; color: #9ca3af; line-height: 1.5;">${subtitle}</p>` : ''}
+                      </td>
+                    </tr>
+                    <!-- Brand color accent bar -->
+                    <tr>
+                      <td style="height: 3px; background-color: ${brandColor};"></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
 
-            <p style="margin: 0; font-size: 12px; color: #9ca3af; word-break: break-all;">
-              Si el boton no funciona, copia y pega este enlace en tu navegador:<br />
-              <a href="${data.resetLink}" target="_blank" style="color: #2563eb; text-decoration: none;">
-                ${data.resetLink}
-              </a>
-            </p>
-          </div>
+              <!-- Body -->
+              <tr>
+                <td style="padding: 32px;">
+                  ${body}
+                </td>
+              </tr>
 
-          <div style="padding: 20px 24px; text-align: center; background: #f9fafb; border-top: 1px solid #e5e7eb;">
-            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-              Este enlace expira pronto por seguridad.
-            </p>
-          </div>
-        </div>
-      `,
-    })
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 32px; text-align: center;">
+                  <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.6;">
+                    ${footerText ?? `${footerText ?? ''}`}
+                    &copy; ${year} ${brandName}. Todos los derechos reservados.
+                  </p>
+                </td>
+              </tr>
 
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
-    return { success: true }
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error sending password reset email',
-    }
-  }
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `
 }
+
+// ─── Shared UI blocks ─────────────────────────────────────────────────────────
+
+function infoRow(label: string, value: string): string {
+  return `
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
+        <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">${label}</p>
+        <p style="margin: 4px 0 0; font-size: 15px; color: #111827;">${value}</p>
+      </td>
+    </tr>
+  `
+}
+
+function infoCard(rows: string, brandColor: string): string {
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; border-left: 3px solid ${brandColor}; padding: 20px 24px; margin-bottom: 24px;">
+      <tr><td style="padding: 0 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${rows}
+        </table>
+      </td></tr>
+    </table>
+  `
+}
+
+function primaryButton(text: string, url: string, brandColor: string): string {
+  return `
+    <a href="${url}" target="_blank"
+       style="display: inline-block; padding: 12px 24px; background-color: ${brandColor}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: -apple-system, 'Segoe UI', sans-serif; letter-spacing: 0.1px;">
+      ${text}
+    </a>
+  `
+}
+
+function ghostButton(text: string, url: string): string {
+  return `
+    <a href="${url}" target="_blank"
+       style="display: inline-block; padding: 11px 20px; background-color: #ffffff; color: #374151; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; font-family: -apple-system, 'Segoe UI', sans-serif; border: 1px solid #d1d5db;">
+      ${text}
+    </a>
+  `
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(value: string, locale: string = 'es-AR'): string {
   return new Date(value).toLocaleDateString(locale)
@@ -188,6 +254,64 @@ function formatDate(value: string, locale: string = 'es-AR'): string {
 
 function formatTime(value: string, locale: string = 'es-AR'): string {
   return new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+}
+
+function generateGoogleCalendarLink(data: AppointmentEmailData): string {
+  if (!data.startDateTime || !data.endDateTime) return ''
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' +
+    encodeURIComponent(data.serviceName + ' - ' + data.clientName) +
+    '&dates=' + fmt(data.startDateTime) + '/' + fmt(data.endDateTime) +
+    '&details=' + encodeURIComponent('Cliente: ' + data.clientName + (data.clientPhone ? '\nTel: ' + data.clientPhone : ''))
+}
+
+// ─── Email senders ────────────────────────────────────────────────────────────
+
+export async function sendPasswordResetEmailViaResend(
+  data: PasswordResetEmailData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const body = `
+      <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Recibimos una solicitud para restablecer la contrasena de tu cuenta. Haz clic en el boton para crear una nueva contrasena.
+      </p>
+      <div style="margin-bottom: 28px;">
+        ${primaryButton('Restablecer contrasena', data.resetLink, DEFAULT_BRAND_COLOR)}
+      </div>
+      <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.7; word-break: break-all;">
+        Si el boton no funciona, copia y pega este enlace en tu navegador:<br/>
+        <a href="${data.resetLink}" target="_blank" style="color: ${DEFAULT_BRAND_COLOR}; text-decoration: none;">${data.resetLink}</a>
+      </p>
+      <div style="margin-top: 24px; padding: 16px; background-color: #fffbeb; border-radius: 8px; border: 1px solid #fde68a;">
+        <p style="margin: 0; font-size: 13px; color: #92400e;">
+          Si no solicitaste este cambio, puedes ignorar este correo. Tu cuenta permanece segura.
+        </p>
+      </div>
+    `
+
+    const html = baseEmailTemplate({
+      brandName: DEFAULT_FROM_NAME,
+      brandColor: DEFAULT_BRAND_COLOR,
+      title: 'Restablecer contrasena',
+      subtitle: 'Este enlace expira pronto por razones de seguridad.',
+      body,
+    })
+
+    const { error } = await resend.emails.send({
+      from: `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
+      to: data.email,
+      subject: 'Restablecer contrasena',
+      html,
+    })
+
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error sending password reset email',
+    }
+  }
 }
 
 export async function sendAppointmentCancellationEmails(
@@ -200,32 +324,37 @@ export async function sendAppointmentCancellationEmails(
       return { success: false, error: 'Admin email not configured' }
     }
 
-    const adminHtml = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: ${config.brandColor};">Reserva Cancelada ❌</h2>
-        <p>El cliente ha cancelado el siguiente turno:</p>
+    const rows =
+      infoRow('Servicio', data.serviceName ?? 'Sin servicio') +
+      infoRow('Cliente', data.clientName) +
+      infoRow('Fecha original', `${formatDate(data.startTime)} a las ${formatTime(data.startTime)}hs`) +
+      infoRow('Motivo de cancelacion', data.reason)
 
-        <div style="background: #fdf2f8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
-          <p><strong>Cliente:</strong> ${data.clientName}</p>
-          <p><strong>Fecha original:</strong> ${formatDate(data.startTime)}</p>
-          <p><strong>Hora:</strong> ${formatTime(data.startTime)}</p>
-          <p><strong>Motivo:</strong> ${data.reason}</p>
-        </div>
+    const body = `
+      <div style="display: inline-block; padding: 6px 14px; background-color: #fee2e2; border-radius: 20px; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 1px;">Turno Cancelado</p>
       </div>
+      <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Un cliente ha cancelado su turno. A continuacion se detallan los datos:
+      </p>
+      ${infoCard(rows, '#ef4444')}
     `
+
+    const html = baseEmailTemplate({
+      brandName: config.brandName,
+      brandColor: config.brandColor,
+      title: 'Cancelacion de turno',
+      body,
+    })
 
     const { error } = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: config.adminNotificationEmail,
-      subject: `❌ Cancelacion: ${data.clientName} - ${data.serviceName ?? 'Turno'}`,
-      html: adminHtml,
+      subject: `Cancelacion: ${data.clientName} — ${data.serviceName ?? 'Turno'}`,
+      html,
     })
 
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
+    if (error) return { success: false, error: error.message }
     return { success: true }
   } catch (error: unknown) {
     return {
@@ -247,18 +376,28 @@ export async function sendAppointmentRescheduleEmails(
 
     const oldDate = new Date(data.oldStartTime)
     const newDate = new Date(data.newStartTime)
-    const adminHtml = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2563eb;">Turno Reprogramado 🔄</h2>
-        <p>El cliente ha reprogramado su turno:</p>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
-          <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
-          <p><strong>Cliente:</strong> ${data.clientName}</p>
-          <p style="text-decoration: line-through; color: #6b7280;"><strong>Fecha anterior:</strong> ${oldDate.toLocaleDateString('es-AR')} a las ${oldDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-          <p style="color: #2563eb;"><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR')} a las ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-        </div>
+    const fmtDate = (d: Date) => d.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    const fmtTime = (d: Date) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+
+    // Admin email
+    const adminRows =
+      infoRow('Servicio', data.serviceName ?? 'Sin servicio') +
+      infoRow('Cliente', data.clientName) +
+      `<tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
+        <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">Fecha anterior</p>
+        <p style="margin: 4px 0 0; font-size: 15px; color: #9ca3af; text-decoration: line-through;">${fmtDate(oldDate)} — ${fmtTime(oldDate)}hs</p>
+      </td></tr>` +
+      infoRow('Nueva fecha', `${fmtDate(newDate)} — ${fmtTime(newDate)}hs`)
+
+    const adminBody = `
+      <div style="display: inline-block; padding: 6px 14px; background-color: #dbeafe; border-radius: 20px; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 12px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 1px;">Turno Reprogramado</p>
       </div>
+      <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Un cliente ha reprogramado su turno. A continuacion se detallan los cambios:
+      </p>
+      ${infoCard(adminRows, config.brandColor)}
     `
 
     let errorMessage: string | undefined
@@ -266,47 +405,51 @@ export async function sendAppointmentRescheduleEmails(
     const adminResult = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: config.adminNotificationEmail,
-      subject: `🔄 Reprogramacion: ${data.clientName} - ${data.serviceName ?? 'Turno'}`,
-      html: adminHtml,
+      subject: `Reprogramacion: ${data.clientName} — ${data.serviceName ?? 'Turno'}`,
+      html: baseEmailTemplate({
+        brandName: config.brandName,
+        brandColor: config.brandColor,
+        title: 'Turno reprogramado',
+        body: adminBody,
+      }),
     })
 
-    if (adminResult.error) {
-      errorMessage = adminResult.error.message
-    }
+    if (adminResult.error) errorMessage = adminResult.error.message
 
+    // Client email
     if (data.clientEmail) {
-      const clientHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Turno Reprogramado ✅</h2>
-          <p>Hola ${data.clientName},</p>
-          <p>Tu turno ha sido reprogramado exitosamente.</p>
+      const clientRows =
+        infoRow('Servicio', data.serviceName ?? 'Sin servicio') +
+        infoRow('Nueva fecha', `${fmtDate(newDate)}`) +
+        infoRow('Hora', `${fmtTime(newDate)}hs`)
 
-          <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
-            <p><strong>Servicio:</strong> ${data.serviceName ?? 'Sin servicio'}</p>
-            <p><strong>Nueva fecha:</strong> ${newDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p><strong>Hora:</strong> ${newDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}hs</p>
-          </div>
-
-          <p style="color: #6b7280; font-size: 14px;">Te esperamos!</p>
-        </div>
+      const clientBody = `
+        <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+          Hola ${data.clientName}, tu turno ha sido reprogramado exitosamente. Aqui estan los nuevos detalles:
+        </p>
+        ${infoCard(clientRows, config.brandColor)}
+        <p style="margin: 0; font-size: 14px; color: #6b7280;">
+          Si tienes alguna pregunta, no dudes en contactarnos.
+        </p>
       `
 
       const clientResult = await resend.emails.send({
         from: `${config.emailFromName} <${config.emailFrom}>`,
         to: data.clientEmail,
-        subject: `✅ Turno Reprogramado - ${newDate.toLocaleDateString('es-AR')}`,
-        html: clientHtml,
+        subject: `Tu turno fue reprogramado — ${newDate.toLocaleDateString('es-AR')}`,
+        html: baseEmailTemplate({
+          brandName: config.brandName,
+          brandColor: config.brandColor,
+          title: 'Turno reprogramado',
+          subtitle: 'Tu solicitud de reprogramacion fue procesada.',
+          body: clientBody,
+        }),
       })
 
-      if (clientResult.error && !errorMessage) {
-        errorMessage = clientResult.error.message
-      }
+      if (clientResult.error && !errorMessage) errorMessage = clientResult.error.message
     }
 
-    if (errorMessage) {
-      return { success: false, error: errorMessage }
-    }
-
+    if (errorMessage) return { success: false, error: errorMessage }
     return { success: true }
   } catch (error: unknown) {
     return {
@@ -316,23 +459,11 @@ export async function sendAppointmentRescheduleEmails(
   }
 }
 
-// Generate Google Calendar Link Helper
-function generateGoogleCalendarLink(data: AppointmentEmailData): string {
-  if (!data.startDateTime || !data.endDateTime) return ''
-
-  const formatCalendarDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' +
-    encodeURIComponent(data.serviceName + ' - ' + data.clientName) +
-    '&dates=' + formatCalendarDate(data.startDateTime) + '/' + formatCalendarDate(data.endDateTime) +
-    '&details=' + encodeURIComponent('Cliente: ' + data.clientName + (data.clientPhone ? '\nTel: ' + data.clientPhone : ''))
-}
-
 /**
  * Send notification to admin when a new appointment is created
  */
 export async function sendNewAppointmentNotification(
-  data: AppointmentEmailData, 
+  data: AppointmentEmailData,
   businessId: string,
   targetEmail?: string
 ) {
@@ -347,81 +478,60 @@ export async function sendNewAppointmentNotification(
 
     const appUrl = getAppUrl()
     const googleCalendarUrl = generateGoogleCalendarLink(data)
-
-    // Create Calendar Button HTML
-    let calendarButtonHtml = ''
-    if (data.startDateTime && data.endDateTime) {
-      calendarButtonHtml = `
-            <div style="margin-top: 24px; text-align: center;">
-              <a href="${googleCalendarUrl}" 
-                 target="_blank"
-                 style="display: inline-block; padding: 12px 24px; background: ${config.brandColor}; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif; font-weight: bold;">
-                 Agregar a Google Calendar
-              </a>
-            </div>
-      `
-    }
-
-    // Create Cancel Button HTML
     const cancelUrl = `${appUrl}/cancel/${data.id}`
-    const cancelButtonHtml = `
-            <div style="margin-top: 16px; text-align: center;">
-              <a href="${cancelUrl}" 
-                 target="_blank"
-                 style="display: inline-block; padding: 10px 20px; background: #fff; color: #ef4444; text-decoration: none; border: 1px solid #ef4444; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                 Cancelar Turno
-              </a>
-            </div>
+
+    const contactRows = [
+      data.clientPhone
+        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Telefono:</strong> <a href="tel:${data.clientPhone}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientPhone}</a></td></tr>`
+        : '',
+      data.clientEmail
+        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Email:</strong> <a href="mailto:${data.clientEmail}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientEmail}</a></td></tr>`
+        : '',
+    ].join('')
+
+    const rows =
+      infoRow('Servicio', `${data.serviceName} — $${data.servicePrice}`) +
+      infoRow('Fecha', data.date) +
+      infoRow('Hora', data.time) +
+      infoRow('Cliente', data.clientName)
+
+    const calendarBtn = (data.startDateTime && data.endDateTime)
+      ? `<div style="margin-bottom: 12px;">${primaryButton('Agregar a Google Calendar', googleCalendarUrl, config.brandColor)}</div>`
+      : ''
+
+    const body = `
+      <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Se ha registrado una nueva reserva en tu sistema.
+      </p>
+      ${infoCard(rows, config.brandColor)}
+
+      ${contactRows ? `
+        <table style="width: 100%; margin-bottom: 24px;" cellpadding="0" cellspacing="0" border="0">
+          ${contactRows}
+        </table>
+      ` : ''}
+
+      <div style="margin-bottom: 8px;">
+        ${calendarBtn}
+      </div>
+      <div>
+        ${ghostButton('Cancelar turno', cancelUrl)}
+      </div>
     `
+
+    const html = baseEmailTemplate({
+      brandName: config.brandName,
+      brandColor: config.brandColor,
+      title: 'Nueva reserva recibida',
+      subtitle: `${data.clientName} reservo un turno.`,
+      body,
+    })
 
     const { error } = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: emailToUse,
-      subject: `Nueva Reserva · ${data.serviceName} - ${data.clientName}`,
-      html: `
-        <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
-          <div style="padding: 32px 20px; text-align: center; border-bottom: 3px solid ${config.brandColor};">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: ${config.brandColor}; margin-bottom: 8px; font-weight: bold;">Confirmación de Reserva</div>
-            <h1 style="margin: 0; font-size: 32px; color: #1f2937; letter-spacing: -0.5px;">${config.brandName}</h1>
-          </div>
-
-          <div style="padding: 40px 32px; background: white;">
-            <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin-bottom: 32px; text-align: center;">
-              ¡Hola! Se ha registrado una nueva reserva con los siguientes detalles:
-            </p>
-
-            <div style="background: #fff1f2; padding: 32px; border-radius: 16px; text-align: center; border: 1px solid #fce7f3;">
-              <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #9d174d;">${data.serviceName}</h2>
-              <p style="margin: 0 0 24px 0; font-size: 18px; color: ${config.brandColor}; font-weight: bold;">$${data.servicePrice}</p>
-              
-              <div style="border-top: 1px solid #fbcfe8; border-bottom: 1px solid #fbcfe8; padding: 20px 0; margin: 20px 0;">
-                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>Fecha:</strong> ${data.date}</p>
-                <p style="margin: 5px 0; font-size: 16px; color: #374151;"><strong>Hora:</strong> ${data.time}</p>
-              </div>
-
-              <div style="text-align: left; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                <p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Cliente:</strong> ${data.clientName}</p>
-                ${data.clientPhone ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Teléfono:</strong> <a href="tel:${data.clientPhone}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientPhone}</a></p>` : ''}
-                ${data.clientEmail ? `<p style="margin: 5px 0; font-size: 14px; color: #6b7280;"><strong>Email:</strong> <a href="mailto:${data.clientEmail}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientEmail}</a></p>` : ''}
-              </div>
-
-              ${calendarButtonHtml}
-              ${cancelButtonHtml}
-            </div>
-
-            <p style="margin-top: 32px; font-size: 14px; line-height: 1.6; color: #9ca3af; text-align: center;">
-              Si necesitas gestionar, modificar o cancelar esta reserva, puedes usar los botones de arriba o ponerte en contacto con el cliente.
-            </p>
-          </div>
-
-          <div style="padding: 32px; text-align: center; background: #faf9f7; border-top: 1px solid #e5e7eb;">
-            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-              © ${new Date().getFullYear()} ${config.brandName}. Todos los derechos reservados.<br>
-              Sistema de Reservas Automático
-            </p>
-          </div>
-        </div>
-      `
+      subject: `Nueva reserva — ${data.serviceName} · ${data.clientName}`,
+      html,
     })
 
     if (error) {
@@ -456,76 +566,41 @@ export async function sendClientConfirmation(
     const appUrl = getAppUrl()
     const cancelUrl = `${appUrl}/cancel/${data.id}`
 
+    const rows =
+      infoRow('Servicio', data.serviceName) +
+      infoRow('Fecha', data.date) +
+      infoRow('Hora', data.time) +
+      infoRow('Precio', `$${data.servicePrice}`)
+
+    const body = `
+      <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Hola ${data.clientName}, tu reserva fue confirmada. Aqui tienes los detalles:
+      </p>
+      ${infoCard(rows, config.brandColor)}
+      <div style="margin-bottom: 12px;">
+        ${primaryButton('Agregar al calendario', googleCalendarUrl, config.brandColor)}
+      </div>
+      <div style="margin-bottom: 28px;">
+        ${ghostButton('Gestionar mi turno', cancelUrl)}
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+        Guarda el link de "Gestionar mi turno" si necesitas reprogramar o cancelar.
+      </p>
+    `
+
+    const html = baseEmailTemplate({
+      brandName: config.brandName,
+      brandColor: config.brandColor,
+      title: 'Reserva confirmada',
+      subtitle: `Tu turno en ${config.brandName} esta agendado.`,
+      body,
+    })
+
     const { error } = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
-      subject: `Tu Reserva · ${data.serviceName}`,
-      html: `
-        <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
-          <div style="padding: 40px 32px 32px; text-align: center; border-bottom: 1px solid #fce7f3;">
-            <div style="display: inline-block; width: 40px; height: 40px; background: ${config.brandColor}; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">${config.brandName.charAt(0)}</div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1f1f24; letter-spacing: -0.5px;">Reserva Confirmada</h1>
-          </div>
-          
-          <div style="padding: 32px;">
-            <p style="margin: 0 0 28px; font-size: 16px; color: #52525b; line-height: 1.6;">
-              Hola ${data.clientName}, tu turno ha sido reservado.
-            </p>
-            
-            <div style="margin-bottom: 28px;">
-              <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #71717a;">Servicio</p>
-              <p style="margin: 0; font-size: 20px; color: #1f1f24; font-weight: 500;">${data.serviceName}</p>
-            </div>
-            
-            <table style="width: 100%; margin-bottom: 28px; border-collapse: collapse;">
-              <tr>
-                <td style="width: 50%; vertical-align: top;">
-                  <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #71717a;">Fecha</p>
-                  <p style="margin: 0; font-size: 16px; color: #1f1f24;">${data.date}</p>
-                </td>
-                <td style="width: 50%; vertical-align: top;">
-                  <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #71717a;">Hora</p>
-                  <p style="margin: 0; font-size: 16px; color: #1f1f24;">${data.time}</p>
-                </td>
-              </tr>
-            </table>
-
-            <div style="margin-bottom: 32px;">
-              <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #71717a;">Precio</p>
-              <p style="margin: 0; font-size: 16px; color: #1f1f24;">$${data.servicePrice}</p>
-            </div>
-            
-            <div style="margin-bottom: 32px;">
-              <a href="${googleCalendarUrl}" 
-                 target="_blank"
-                 style="display: inline-block; padding: 12px 24px; background: ${config.brandColor}; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                 Agregar al Calendario
-              </a>
-            </div>
-            
-            <div style="height: 1px; background: #e8e6e3; margin: 32px 0;"></div>
-
-            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb;">
-              <p style="margin: 0 0 12px; font-size: 14px; color: #1e40af; font-weight: 600;">
-                ¿Necesitás cambiar la fecha o cancelar?
-              </p>
-              <a href="${cancelUrl}"
-                 target="_blank"
-                 style="display: inline-block; padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-family: -apple-system, sans-serif;">
-                 Gestionar mi turno
-              </a>
-              <p style="margin: 12px 0 0; font-size: 12px; color: #64748b; line-height: 1.5;">
-                Guardá este link para reprogramar o cancelar cuando lo necesites
-              </p>
-            </div>
-
-          </div>
-          
-          <div style="padding: 24px 32px; background: #fdf2f8; text-align: center;">
-            <p style="margin: 0; font-size: 13px; color: #71717a;">Te esperamos ✨</p>
-          </div>
-        </div>
-      `
+      subject: `Reserva confirmada — ${data.serviceName}`,
+      html,
     })
 
     if (error) {
@@ -559,58 +634,38 @@ export async function sendAppointmentReminder(
     const appUrl = getAppUrl()
     const cancelUrl = `${appUrl}/cancel/${data.id}`
 
+    const rows =
+      infoRow('Servicio', data.serviceName) +
+      infoRow('Fecha', data.date) +
+      infoRow('Hora', data.time)
+
+    const body = `
+      <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Hola ${data.clientName}, te recordamos que manana tienes un turno agendado con nosotros.
+      </p>
+      ${infoCard(rows, config.brandColor)}
+      <p style="margin: 0 0 20px; font-size: 15px; color: #374151; text-align: center;">
+        Te esperamos.
+      </p>
+      <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+        Si necesitas cambiar o cancelar,
+        <a href="${cancelUrl}" style="color: ${config.brandColor}; text-decoration: none; font-weight: 600;">gestionalo aqui</a>.
+      </p>
+    `
+
+    const html = baseEmailTemplate({
+      brandName: config.brandName,
+      brandColor: config.brandColor,
+      title: 'Recordatorio de turno',
+      subtitle: 'Tu turno es manana.',
+      body,
+    })
+
     const { error } = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
-      subject: `Recordatorio · Tu turno es mañana`,
-      html: `
-        <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 560px; margin: 0 auto; background: #faf9f7; padding: 0;">
-          <div style="padding: 40px 32px 32px; text-align: center; border-bottom: 1px solid #fce7f3;">
-            <div style="display: inline-block; width: 40px; height: 40px; background: ${config.brandColor}; border-radius: 8px; line-height: 40px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 16px;">${config.brandName.charAt(0)}</div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1f1f24; letter-spacing: -0.5px;">¡Tu turno es mañana! 📅</h1>
-          </div>
-          
-          <div style="padding: 32px;">
-            <p style="margin: 0 0 28px; font-size: 16px; color: #52525b; line-height: 1.6;">
-              Hola ${data.clientName}, te recordamos que mañana tenés turno con nosotros.
-            </p>
-            
-            <div style="background: #fff1f2; padding: 24px; border-radius: 12px; margin-bottom: 28px;">
-              <div style="margin-bottom: 16px;">
-                <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9d174d;">Servicio</p>
-                <p style="margin: 0; font-size: 20px; color: #1f1f24; font-weight: 500;">${data.serviceName}</p>
-              </div>
-              
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="width: 50%; vertical-align: top; padding-right: 8px;">
-                    <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9d174d;">📅 Fecha</p>
-                    <p style="margin: 0; font-size: 16px; color: #1f1f24;">${data.date}</p>
-                  </td>
-                  <td style="width: 50%; vertical-align: top; padding-left: 8px;">
-                    <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9d174d;">⏰ Hora</p>
-                    <p style="margin: 0; font-size: 16px; color: #1f1f24;">${data.time}</p>
-                  </td>
-                </tr>
-              </table>
-            </div>
-            
-            <p style="margin: 0 0 24px; font-size: 15px; color: #52525b; text-align: center;">
-              Te esperamos ✨
-            </p>
-            
-            <div style="height: 1px; background: #e8e6e3; margin-bottom: 24px;"></div>
-
-            <p style="margin: 0; font-size: 14px; color: #71717a; line-height: 1.6;">
-              ¿Necesitás cambiar o cancelar? <a href="${cancelUrl}" style="color: #2563eb; text-decoration: none; font-weight: 500;">Gestionar turno</a>
-            </p>
-          </div>
-          
-          <div style="padding: 24px 32px; background: #fdf2f8; text-align: center;">
-            <p style="margin: 0; font-size: 13px; color: #71717a;">¡Nos vemos mañana! 💅</p>
-          </div>
-        </div>
-      `
+      subject: `Recordatorio — Tu turno es manana`,
+      html,
     })
 
     if (error) {

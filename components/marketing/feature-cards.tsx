@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Globe, Shield, Zap, CheckCircle2, Calendar, Mail, MessageSquare, CreditCard, Smartphone, Check, Clock, User, Bell, CalendarCheck, Sparkles, ArrowRight } from 'lucide-react'
+import { Zap, CheckCircle2, Calendar, CreditCard, Clock, Bell, CalendarCheck, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 

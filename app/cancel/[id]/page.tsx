@@ -12,6 +12,33 @@ export const metadata: Metadata = {
   title: 'Gestionar Turno',
 }
 
+function PageWrapper({ children, businessSlug, businessName }: {
+  children: React.ReactNode
+  businessSlug: string
+  businessName: string
+}) {
+  return (
+    <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-pink-100 selection:text-pink-900">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
+        <div className="container max-w-5xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+          <Link href={businessSlug ? `/${businessSlug}` : '/'} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-serif font-bold text-lg shadow-sm">
+              {businessName.charAt(0).toUpperCase()}
+            </div>
+            <span className="font-serif font-bold tracking-tight text-xl">{businessName}</span>
+          </Link>
+        </div>
+      </header>
+
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
+        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+          {children}
+        </div>
+      </main>
+    </div>
+  )
+}
+
 export default async function CancelPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const result = await getAppointmentById(id)
@@ -32,31 +59,9 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const businessSlug = business?.slug || ''
   const businessAddress = business?.address || ''
 
-  // Common wrapper for consistent layout
-  const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-pink-100 selection:text-pink-900">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80">
-        <div className="container max-w-5xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <Link href={businessSlug ? `/${businessSlug}` : '/'} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-serif font-bold text-lg shadow-sm">
-              {businessName.charAt(0).toUpperCase()}
-            </div>
-            <span className="font-serif font-bold tracking-tight text-xl">{businessName}</span>
-          </Link>
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-          {children}
-        </div>
-      </main>
-    </div>
-  )
-
   if (!result.success || !appointment) {
     return (
-      <PageWrapper>
+      <PageWrapper businessSlug={businessSlug} businessName={businessName}>
         <Card className="border-border/50 shadow-xl p-8 text-center space-y-6">
           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8 text-red-500" />
@@ -77,7 +82,7 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
 
   if (appointment.status === 'cancelled') {
     return (
-      <PageWrapper>
+      <PageWrapper businessSlug={businessSlug} businessName={businessName}>
         <Card className="border-border/50 shadow-xl p-8 text-center space-y-6">
           <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -115,7 +120,7 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const timeStr = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
 
   return (
-    <PageWrapper>
+    <PageWrapper businessSlug={businessSlug} businessName={businessName}>
       <div className="space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-serif font-bold text-foreground">Gestionar Turno</h1>

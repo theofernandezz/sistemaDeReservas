@@ -40,7 +40,7 @@ export default function ServicesAndAddons({
 }: ServicesAndAddonsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('services')
   const [services, setServices] = useState(initialServices)
-  const [addons, setAddons] = useState(initialAddons)
+  const [addons] = useState(initialAddons)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<FrontendService | ServiceAddon | null>(null)
   const [saving, setSaving] = useState(false)
@@ -142,7 +142,7 @@ export default function ServicesAndAddons({
 
       setIsModalOpen(false)
       router.refresh()
-    } catch (error) {
+    } catch {
       toast({ type: 'error', title: 'Error al guardar' })
     } finally {
       setSaving(false)
@@ -241,8 +241,6 @@ export default function ServicesAndAddons({
   const handleImageChange = (imageUrl: string) => {
     setFormData({ ...formData, image: imageUrl })
   }
-
-  const currentItems = activeTab === 'services' ? services : addons
 
   return (
     <div className="p-4 md:p-6">

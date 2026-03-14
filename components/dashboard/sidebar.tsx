@@ -36,9 +36,6 @@ function SidebarContent({
   isSuperAdmin?: boolean
   onClose?: () => void
 }) {
-  // Get first letter for avatar
-  const initial = business.name.charAt(0).toUpperCase()
-
   return (
     <>
       <div className="p-6 border-b border-border">

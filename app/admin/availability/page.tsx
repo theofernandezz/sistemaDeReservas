@@ -62,6 +62,7 @@ export default function AvailabilityPage() {
   const [activeTab, setActiveTab] = useState<'schedule' | 'blocked'>('schedule')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitialConfig(getStoredConfig())
     setMounted(true)
   }, [])

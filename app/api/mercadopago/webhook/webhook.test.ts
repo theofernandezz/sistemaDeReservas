@@ -73,7 +73,7 @@ describe('MercadoPago Webhook - Payment Flow', () => {
       // Arrange: Setup mocks
       const mockSupabase = createMockSupabaseClient()
       const { createClient } = await import('@/utils/supabase/server')
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      vi.mocked(createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>)
 
       // Mock pending booking data
       mockSupabase.from('pending_bookings').select.mockReturnThis()
@@ -187,7 +187,7 @@ describe('MercadoPago Webhook - Payment Flow', () => {
       // Arrange
       const mockSupabase = createMockSupabaseClient()
       const { createClient } = await import('@/utils/supabase/server')
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      vi.mocked(createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>)
 
       // Mock pending booking
       mockSupabase.from('pending_bookings').select.mockReturnThis()
@@ -269,7 +269,7 @@ describe('MercadoPago Webhook - Payment Flow', () => {
       // Arrange
       const mockSupabase = createMockSupabaseClient()
       const { createClient } = await import('@/utils/supabase/server')
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      vi.mocked(createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>)
 
       // Mock pending booking
       mockSupabase.from('pending_bookings').select.mockReturnThis()
@@ -416,7 +416,7 @@ describe('MercadoPago Webhook - Payment Flow', () => {
       // Arrange - force database error
       const mockSupabase = createMockSupabaseClient()
       const { createClient } = await import('@/utils/supabase/server')
-      vi.mocked(createClient).mockResolvedValue(mockSupabase as any)
+      vi.mocked(createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof createClient>>)
 
       mockSupabase.from('pending_bookings').select.mockRejectedValue(new Error('Database error'))
 

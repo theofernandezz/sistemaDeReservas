@@ -131,8 +131,7 @@ export async function createBookingPaymentPreference(
       throw new Error('Reserva no encontrada')
     }
 
-    // @ts-ignore - Supabase types for nested selects
-    const businessId = (appointment.service as any)?.business_id
+    const businessId = (appointment.service as { business_id: string; name: string; price: number } | null)?.business_id
     if (!businessId) {
       throw new Error('Negocio no encontrado')
     }
@@ -157,8 +156,7 @@ export async function createBookingPaymentPreference(
     }
 
     // Calculate amount - use customAmount if provided, otherwise calculate deposit
-    // @ts-ignore
-    const totalPrice = (appointment.service as any)?.price || 0
+    const totalPrice = (appointment.service as { business_id: string; name: string; price: number } | null)?.price || 0
     const depositPercentage = business?.deposit_percentage || 30
     const paymentAmount = customAmount || Math.round(totalPrice * depositPercentage / 100)
 
@@ -180,8 +178,7 @@ export async function createBookingPaymentPreference(
       [
         {
           id: appointmentId,
-          // @ts-ignore
-          title: `Pago - ${(appointment.service as any)?.name}`,
+          title: `Pago - ${(appointment.service as { business_id: string; name: string; price: number } | null)?.name}`,
           description: `Reserva en ${business?.name}`,
           quantity: 1,
           unit_price: paymentAmount,
@@ -287,8 +284,7 @@ export async function createPendingBookingPreference(
       throw new Error('Negocio no encontrado')
     }
 
-    // @ts-ignore - Supabase types for nested selects
-    const business = (service.businesses as any)
+    const business = (service.businesses as unknown as { deposit_percentage: number; name: string; slug: string } | null)
     if (!business) {
       throw new Error('Configuración de negocio no encontrada')
     }

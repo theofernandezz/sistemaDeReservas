@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Service, ServiceAddon, SelectedAddon } from '@/types/database.types'
-import { ArrowLeft, ArrowRight, Calendar, Clock, DollarSign } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AddonSelector from '@/components/booking/addon-selector'
 import { format, parseISO } from 'date-fns'

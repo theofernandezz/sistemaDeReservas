@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, Check, CheckCheck, Trash2, X, Calendar, CreditCard, AlertCircle, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   getNotificationsWithCount,

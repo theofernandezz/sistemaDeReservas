@@ -29,7 +29,7 @@ export default function SignupPage() {
       } else {
         setEmailSent(true)
       }
-    } catch (err) {
+    } catch {
       setError('Ocurrió un error. Por favor intenta de nuevo.')
     } finally {
       setLoading(false)

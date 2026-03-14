@@ -23,7 +23,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-lg font-semibold">1. Responsable del tratamiento</h2>
               <p className="mt-2 text-muted-foreground">
-                Buki ("la Plataforma") es responsable del tratamiento de los datos personales recolectados a través de
+                Buki (&ldquo;la Plataforma&rdquo;) es responsable del tratamiento de los datos personales recolectados a través de
                 buki.devora.lat y los subdominios asociados.
               </p>
             </section>

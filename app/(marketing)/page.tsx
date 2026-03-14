@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { SoftwareApplicationSchema } from '@/components/seo/structured-data'
 import HomePage from './home-page'
 

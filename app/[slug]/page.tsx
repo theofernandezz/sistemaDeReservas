@@ -70,7 +70,7 @@ export default async function PublicBookingPage({ params }: PageProps) {
   const accentColor = business.settings?.accentColor || '#f97316'
 
   return (
-    <div className="space-y-6 sm:space-y-8 lg:max-w-[1400px] lg:mx-auto lg:px-12 lg:py-8">
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
       {/* Hero section */}
       <BusinessHero business={business} accentColor={accentColor} />
 
@@ -126,36 +126,25 @@ export default async function PublicBookingPage({ params }: PageProps) {
 /**
  * EmptyServicesState - Premium empty state for no services
  */
-function EmptyServicesState({ accentColor }: { accentColor: string }) {
+function EmptyServicesState({ accentColor: _accentColor }: { accentColor: string }) {
   return (
     <div 
       className={cn(
-        "relative py-16 sm:py-20 text-center rounded-2xl overflow-hidden",
-        "border border-dashed border-border/60 bg-muted/5"
+        "relative py-16 sm:py-24 text-center rounded-2xl",
+        "bg-secondary/30"
       )}
     >
-      {/* Subtle background pattern */}
-      <div 
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `radial-gradient(${accentColor} 1px, transparent 1px)`,
-          backgroundSize: '20px 20px'
-        }}
-        aria-hidden="true"
-      />
-      
-      <div className="relative z-10 space-y-2">
+      <div className="relative z-10 space-y-4 max-w-md mx-auto">
         <div 
-          className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${accentColor}10` }}
+          className="w-16 h-16 mx-auto rounded-full flex items-center justify-center bg-background border border-border/50 shadow-sm"
           aria-hidden="true"
         >
           <svg 
-            className="w-6 h-6" 
+            className="w-8 h-8 text-muted-foreground" 
             fill="none" 
             viewBox="0 0 24 24" 
-            stroke={accentColor}
-            strokeWidth={1.5}
+            stroke="currentColor"
+            strokeWidth={1}
           >
             <path 
               strokeLinecap="round" 
@@ -164,12 +153,14 @@ function EmptyServicesState({ accentColor }: { accentColor: string }) {
             />
           </svg>
         </div>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          No hay servicios disponibles en este momento.
-        </p>
-        <p className="text-xs text-muted-foreground/70">
-          Vuelve pronto para ver las novedades.
-        </p>
+        <div className="space-y-2">
+          <p className="text-lg font-medium text-foreground tracking-tight">
+            Aún no hay servicios disponibles.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            El negocio está preparando su catálogo. Vuelve pronto.
+          </p>
+        </div>
       </div>
     </div>
   )

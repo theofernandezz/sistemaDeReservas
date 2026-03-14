@@ -131,6 +131,7 @@ export default function SettingsPage({
 
   useEffect(() => {
     if (successParam === 'google_connected') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowMobileMenu(false)
       setTimeout(() => {
         showSuccess('Google Calendar conectado', 'Tu calendario ha sido vinculado correctamente')

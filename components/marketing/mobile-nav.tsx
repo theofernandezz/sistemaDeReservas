@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useSyncExternalStore } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import logoSvg from "@/public/logo/icon.svg"
@@ -14,12 +14,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 
-export function MobileNav() {
-  const [isMounted, setIsMounted] = useState(false)
+const subscribe = () => () => {}
+const getSnapshot = () => true
+const getServerSnapshot = () => false
 
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+export function MobileNav() {
+  const isMounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
   if (!isMounted) {
     return (

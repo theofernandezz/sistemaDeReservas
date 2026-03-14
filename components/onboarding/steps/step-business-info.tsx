@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -40,14 +40,7 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
   const [dragActive, setDragActive] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
-  const [baseUrl, setBaseUrl] = useState('reserva.com')
-
-  // Get the actual domain on client side
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setBaseUrl(window.location.host)
-    }
-  }, [])
+  const [baseUrl] = useState(() => typeof window !== 'undefined' ? window.location.host : 'reserva.com')
 
   // Debounced slug check
   const checkSlug = useDebouncedCallback(async (slug: string) => {
@@ -87,33 +80,7 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
   }
 
   // File upload handlers
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
-    }
-  }, [])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0])
-    }
-  }, [])
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0])
-    }
-  }
-
-  const handleFile = async (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecciona una imagen válida')
       return
@@ -139,6 +106,32 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
       setUploadingLogo(false)
     }
     reader.readAsDataURL(file)
+  }, [onChange, data])
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true)
+    } else if (e.type === 'dragleave') {
+      setDragActive(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0])
+    }
+  }, [handleFile])
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0])
+    }
   }
 
   const removeLogo = () => {

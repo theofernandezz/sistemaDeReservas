@@ -258,8 +258,7 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
   }
 
   for (const pending of pendingBookings) {
-    // @ts-ignore
-    const businessId = (pending.service as any)?.business_id
+    const businessId = (pending.service as { business_id: string; name: string; price: number } | null)?.business_id
     if (!businessId) continue
 
     // Get access_token for this business
@@ -356,7 +355,6 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
       console.log(`Created appointment ${newAppointment.id} from pending booking ${pending.id}`)
 
       // Send notifications (emails + calendar)
-      // @ts-ignore - service comes from join
       const serviceData = pending.service as { business_id: string; name: string; price: number } | null
       if (serviceData) {
         await sendPostPaymentNotifications(
@@ -396,8 +394,7 @@ async function processLegacyAppointmentPayment(supabase: SupabaseClient, payment
   }
 
   for (const apt of pendingAppointments) {
-    // @ts-ignore
-    const businessId = (apt.service as any)?.business_id
+    const businessId = (apt.service as unknown as { business_id: string; name: string; price: number } | null)?.business_id
     if (!businessId) continue
 
     const { data: mpIntegration } = await supabase

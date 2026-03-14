@@ -30,7 +30,7 @@ export function ServiceCard({
   durationMin, 
   image, 
   bookingBasePath = '/booking',
-  accentColor = '#f97316'
+  accentColor: _accentColor = '#f97316'
 }: ServiceCardProps) {
   const hasImage = !!image
 
@@ -45,21 +45,13 @@ export function ServiceCard({
       <Card 
         className={cn(
           "relative h-full overflow-hidden",
-          "border border-border/60 bg-card",
-          "transition-all duration-300 ease-out",
-          "hover:shadow-xl hover:shadow-black/5 hover:-translate-y-1",
-          "active:scale-[0.995] active:shadow-lg",
-          "flex flex-col"
+          "border border-border/60 bg-card rounded-xl",
+          "transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "hover:shadow-2xl hover:shadow-black/5 hover:-translate-y-1 hover:border-border",
+          "active:scale-[0.98]",
+          "flex flex-col group/card"
         )}
       >
-        {/* Accent border glow on hover */}
-        <div 
-          className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-          style={{
-            boxShadow: `inset 0 0 0 1px ${accentColor}25, 0 0 24px ${accentColor}08`
-          }}
-          aria-hidden="true"
-        />
 
         {/* Image section - optional, with proper aspect ratio */}
         {hasImage && (
@@ -94,14 +86,13 @@ export function ServiceCard({
           {/* Bottom section - price, duration, CTA */}
           <div className="flex items-end justify-between gap-3 mt-4 pt-3 border-t border-border/40">
             {/* Left: Duration + Price stacked */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground/80 text-xs tracking-wide uppercase">
                 <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>{durationMin} min</span>
               </div>
               <span 
-                className="block font-bold text-xl sm:text-2xl tabular-nums"
-                style={{ color: accentColor }}
+                className="block font-semibold text-lg sm:text-xl tabular-nums text-foreground group-hover/card:text-foreground transition-colors"
               >
                 ${price}
               </span>
@@ -110,22 +101,18 @@ export function ServiceCard({
             {/* Right: CTA button */}
             <div 
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-lg",
+                "flex items-center gap-2 px-4 py-2 rounded-full",
                 "text-xs sm:text-sm font-medium",
-                "transition-all duration-200",
-                "group-hover:gap-2"
+                "transition-all duration-300",
+                "bg-foreground text-background hover:scale-105 active:scale-95"
               )}
-              style={{ 
-                backgroundColor: `${accentColor}10`,
-                color: accentColor 
-              }}
             >
-              <span className="hidden xs:inline sm:inline">Reservar</span>
+              <span className="hidden xs:inline sm:inline tracking-wide">Reservar</span>
               <span className="xs:hidden sm:hidden">Ver</span>
               <ArrowRight 
                 className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  "group-hover:translate-x-0.5"
+                  "h-4 w-4 transition-transform duration-300",
+                  "group-hover/card:translate-x-1"
                 )} 
                 aria-hidden="true"
               />

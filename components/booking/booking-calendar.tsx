@@ -45,6 +45,7 @@ export default function BookingCalendar({
     if (!initialDate) return
     const nextDate = new Date(`${initialDate}T00:00:00`)
     if (!Number.isNaN(nextDate.getTime())) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDate(nextDate)
       setMonth(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1))
     }

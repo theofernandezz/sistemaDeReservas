@@ -33,7 +33,6 @@ import {
 import {
   startOfDayUTC,
   endOfDayUTC,
-  fromUTC,
   createSlotTimeUTC,
   addMinutesToUTC,
   isPastDate,
@@ -901,7 +900,7 @@ export async function getAvailableSlots(
             }
           })
         }
-      } catch (e) {
+      } catch {
         console.warn('Could not parse business hours JSON, will try DB')
       }
     }
@@ -944,7 +943,7 @@ export async function getAvailableSlots(
             })
           }
         }
-      } catch (e) {
+      } catch {
         console.warn('Could not fetch business settings from DB, using defaults')
       }
     }
@@ -1420,41 +1419,46 @@ export async function disconnectGoogleCalendar(): Promise<ServerActionResponse> 
 }
 
 /**
- * Get admin notification email
+ * Get admin notification email for the current business
  */
 export async function getAdminNotificationEmail(): Promise<string> {
   try {
-    const supabase = await createClient()
+    const businessResult = await getCurrentBusiness()
+    if (!businessResult.success || !businessResult.data) {
+      return process.env.ADMIN_MAIL || 'reservas@example.com'
+    }
 
+    const supabase = await createClient()
     const { data } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'admin_notification_email')
+      .from('businesses')
+      .select('admin_notification_email')
+      .eq('id', businessResult.data.id)
       .single()
 
-    // Fallback to env if not set in DB
-    return data?.value || process.env.ADMIN_MAIL || 'reservas@example.com'
+    return data?.admin_notification_email || process.env.ADMIN_MAIL || 'reservas@example.com'
   } catch {
     return process.env.ADMIN_MAIL || 'reservas@example.com'
   }
 }
 
 /**
- * Update admin notification email
+ * Update admin notification email for the current business
  */
 export async function updateAdminNotificationEmail(email: string): Promise<ServerActionResponse> {
   try {
-    const supabase = await createClient()
+    const businessResult = await getCurrentBusiness()
+    if (!businessResult.success || !businessResult.data) {
+      return { success: false, error: 'No se encontró el negocio' }
+    }
 
+    const supabase = await createClient()
     const { error } = await supabase
-      .from('app_settings')
-      .upsert({
-        key: 'admin_notification_email',
-        value: email,
+      .from('businesses')
+      .update({
+        admin_notification_email: email,
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'key'
       })
+      .eq('id', businessResult.data.id)
 
     if (error) throw error
 

@@ -3,7 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { getCurrentBusiness } from '@/app/actions/auth'
+import { baseEmailTemplate } from '@/lib/email'
 import { ServerActionResponse } from '@/types/database.types'
+
+const DEFAULT_BRAND_COLOR = '#6366f1'
 
 /**
  * Get email configuration for the current business
@@ -87,7 +90,7 @@ export async function updateBusinessEmailSettings(
         email_from: emailFrom,
         email_from_name: emailFromName,
         admin_notification_email: adminNotificationEmail,
-        email_brand_color: emailBrandColor || '#db2777',
+        email_brand_color: emailBrandColor || DEFAULT_BRAND_COLOR,
         updated_at: new Date().toISOString()
       })
       .eq('id', businessResult.data.id)
@@ -122,18 +125,36 @@ export async function testBusinessEmailConfiguration(): Promise<ServerActionResp
       return { success: false, error: 'Configuración de email incompleta' }
     }
 
+    const brandColor = settingsResult.data.emailBrandColor || DEFAULT_BRAND_COLOR
+    const brandName = emailFromName || 'Sistema de Reservas'
+
+    const testBody = `
+      <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Tu configuracion de email esta funcionando correctamente.
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; border-left: 3px solid ${brandColor}; margin-bottom: 24px;">
+        <tr><td style="padding: 20px 24px;">
+          <p style="margin: 0 0 10px; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Email de envio:</strong> ${emailFrom}</p>
+          <p style="margin: 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Email de notificaciones:</strong> ${adminNotificationEmail}</p>
+        </td></tr>
+      </table>
+      <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+        Este es un correo de prueba generado desde el panel de configuracion.
+      </p>
+    `
+
     const { error } = await resend.emails.send({
-      from: `${emailFromName || 'Test'} <${emailFrom}>`,
+      from: `${brandName} <${emailFrom}>`,
       to: adminNotificationEmail,
-      subject: 'Test de Configuración de Email',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: ${settingsResult.data.emailBrandColor || '#db2777'};">Configuración Exitosa ✓</h2>
-          <p>Tu configuración de email está funcionando correctamente.</p>
-          <p><strong>Email de envío:</strong> ${emailFrom}</p>
-          <p><strong>Email de notificaciones:</strong> ${adminNotificationEmail}</p>
-        </div>
-      `
+      subject: 'Prueba de configuracion de email',
+      html: baseEmailTemplate({
+        brandName,
+        brandColor,
+        title: 'Configuracion exitosa',
+        subtitle: 'Tu sistema de emails esta listo para usar.',
+        body: testBody,
+      }),
     })
 
     if (error) {

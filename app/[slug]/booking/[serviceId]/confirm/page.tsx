@@ -247,6 +247,7 @@ export default function CompactConfirmPage() {
       })
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
+        // eslint-disable-next-line react-hooks/immutability
         window.location.href = preferenceResult.data.initPoint
         return
       } else {

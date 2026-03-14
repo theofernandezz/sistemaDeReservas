@@ -28,7 +28,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error)
       }
-    } catch (err) {
+    } catch {
       // Quietly handle redirect
     } finally {
       setLoading(false)
