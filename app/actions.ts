@@ -567,27 +567,31 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
         }
 
         // ==========================================
-        // GOOGLE CALENDAR ADO
+        // GOOGLE CALENDAR — token aislado por negocio
         // ==========================================
         try {
-          const { getGoogleRefreshToken } = await import('@/app/actions')
           const { createCalendarEvent: createGEvent } = await import('@/lib/google-calendar')
 
-          const refreshToken = await getGoogleRefreshToken()
+          // Fetch the refresh token for THIS specific business (same pattern as MercadoPago)
+          const { data: googleIntegration } = await supabase
+            .from('google_integrations')
+            .select('refresh_token')
+            .eq('business_id', businessId)
+            .single()
 
-          if (refreshToken) {
+          if (googleIntegration?.refresh_token) {
             const event = await createGEvent({
               summary: `${service.name} - ${input.client_name}`,
               description: `Cliente: ${input.client_name}\nTeléfono: ${input.client_phone || 'No especificado'}\nEmail: ${input.client_email || 'No especificado'}\n\nServicio: ${service.name}\nPrecio: $${service.price}`,
               startTime: startDate,
               endTime: endDate,
-              refreshToken: refreshToken
+              refreshToken: googleIntegration.refresh_token,
             })
 
             // Save event ID to appointment
             if (event && event.id) {
-              const supabase = await createClient()
-              await supabase
+              const supabase2 = await createClient()
+              await supabase2
                 .from('appointments')
                 .update({ google_event_id: event.id })
                 .eq('id', data.id)
@@ -663,11 +667,38 @@ export async function updateAppointmentStatus(id: string, status: string): Promi
 
 
 /**
- * Delete an appointment
+ * Delete an appointment (also removes event from Google Calendar if linked)
  */
 export async function deleteAppointment(id: string): Promise<ServerActionResponse<void>> {
   try {
     const supabase = await createClient()
+
+    // Fetch the appointment to get google_event_id and business_id before deleting
+    const { data: appointment } = await supabase
+      .from('appointments')
+      .select('google_event_id, business_id')
+      .eq('id', id)
+      .single()
+
+    // Remove from Google Calendar first (if linked)
+    if (appointment?.google_event_id && appointment?.business_id) {
+      try {
+        const { data: googleIntegration } = await supabase
+          .from('google_integrations')
+          .select('refresh_token')
+          .eq('business_id', appointment.business_id)
+          .single()
+
+        if (googleIntegration?.refresh_token) {
+          const { deleteCalendarEvent } = await import('@/lib/google-calendar')
+          await deleteCalendarEvent(appointment.google_event_id, googleIntegration.refresh_token)
+          console.log('Google Calendar event deleted on appointment delete')
+        }
+      } catch (calendarError) {
+        console.error('Error deleting Google Calendar event on delete:', calendarError)
+        // Don't fail the delete if calendar cleanup fails
+      }
+    }
 
     const { error } = await supabase
       .from('appointments')
@@ -1349,14 +1380,18 @@ export async function deleteServiceAddon(id: string): Promise<ServerActionRespon
 /**
  * Get Google Calendar connection status
  */
+/**
+ * Get Google Calendar connection status for the current business
+ */
 export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<{ isConnected: boolean }>> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { data, error } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'google_calendar_refresh_token')
+      .from('google_integrations')
+      .select('refresh_token')
+      .eq('business_id', businessId)
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found, which is OK
@@ -1365,7 +1400,7 @@ export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<
 
     return {
       success: true,
-      data: { isConnected: !!data?.value }
+      data: { isConnected: !!data?.refresh_token }
     }
   } catch (error: unknown) {
     console.error('Error getting calendar settings:', error)
@@ -1373,40 +1408,51 @@ export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<
   }
 }
 
+
 /**
- * Get the stored Google Calendar refresh token
+ * Get the stored Google Calendar refresh token for a specific business.
+ * Uses google_integrations table (same pattern as MercadoPago), NOT global app_settings.
  */
-export async function getGoogleRefreshToken(): Promise<string | null> {
+export async function getGoogleRefreshToken(businessId?: string): Promise<string | null> {
   try {
     const supabase = await createClient()
 
+    // Resolve businessId: use provided one, or fall back to the current authenticated business
+    let resolvedBusinessId = businessId
+    if (!resolvedBusinessId) {
+      const businessResult = await getCurrentBusiness()
+      if (!businessResult.success || !businessResult.data) return null
+      resolvedBusinessId = businessResult.data.id
+    }
+
     const { data, error } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'google_calendar_refresh_token')
+      .from('google_integrations')
+      .select('refresh_token')
+      .eq('business_id', resolvedBusinessId)
       .single()
 
-    if (error || !data?.value) {
+    if (error || !data?.refresh_token) {
       return null
     }
 
-    return data.value
+    return data.refresh_token
   } catch {
     return null
   }
 }
 
 /**
- * Disconnect Google Calendar
+ * Disconnect Google Calendar for the current business
  */
 export async function disconnectGoogleCalendar(): Promise<ServerActionResponse> {
   try {
     const supabase = await createClient()
+    const businessId = await requireBusinessId()
 
     const { error } = await supabase
-      .from('app_settings')
+      .from('google_integrations')
       .delete()
-      .eq('key', 'google_calendar_refresh_token')
+      .eq('business_id', businessId)
 
     if (error) throw error
 
@@ -1500,15 +1546,18 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
 
     if (updateError) throw updateError
 
-    // 3. Delete from Google Calendar if connected
+    // 3. Delete from Google Calendar if connected (using business-specific token)
     if (appointment.google_event_id) {
       try {
-        const { getGoogleRefreshToken } = await import('@/app/actions')
-        const refreshToken = await getGoogleRefreshToken()
+        const { data: googleIntegration } = await supabase
+          .from('google_integrations')
+          .select('refresh_token')
+          .eq('business_id', appointment.business_id)
+          .single()
 
-        if (refreshToken) {
+        if (googleIntegration?.refresh_token) {
           const { deleteCalendarEvent } = await import('@/lib/google-calendar')
-          await deleteCalendarEvent(appointment.google_event_id, refreshToken)
+          await deleteCalendarEvent(appointment.google_event_id, googleIntegration.refresh_token)
           console.log('Google Calendar event deleted')
         }
       } catch (calendarError) {
@@ -2010,13 +2059,16 @@ export async function rescheduleAppointment(
 
     if (updateError) throw updateError
 
-    // 5. Update Google Calendar if connected
+    // 5. Update Google Calendar if connected (using business-specific token)
     if (appointment.google_event_id) {
       try {
-        const { getGoogleRefreshToken } = await import('@/app/actions')
-        const refreshToken = await getGoogleRefreshToken()
+        const { data: googleIntegration } = await supabase
+          .from('google_integrations')
+          .select('refresh_token')
+          .eq('business_id', appointment.business_id)
+          .single()
 
-        if (refreshToken) {
+        if (googleIntegration?.refresh_token) {
           const { updateCalendarEvent } = await import('@/lib/google-calendar')
           await updateCalendarEvent(
             appointment.google_event_id,
@@ -2024,7 +2076,7 @@ export async function rescheduleAppointment(
               startTime: new Date(validatedStartTime),
               endTime: new Date(validatedEndTime)
             },
-            refreshToken
+            googleIntegration.refresh_token
           )
           console.log('Google Calendar event updated')
         }

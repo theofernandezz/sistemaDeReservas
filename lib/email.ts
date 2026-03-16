@@ -7,6 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // Default brand settings
 const DEFAULT_BRAND_COLOR = '#6366f1'
 const DEFAULT_FROM_EMAIL = process.env.RESEND_FROM_MAIL || 'reservas@example.com'
+const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_MAIL || ''
 const DEFAULT_FROM_NAME = 'Sistema de Reservas'
 
 /**
@@ -75,7 +76,7 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
     return {
       emailFrom: DEFAULT_FROM_EMAIL,
       emailFromName: 'Sistema de Reservas',
-      adminNotificationEmail: process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+      adminNotificationEmail: DEFAULT_ADMIN_EMAIL,
       brandColor: DEFAULT_BRAND_COLOR,
       brandName: 'Sistema de Reservas',
     }
@@ -84,7 +85,7 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || business.owner_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || business.owner_email || DEFAULT_ADMIN_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }
@@ -106,7 +107,7 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
     return {
       emailFrom: DEFAULT_FROM_EMAIL,
       emailFromName: 'Sistema de Reservas',
-      adminNotificationEmail: process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+      adminNotificationEmail: DEFAULT_ADMIN_EMAIL,
       brandColor: DEFAULT_BRAND_COLOR,
       brandName: 'Sistema de Reservas',
     }
@@ -115,7 +116,7 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || business.owner_email || process.env.ADMIN_MAIL || DEFAULT_FROM_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || business.owner_email || DEFAULT_ADMIN_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }

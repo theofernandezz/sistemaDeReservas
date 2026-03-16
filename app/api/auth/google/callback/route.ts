@@ -9,45 +9,59 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('Google OAuth error:', error)
-    return NextResponse.redirect(new URL('/admin/settings?error=oauth_denied', request.url))
+    return NextResponse.redirect(new URL('/dashboard/settings?error=oauth_denied', request.url))
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/admin/settings?error=no_code', request.url))
+    return NextResponse.redirect(new URL('/dashboard/settings?error=no_code', request.url))
   }
 
   try {
-    // Exchange code for tokens
     const tokens = await getTokensFromCode(code)
 
     if (!tokens.refresh_token) {
       console.error('No refresh token received')
-      return NextResponse.redirect(new URL('/admin/settings?error=no_refresh_token', request.url))
+      return NextResponse.redirect(new URL('/dashboard/settings?error=no_refresh_token', request.url))
     }
 
-    // Store tokens in Supabase settings table
     const supabase = await createClient()
 
-    // Upsert the google calendar settings
+    // Obtain the business_id of the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.redirect(new URL('/dashboard/settings?error=not_authenticated', request.url))
+    }
+
+    const { data: business, error: businessError } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (businessError || !business) {
+      console.error('Could not find business for user:', businessError)
+      return NextResponse.redirect(new URL('/dashboard/settings?error=no_business', request.url))
+    }
+
+    // Save token in google_integrations filtered by business_id (same pattern as MercadoPago)
     const { error: dbError } = await supabase
-      .from('app_settings')
+      .from('google_integrations')
       .upsert({
-        key: 'google_calendar_refresh_token',
-        value: tokens.refresh_token,
-        updated_at: new Date().toISOString()
+        business_id: business.id,
+        refresh_token: tokens.refresh_token,
+        updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'key'
+        onConflict: 'business_id'
       })
 
     if (dbError) {
-      console.error('Error saving tokens:', dbError)
-      return NextResponse.redirect(new URL('/admin/settings?error=db_error', request.url))
+      console.error('Error saving Google tokens:', dbError)
+      return NextResponse.redirect(new URL('/dashboard/settings?error=db_error', request.url))
     }
 
-    // Redirect back to settings with success
-    return NextResponse.redirect(new URL('/admin/settings?success=google_connected', request.url))
+    return NextResponse.redirect(new URL('/dashboard/settings?success=google_connected', request.url))
   } catch (error: unknown) {
     console.error('Error in OAuth callback:', error)
-    return NextResponse.redirect(new URL('/admin/settings?error=token_exchange', request.url))
+    return NextResponse.redirect(new URL('/dashboard/settings?error=token_exchange', request.url))
   }
 }
