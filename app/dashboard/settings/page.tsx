@@ -44,7 +44,9 @@ export default async function SettingsServerPage() {
   const paymentSettings = business?.settings
     ? {
         paymentFlowMode:
-          business.settings.paymentFlowMode === 'manual_transfer' ? 'manual_transfer' : 'mercadopago',
+          business.settings.paymentFlowMode === 'manual_transfer'
+            ? ('manual_transfer' as const)
+            : ('mercadopago' as const),
         manualTransfer: {
           enabled: business.settings.manualTransfer?.enabled === true,
           alias: business.settings.manualTransfer?.alias || '',
