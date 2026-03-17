@@ -1412,16 +1412,22 @@ export async function deleteServiceAddon(id: string): Promise<ServerActionRespon
 export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<{ isConnected: boolean }>> {
   try {
     const supabase = await createClient()
-    const businessId = await requireBusinessId()
+    const businessResult = await getCurrentBusiness()
+
+    if (!businessResult.success || !businessResult.data?.id) {
+      return { success: true, data: { isConnected: false } }
+    }
+
+    const businessId = businessResult.data.id
 
     const { data, error } = await supabase
       .from('google_integrations')
       .select('refresh_token')
       .eq('business_id', businessId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = not found, which is OK
-      throw error
+    if (error) {
+      return { success: true, data: { isConnected: false } }
     }
 
     return {
@@ -1429,8 +1435,10 @@ export async function getGoogleCalendarSettings(): Promise<ServerActionResponse<
       data: { isConnected: !!data?.refresh_token }
     }
   } catch (error: unknown) {
-    console.error('Error getting calendar settings:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error getting calendar settings' }
+    // This setting is non-critical for rendering settings page.
+    // Fail closed (disconnected) instead of surfacing noisy errors.
+    void error
+    return { success: true, data: { isConnected: false } }
   }
 }
 

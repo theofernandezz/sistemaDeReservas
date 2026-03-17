@@ -30,6 +30,72 @@ function isMPTokenInvalid(error: unknown): boolean {
 interface PaymentConfig {
   depositPercentage: number
   hasMPConnected: boolean
+  paymentFlowMode: 'mercadopago' | 'manual_transfer'
+  manualTransfer: {
+    enabled: boolean
+    alias: string | null
+    cvu: string | null
+    accountHolder: string | null
+    message: string | null
+    isReady: boolean
+  }
+}
+
+interface ManualTransferConfigInput {
+  enabled: boolean
+  paymentFlowMode: 'mercadopago' | 'manual_transfer'
+  alias: string
+  cvu: string
+  accountHolder: string
+  message: string
+}
+
+const DEFAULT_TRANSFER_MESSAGE =
+  'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'
+
+const manualTransferConfigSchema = z.object({
+  enabled: z.boolean(),
+  paymentFlowMode: z.enum(['mercadopago', 'manual_transfer']),
+  alias: z.string().trim().max(80),
+  cvu: z.string().trim().max(40),
+  accountHolder: z.string().trim().max(120),
+  message: z.string().trim().max(240),
+})
+
+function sanitizeCvu(value: string): string {
+  return value.replace(/\s+/g, '')
+}
+
+function parseManualTransferSettings(settings: unknown): PaymentConfig['manualTransfer'] {
+  const settingsObj = (settings && typeof settings === 'object') ? settings as Record<string, unknown> : {}
+  const rawManual =
+    settingsObj.manualTransfer && typeof settingsObj.manualTransfer === 'object'
+      ? settingsObj.manualTransfer as Record<string, unknown>
+      : {}
+
+  const enabled = rawManual.enabled === true
+  const alias = typeof rawManual.alias === 'string' && rawManual.alias.trim() ? rawManual.alias.trim() : null
+  const cvuRaw = typeof rawManual.cvu === 'string' ? rawManual.cvu : ''
+  const cvu = cvuRaw.trim() ? sanitizeCvu(cvuRaw.trim()) : null
+  const accountHolder =
+    typeof rawManual.accountHolder === 'string' && rawManual.accountHolder.trim()
+      ? rawManual.accountHolder.trim()
+      : null
+  const message =
+    typeof rawManual.message === 'string' && rawManual.message.trim()
+      ? rawManual.message.trim()
+      : DEFAULT_TRANSFER_MESSAGE
+
+  const isReady = Boolean(alias && cvu && accountHolder)
+
+  return {
+    enabled,
+    alias,
+    cvu,
+    accountHolder,
+    message,
+    isReady,
+  }
 }
 
 interface PaymentPreferenceResult {
@@ -47,7 +113,7 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
     // Get business deposit percentage
     const { data: business, error: bizError } = await supabase
       .from('businesses')
-      .select('deposit_percentage')
+      .select('deposit_percentage, settings')
       .eq('id', businessId)
       .single()
 
@@ -62,16 +128,105 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
       .eq('business_id', businessId)
       .single()
 
+    const manualTransfer = parseManualTransferSettings(business?.settings)
+    const settingsObj =
+      business?.settings && typeof business.settings === 'object'
+        ? business.settings as Record<string, unknown>
+        : {}
+    const paymentFlowMode =
+      settingsObj.paymentFlowMode === 'manual_transfer' && manualTransfer.enabled
+        ? 'manual_transfer'
+        : 'mercadopago'
+
     return {
       success: true,
       data: {
         depositPercentage: business?.deposit_percentage || 100,
         hasMPConnected: !!mpIntegration,
+        paymentFlowMode,
+        manualTransfer,
       }
     }
   } catch (error: unknown) {
     console.error('Error getting payment config:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error getting payment config' }
+  }
+}
+
+/**
+ * Update transfer/manual payment configuration for a business
+ */
+export async function updateBusinessManualTransferConfig(
+  businessId: string,
+  input: ManualTransferConfigInput
+): Promise<ServerActionResponse<void>> {
+  try {
+    const validation = manualTransferConfigSchema.safeParse({
+      ...input,
+      alias: input.alias.trim(),
+      cvu: sanitizeCvu(input.cvu.trim()),
+      accountHolder: input.accountHolder.trim(),
+      message: input.message.trim() || DEFAULT_TRANSFER_MESSAGE,
+    })
+
+    if (!validation.success) {
+      const firstError = validation.error.issues[0]
+      return { success: false, error: firstError?.message || 'Configuración inválida' }
+    }
+
+    if (validation.data.enabled) {
+      if (!validation.data.alias || !validation.data.cvu || !validation.data.accountHolder) {
+        return { success: false, error: 'Alias, CVU y titular son obligatorios para activar transferencia manual' }
+      }
+      if (!/^\d{22}$/.test(validation.data.cvu)) {
+        return { success: false, error: 'El CVU debe tener 22 dígitos' }
+      }
+    }
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'No autenticado' }
+    }
+
+    const { data: currentBusiness, error: fetchError } = await supabase
+      .from('businesses')
+      .select('settings')
+      .eq('id', businessId)
+      .single()
+
+    if (fetchError) throw fetchError
+
+    const currentSettings =
+      currentBusiness?.settings && typeof currentBusiness.settings === 'object'
+        ? currentBusiness.settings as Record<string, unknown>
+        : {}
+
+    const newSettings = {
+      ...currentSettings,
+      paymentFlowMode: validation.data.enabled ? validation.data.paymentFlowMode : 'mercadopago',
+      manualTransfer: {
+        enabled: validation.data.enabled,
+        alias: validation.data.alias || '',
+        cvu: validation.data.cvu || '',
+        accountHolder: validation.data.accountHolder || '',
+        message: validation.data.message || DEFAULT_TRANSFER_MESSAGE,
+      },
+    }
+
+    const { error } = await supabase
+      .from('businesses')
+      .update({ settings: newSettings })
+      .eq('id', businessId)
+
+    if (error) throw error
+
+    revalidatePath('/dashboard/settings')
+    return { success: true }
+  } catch (error: unknown) {
+    console.error('Error updating manual transfer config:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating manual transfer config' }
   }
 }
 

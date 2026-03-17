@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import {
   ArrowLeft, Calendar, Clock, Loader2, CreditCard,
-  ChevronDown, ChevronUp, Check, Store, Sparkles
+  ChevronDown, ChevronUp, Check, Store, Sparkles, Copy, CheckCheck
 } from 'lucide-react'
 import { createAppointment, getServiceById, getServiceAddons } from '@/app/actions'
 import { getBusinessPaymentConfig, createPendingBookingPreference } from '@/app/actions/payments'
@@ -23,6 +23,7 @@ import {
 } from '@/lib/utils/validation'
 
 type PaymentMethod = 'full' | 'deposit'
+type PaymentFlowMode = 'mercadopago' | 'manual_transfer'
 
 export default function CompactConfirmPage() {
   const router = useRouter()
@@ -43,7 +44,19 @@ export default function CompactConfirmPage() {
   const [fetchingPaymentConfig, setFetchingPaymentConfig] = useState(true)
   const [service, setService] = useState<Service | null>(null)
   const [addons, setAddons] = useState<ServiceAddon[]>([])
-  const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
+  const [paymentConfig, setPaymentConfig] = useState<{
+    depositPercentage: number
+    hasMPConnected: boolean
+    paymentFlowMode: PaymentFlowMode
+    manualTransfer: {
+      enabled: boolean
+      alias: string | null
+      cvu: string | null
+      accountHolder: string | null
+      message: string | null
+      isReady: boolean
+    }
+  } | null>(null)
 
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([])
   const [showAddons, setShowAddons] = useState(false)
@@ -68,6 +81,8 @@ export default function CompactConfirmPage() {
   // Ref para prevenir race conditions en mobile
   const isMountedRef = useRef(true)
   const paymentConfigLoadedRef = useRef(false)
+  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [copiedTransferField, setCopiedTransferField] = useState<'alias' | 'cvu' | null>(null)
 
   // Validate form in real-time as user types
   useEffect(() => {
@@ -109,7 +124,19 @@ export default function CompactConfirmPage() {
             }
           } else {
             if (isMountedRef.current) {
-              setPaymentConfig({ depositPercentage: 100, hasMPConnected: false })
+              setPaymentConfig({
+                depositPercentage: 100,
+                hasMPConnected: false,
+                paymentFlowMode: 'mercadopago',
+                manualTransfer: {
+                  enabled: false,
+                  alias: null,
+                  cvu: null,
+                  accountHolder: null,
+                  message: null,
+                  isReady: false,
+                },
+              })
             }
           }
         }
@@ -146,7 +173,11 @@ export default function CompactConfirmPage() {
 
   const depositPercentage = paymentConfig?.depositPercentage || 30
   const depositAmount = Math.round(totalPrice * depositPercentage / 100)
-  const amountToPay = paymentConfig?.hasMPConnected
+  const isManualTransferFlow =
+    paymentConfig?.paymentFlowMode === 'manual_transfer' &&
+    paymentConfig.manualTransfer.enabled &&
+    paymentConfig.manualTransfer.isReady
+  const amountToPay = paymentConfig?.hasMPConnected && !isManualTransferFlow
     ? (paymentMethod === 'full' ? totalPrice : depositAmount)
     : 0
   const remainingInLocal = totalPrice - amountToPay
@@ -197,6 +228,36 @@ export default function CompactConfirmPage() {
     setTouched(prev => ({ ...prev, [field]: true }))
   }
 
+  const handleCopyTransferField = useCallback(
+    async (field: 'alias' | 'cvu', value: string | null) => {
+      if (!value) return
+
+      try {
+        await navigator.clipboard.writeText(value)
+        setCopiedTransferField(field)
+
+        if (copyResetTimeoutRef.current) {
+          clearTimeout(copyResetTimeoutRef.current)
+        }
+
+        copyResetTimeoutRef.current = setTimeout(() => {
+          setCopiedTransferField(null)
+        }, 1400)
+      } catch {
+        showError('No se pudo copiar', 'Copiá el dato manualmente')
+      }
+    },
+    [showError]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleSubmit = async () => {
     setTouched({ name: true, email: true, phone: true })
 
@@ -220,8 +281,8 @@ export default function CompactConfirmPage() {
       return
     }
 
-    // Si MP está conectado, validar método de pago
-    if (paymentConfig.hasMPConnected && !paymentMethod) {
+    // Si MP está conectado y no se usa transferencia manual, validar método de pago
+    if (paymentConfig.hasMPConnected && !isManualTransferFlow && !paymentMethod) {
       showError('Error', 'Selecciona un método de pago')
       return
     }
@@ -231,6 +292,30 @@ export default function CompactConfirmPage() {
     const startDateTime = `${date}T${time}:00`
     const endDateTime = new Date(startDateTime)
     endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
+
+    // Transferencia manual: crear turno pendiente para validación del negocio
+    if (isManualTransferFlow) {
+      const result = await createAppointment({
+        service_id: serviceId,
+        start_time: new Date(startDateTime).toISOString(),
+        end_time: endDateTime.toISOString(),
+        client_name: name.trim(),
+        client_phone: phone.trim(),
+        client_email: email.trim(),
+        status: 'pending',
+        addons: selectedAddons,
+        team_member_id: teamMemberId,
+      })
+
+      if (!result.success || !result.data) {
+        showError('Error', result.error || 'Intenta nuevamente')
+        setLoading(false)
+        return
+      }
+
+      router.push(`/${slug}/booking/success?id=${result.data.id}&status=pending`)
+      return
+    }
 
     // If MP is connected, use deferred flow (create appointment AFTER payment)
     if (paymentConfig?.hasMPConnected && amountToPay > 0) {
@@ -353,6 +438,45 @@ export default function CompactConfirmPage() {
     ) : null
   )
 
+  const TransferCopyRow = ({
+    label,
+    value,
+    field,
+  }: {
+    label: string
+    value: string | null
+    field: 'alias' | 'cvu'
+  }) => {
+    const isCopied = copiedTransferField === field
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleCopyTransferField(field, value)}
+        className={cn(
+          'w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left transition-all',
+          'hover:border-primary/40 hover:bg-background active:scale-[0.99]'
+        )}
+        aria-label={`Copiar ${label}`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="truncate text-sm font-semibold text-foreground">{value || '-'}</p>
+          </div>
+
+          <div className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+            isCopied ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-primary/10 text-primary'
+          )}>
+            {isCopied ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            <span>{isCopied ? 'Copiado' : 'Copiar'}</span>
+          </div>
+        </div>
+      </button>
+    )
+  }
+
   return (
     <>
       {/* MOBILE LAYOUT */}
@@ -456,7 +580,23 @@ export default function CompactConfirmPage() {
           </div>
 
           {/* Payment */}
-          {paymentConfig?.hasMPConnected && (
+          {isManualTransferFlow ? (
+            <div className="bg-card border rounded-xl p-4 space-y-3">
+              <div className="text-sm font-medium">Datos para transferencia</div>
+              <div className="rounded-lg border border-border/60 bg-secondary/20 p-3 space-y-2 text-sm">
+                <TransferCopyRow label="Alias" value={paymentConfig?.manualTransfer.alias || null} field="alias" />
+                <TransferCopyRow label="CVU" value={paymentConfig?.manualTransfer.cvu || null} field="cvu" />
+                <div className="w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Titular</p>
+                  <p className="truncate text-sm font-semibold text-foreground">{paymentConfig?.manualTransfer.accountHolder || '-'}</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Tocá cualquier fila para copiar el dato.</p>
+              <p className="text-xs text-muted-foreground">
+                {paymentConfig?.manualTransfer.message || 'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'}
+              </p>
+            </div>
+          ) : paymentConfig?.hasMPConnected ? (
             <div className="bg-card border rounded-xl p-4 space-y-3">
               <div className="text-sm font-medium">¿Cómo pagás?</div>
               <button
@@ -490,7 +630,7 @@ export default function CompactConfirmPage() {
                 <span className="font-bold text-primary">{formatPrice(depositAmount)}</span>
               </button>
             </div>
-          )}
+          ) : null}
         </main>
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
@@ -505,6 +645,8 @@ export default function CompactConfirmPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
               </>
+            ) : isManualTransferFlow ? (
+              'Reservar y ver datos de transferencia'
             ) : paymentConfig?.hasMPConnected ? (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
@@ -715,7 +857,27 @@ export default function CompactConfirmPage() {
                 </div>
 
                 {/* Payment Method */}
-                {paymentConfig?.hasMPConnected && (
+                {isManualTransferFlow ? (
+                  <div className={cn(
+                    "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
+                    "transition-all duration-200",
+                    "hover:border-border/70 hover:shadow-sm"
+                  )}>
+                    <div className="text-sm font-medium text-foreground">Pago por transferencia</div>
+                    <div className="rounded-xl border border-border/50 bg-secondary/20 p-4 space-y-3">
+                      <TransferCopyRow label="Alias" value={paymentConfig?.manualTransfer.alias || null} field="alias" />
+                      <TransferCopyRow label="CVU" value={paymentConfig?.manualTransfer.cvu || null} field="cvu" />
+                      <div className="w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Titular</p>
+                        <p className="truncate text-sm font-semibold text-foreground">{paymentConfig?.manualTransfer.accountHolder || '-'}</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Hacé click en cada fila para copiar los datos.</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {paymentConfig?.manualTransfer.message || 'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'}
+                    </p>
+                  </div>
+                ) : paymentConfig?.hasMPConnected ? (
                   <div className={cn(
                     "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
                     "transition-all duration-200",
@@ -799,7 +961,7 @@ export default function CompactConfirmPage() {
                       </button>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
 
                 <Button
@@ -819,6 +981,8 @@ export default function CompactConfirmPage() {
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Procesando...
                     </>
+                  ) : isManualTransferFlow ? (
+                    'Reservar y ver datos de transferencia'
                   ) : paymentConfig?.hasMPConnected ? (
                     <>
                       <CreditCard className="mr-2 h-5 w-5" />

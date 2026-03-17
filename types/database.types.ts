@@ -45,6 +45,15 @@ export interface BusinessSettings {
   // Branding
   primaryColor?: string;
   accentColor?: string;
+  // Payments
+  paymentFlowMode?: 'mercadopago' | 'manual_transfer';
+  manualTransfer?: {
+    enabled?: boolean;
+    alias?: string;
+    cvu?: string;
+    accountHolder?: string;
+    message?: string;
+  };
 }
 
 export interface Service {

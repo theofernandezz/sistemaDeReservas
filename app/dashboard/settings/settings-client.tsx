@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import { disconnectGoogleCalendar, disconnectMercadoPago, updateBusiness, updateBusinessSettings } from '@/app/actions'
-import { updateBusinessPaymentConfig } from '@/app/actions/payments'
+import { updateBusinessManualTransferConfig, updateBusinessPaymentConfig } from '@/app/actions/payments'
 import { requestAccountDeletion, sendPasswordResetEmail } from '@/app/actions/auth'
 
 // Types
@@ -67,6 +67,16 @@ interface SettingsProps {
     primaryColor?: string
     accentColor?: string
   }
+  paymentSettings?: {
+    paymentFlowMode: 'mercadopago' | 'manual_transfer'
+    manualTransfer: {
+      enabled: boolean
+      alias: string
+      cvu: string
+      accountHolder: string
+      message: string
+    }
+  }
 }
 
 type SectionId = 'profile' | 'contact' | 'appearance' | 'reservations' | 'payments' | 'integrations' | 'notifications' | 'account'
@@ -83,7 +93,7 @@ const sections: Section[] = [
   { id: 'contact', label: 'Contacto', icon: <Phone size={18} />, description: 'Teléfono, email y redes' },
   { id: 'appearance', label: 'Apariencia', icon: <Palette size={18} />, description: 'Color de tu marca' },
   { id: 'reservations', label: 'Reservas', icon: <CalendarClock size={18} />, description: 'Anticipación y cancelaciones' },
-  { id: 'payments', label: 'Pagos', icon: <CreditCard size={18} />, description: 'MercadoPago y señas' },
+  { id: 'payments', label: 'Pagos', icon: <CreditCard size={18} />, description: 'MercadoPago, señas y transferencia' },
   { id: 'integrations', label: 'Integraciones', icon: <Plug2 size={18} />, description: 'Google Calendar' },
   { id: 'notifications', label: 'Notificaciones', icon: <Bell size={18} />, description: 'Emails y recordatorios' },
   { id: 'account', label: 'Cuenta', icon: <User size={18} />, description: 'Contraseña y acceso' },
@@ -100,7 +110,8 @@ export default function SettingsPage({
   reservationSettings,
   businessName,
   business,
-  businessSettings
+  businessSettings,
+  paymentSettings
 }: SettingsProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -195,6 +206,7 @@ export default function SettingsPage({
             mpUserId={mpUserId}
             depositPercentage={initialDeposit}
             businessId={businessId}
+            paymentSettings={paymentSettings}
           />
         )
       case 'integrations':
@@ -713,17 +725,40 @@ function PaymentsSection({
   mpTokenValid,
   mpUserId,
   depositPercentage,
-  businessId
+  businessId,
+  paymentSettings
 }: {
   isMPConnected: boolean
   mpTokenValid?: boolean
   mpUserId?: string
   depositPercentage: number
   businessId?: string
+  paymentSettings?: {
+    paymentFlowMode: 'mercadopago' | 'manual_transfer'
+    manualTransfer: {
+      enabled: boolean
+      alias: string
+      cvu: string
+      accountHolder: string
+      message: string
+    }
+  }
 }) {
   const [disconnecting, setDisconnecting] = useState(false)
   const [depositPercent, setDepositPercent] = useState(depositPercentage)
   const [savingDeposit, setSavingDeposit] = useState(false)
+  const [savingTransferConfig, setSavingTransferConfig] = useState(false)
+  const [manualTransferEnabled, setManualTransferEnabled] = useState(paymentSettings?.manualTransfer.enabled ?? false)
+  const [paymentFlowMode, setPaymentFlowMode] = useState<'mercadopago' | 'manual_transfer'>(
+    paymentSettings?.paymentFlowMode ?? 'mercadopago'
+  )
+  const [transferAlias, setTransferAlias] = useState(paymentSettings?.manualTransfer.alias ?? '')
+  const [transferCvu, setTransferCvu] = useState(paymentSettings?.manualTransfer.cvu ?? '')
+  const [transferAccountHolder, setTransferAccountHolder] = useState(paymentSettings?.manualTransfer.accountHolder ?? '')
+  const [transferMessage, setTransferMessage] = useState(
+    paymentSettings?.manualTransfer.message ||
+      'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'
+  )
   const { success: showSuccess, error: showError } = useToast()
   const router = useRouter()
 
@@ -756,6 +791,34 @@ function PaymentsSection({
       showError('Error', result.error || 'No se pudo guardar')
     }
     setSavingDeposit(false)
+  }
+
+  const isManualTransferReady =
+    transferAlias.trim().length > 0 &&
+    transferCvu.replace(/\s+/g, '').length === 22 &&
+    transferAccountHolder.trim().length > 0
+
+  const handleSaveManualTransfer = async () => {
+    if (!businessId) return
+    setSavingTransferConfig(true)
+
+    const result = await updateBusinessManualTransferConfig(businessId, {
+      enabled: manualTransferEnabled,
+      paymentFlowMode,
+      alias: transferAlias,
+      cvu: transferCvu,
+      accountHolder: transferAccountHolder,
+      message: transferMessage,
+    })
+
+    if (result.success) {
+      showSuccess('Guardado', 'Configuración de transferencia manual actualizada')
+      router.refresh()
+    } else {
+      showError('Error', result.error || 'No se pudo guardar la transferencia manual')
+    }
+
+    setSavingTransferConfig(false)
   }
 
   return (
@@ -847,6 +910,118 @@ function PaymentsSection({
           <p className="text-[13px] font-medium text-muted-foreground/60 mt-4 bg-background/30 p-3 rounded-xl border border-white/5 inline-block">
             <span className="text-foreground/80">Ejemplo:</span> Servicio de $10,000 → Se cobrará una seña de <strong className="text-primary">${Math.round(10000 * depositPercent / 100).toLocaleString()}</strong>
           </p>
+        </div>
+      )}
+
+      {/* Manual transfer */}
+      {businessId && (
+        <div className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-3xl p-6 shadow-sm space-y-5">
+          <div>
+            <h4 className="font-semibold tracking-tight text-[15px] text-foreground">Transferencia manual</h4>
+            <p className="text-sm font-medium text-muted-foreground/80 mt-1">
+              Mostrá Alias/CVU en la reserva para cobrar por transferencia fuera de la pasarela.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-background/40 p-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Habilitar transferencia manual</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Si está activa, podés usar este método en el checkout.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setManualTransferEnabled(!manualTransferEnabled)}
+              className={`h-7 w-12 rounded-full p-1 transition-colors ${manualTransferEnabled ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${manualTransferEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Alias</label>
+              <Input
+                value={transferAlias}
+                onChange={(e) => setTransferAlias(e.target.value)}
+                placeholder="ejemplo.negocio"
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">CVU (22 dígitos)</label>
+              <Input
+                value={transferCvu}
+                onChange={(e) => setTransferCvu(e.target.value.replace(/[^0-9\s]/g, ''))}
+                placeholder="0000003100000000000000"
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">Titular de la cuenta</label>
+              <Input
+                value={transferAccountHolder}
+                onChange={(e) => setTransferAccountHolder(e.target.value)}
+                placeholder="Nombre y apellido o razón social"
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">Mensaje para el cliente</label>
+              <Input
+                value={transferMessage}
+                onChange={(e) => setTransferMessage(e.target.value)}
+                placeholder="Indicaciones para enviar comprobante"
+                className="bg-background/50"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-white/10 bg-background/30 p-4">
+            <p className="text-xs font-medium text-muted-foreground">Modo de cobro en checkout</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setPaymentFlowMode('mercadopago')}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  paymentFlowMode === 'mercadopago'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-white/10 hover:border-primary/40'
+                }`}
+              >
+                <p className="text-sm font-semibold">Mercado Pago</p>
+                <p className="text-xs text-muted-foreground mt-1">Checkout Pro con redirección.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentFlowMode('manual_transfer')}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  paymentFlowMode === 'manual_transfer'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-white/10 hover:border-primary/40'
+                }`}
+              >
+                <p className="text-sm font-semibold">Transferencia manual</p>
+                <p className="text-xs text-muted-foreground mt-1">Muestra Alias/CVU y deja la reserva pendiente.</p>
+              </button>
+            </div>
+          </div>
+
+          {manualTransferEnabled && !isManualTransferReady && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Para activar correctamente la transferencia manual, completá Alias, CVU de 22 dígitos y titular.
+            </p>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={handleSaveManualTransfer}
+            disabled={savingTransferConfig || (manualTransferEnabled && !isManualTransferReady)}
+            className="rounded-xl border border-white/5 bg-secondary/20 hover:bg-secondary hover:shadow-sm transition-all"
+          >
+            {savingTransferConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar transferencia manual'}
+          </Button>
         </div>
       )}
     </div>

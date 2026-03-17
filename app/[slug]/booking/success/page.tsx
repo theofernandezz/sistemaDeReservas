@@ -177,7 +177,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                 <div className="text-sm">
                   <p className="font-medium text-amber-800 dark:text-amber-300">¿Qué debo hacer?</p>
                   <p className="text-amber-700 dark:text-amber-400 mt-1">
-                    Si elegiste pagar en efectivo (Rapipago/Pago Fácil), tenés hasta 3 días para completar el pago. Si no, la reserva se cancelará automáticamente.
+                    Si elegiste transferencia manual, realizá el pago y guardá el comprobante. Nuestro equipo se va a contactar para validarlo y confirmar tu turno.
                   </p>
                 </div>
               </div>

@@ -41,6 +41,21 @@ export default async function SettingsServerPage() {
         cancellationHours: business.settings.cancellationHours
       }
     : undefined
+  const paymentSettings = business?.settings
+    ? {
+        paymentFlowMode:
+          business.settings.paymentFlowMode === 'manual_transfer' ? 'manual_transfer' : 'mercadopago',
+        manualTransfer: {
+          enabled: business.settings.manualTransfer?.enabled === true,
+          alias: business.settings.manualTransfer?.alias || '',
+          cvu: business.settings.manualTransfer?.cvu || '',
+          accountHolder: business.settings.manualTransfer?.accountHolder || '',
+          message:
+            business.settings.manualTransfer?.message ||
+            'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.',
+        },
+      }
+    : undefined
 
   return (
     <SettingsPage
@@ -66,6 +81,7 @@ export default async function SettingsServerPage() {
         accentColor: business.settings.accentColor
       } : undefined}
       reservationSettings={reservationSettings}
+      paymentSettings={paymentSettings}
       businessName={business?.name}
     />
   )
