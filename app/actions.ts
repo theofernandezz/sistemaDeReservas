@@ -48,6 +48,47 @@ async function requireBusinessId(): Promise<string> {
   return result.data.id
 }
 
+type CalendarCleanupContext = 'delete' | 'cancel'
+
+interface CalendarCleanupTarget {
+  id: string
+  business_id: string | null
+  google_event_id: string | null
+}
+
+async function deleteGoogleCalendarEventIfLinked(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  appointment: CalendarCleanupTarget,
+  context: CalendarCleanupContext
+): Promise<void> {
+  if (!appointment.google_event_id || !appointment.business_id) {
+    return
+  }
+
+  try {
+    const { data: googleIntegration, error: integrationError } = await supabase
+      .from('google_integrations')
+      .select('refresh_token')
+      .eq('business_id', appointment.business_id)
+      .single()
+
+    if (integrationError || !googleIntegration?.refresh_token) {
+      console.warn(`Google Calendar token unavailable on ${context}`, {
+        appointmentId: appointment.id,
+        businessId: appointment.business_id,
+      })
+      return
+    }
+
+    const { deleteCalendarEvent } = await import('@/lib/google-calendar')
+    await deleteCalendarEvent(appointment.google_event_id, googleIntegration.refresh_token)
+    console.log(`Google Calendar event deleted on ${context}`, { appointmentId: appointment.id })
+  } catch (calendarError) {
+    console.error(`Error deleting Google Calendar event on ${context}:`, calendarError)
+    // Non-blocking: appointment operation should continue even if calendar sync fails.
+  }
+}
+
 // ============================================
 // BUSINESS - Update Operations
 // ============================================
@@ -676,28 +717,13 @@ export async function deleteAppointment(id: string): Promise<ServerActionRespons
     // Fetch the appointment to get google_event_id and business_id before deleting
     const { data: appointment } = await supabase
       .from('appointments')
-      .select('google_event_id, business_id')
+      .select('id, google_event_id, business_id')
       .eq('id', id)
       .single()
 
     // Remove from Google Calendar first (if linked)
-    if (appointment?.google_event_id && appointment?.business_id) {
-      try {
-        const { data: googleIntegration } = await supabase
-          .from('google_integrations')
-          .select('refresh_token')
-          .eq('business_id', appointment.business_id)
-          .single()
-
-        if (googleIntegration?.refresh_token) {
-          const { deleteCalendarEvent } = await import('@/lib/google-calendar')
-          await deleteCalendarEvent(appointment.google_event_id, googleIntegration.refresh_token)
-          console.log('Google Calendar event deleted on appointment delete')
-        }
-      } catch (calendarError) {
-        console.error('Error deleting Google Calendar event on delete:', calendarError)
-        // Don't fail the delete if calendar cleanup fails
-      }
+    if (appointment) {
+      await deleteGoogleCalendarEventIfLinked(supabase, appointment, 'delete')
     }
 
     const { error } = await supabase
@@ -1547,24 +1573,7 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
     if (updateError) throw updateError
 
     // 3. Delete from Google Calendar if connected (using business-specific token)
-    if (appointment.google_event_id) {
-      try {
-        const { data: googleIntegration } = await supabase
-          .from('google_integrations')
-          .select('refresh_token')
-          .eq('business_id', appointment.business_id)
-          .single()
-
-        if (googleIntegration?.refresh_token) {
-          const { deleteCalendarEvent } = await import('@/lib/google-calendar')
-          await deleteCalendarEvent(appointment.google_event_id, googleIntegration.refresh_token)
-          console.log('Google Calendar event deleted')
-        }
-      } catch (calendarError) {
-        console.error('Error deleting Google Calendar event:', calendarError)
-        // Don't fail the cancellation if calendar fails
-      }
-    }
+    await deleteGoogleCalendarEventIfLinked(supabase, appointment, 'cancel')
 
     // 4. Notify Admin
     try {
