@@ -26,11 +26,21 @@ const appUrl = getAppUrl()
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: 'Devora Buki - Sistema de Reservas para Profesionales',
+    default: 'Devora Buki — Reservas online para profesionales',
     template: '%s | Devora Buki',
   },
-  description: 'Plataforma de reservas online para profesionales. Automatiza citas, pagos con Mercado Pago y recordatorios.',
-  keywords: ['reservas online', 'agenda turnos', 'sistema de citas', 'argentina', 'mercado pago', 'automatización'],
+  description:
+    'La plataforma todo-en-uno para gestionar turnos, cobrar señas y automatizar recordatorios. Creá tu página de reservas en 2 minutos. Sin tarjeta de crédito.',
+  keywords: [
+    'reservas online',
+    'turnos online',
+    'agenda profesional',
+    'sistema de citas argentina',
+    'cobrar señas mercado pago',
+    'recordatorios automáticos',
+    'plataforma de reservas',
+    'gestión de turnos',
+  ],
   authors: [{ name: 'Devora Buki' }],
   creator: 'Devora Buki',
   openGraph: {
@@ -38,20 +48,34 @@ export const metadata: Metadata = {
     locale: 'es_AR',
     url: appUrl,
     siteName: 'Devora Buki',
-    title: 'Devora Buki - Sistema de Reservas para Profesionales',
-    description: 'Automatiza citas, pagos y recordatorios.',
-    images: [{ url: '/og/home.png', width: 1200, height: 630, alt: 'Devora Buki' }],
+    title: 'Devora Buki — Tu negocio, sin el caos.',
+    description:
+      'Reservas online, pagos automáticos y recordatorios. La plataforma diseñada para profesionales independientes en Argentina.',
+    images: [
+      {
+        url: '/og/home.png',
+        width: 1200,
+        height: 630,
+        alt: 'Devora Buki — Reservas online para profesionales',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Devora Buki - Sistema de Reservas',
-    description: 'Automatiza citas, pagos y recordatorios.',
+    title: 'Devora Buki — Tu negocio, sin el caos.',
+    description:
+      'Reservas online, pagos automáticos y recordatorios. La plataforma diseñada para profesionales independientes en Argentina.',
     images: ['/og/home.png'],
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 

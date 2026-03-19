@@ -5,18 +5,29 @@ import type { Metadata } from 'next'
 import logo from '@/public/logo/icon.png'
 
 export const metadata: Metadata = {
-  title: 'Devora Buki | Plataforma integral de gestión de reservas',
-  description: 'Automatiza citas, pagos y recordatorios mientras duermes. La plataforma todo-en-uno diseñada para profesionales y negocios.',
+  title: 'Devora Buki — Tu negocio, sin el caos.',
+  description:
+    'La plataforma todo-en-uno para gestionar turnos, cobrar señas y automatizar recordatorios. Creá tu página de reservas en 2 minutos, sin tarjeta de crédito.',
   openGraph: {
-    title: 'Devora Buki | Plataforma integral de gestión de reservas',
-    description: 'Automatiza citas, pagos y recordatorios mientras duermes. La plataforma todo-en-uno diseñada para profesionales.',
+    title: 'Devora Buki — Tu negocio, sin el caos.',
+    description:
+      'Reservas online, pagos automáticos y recordatorios. La plataforma diseñada para profesionales independientes en Argentina.',
     type: 'website',
+    images: [
+      {
+        url: '/og/home.png',
+        width: 1200,
+        height: 630,
+        alt: 'Devora Buki — Reservas online para profesionales',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Devora Buki | Plataforma integral de gestión de reservas',
-    description: 'La plataforma todo-en-uno para administrar turnos y negocios.',
-  }
+    title: 'Devora Buki — Tu negocio, sin el caos.',
+    description: 'Reservas online, pagos automáticos y recordatorios. Sin complicaciones.',
+    images: ['/og/home.png'],
+  },
 }
 
 export default function MarketingLayout({
