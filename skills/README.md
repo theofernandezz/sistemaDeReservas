@@ -31,10 +31,11 @@ Skills are structured instructions that give AI assistants the context they need
 
 ### Meta Skills
 
-| Skill           | Description                      |
-| --------------- | -------------------------------- |
-| `skill-creator` | Create new AI agent skills       |
-| `skill-sync`    | Sync skill metadata to AGENTS.md |
+| Skill           | Description                                   |
+| --------------- | --------------------------------------------- |
+| `skill-creator` | Create new AI agent skills                    |
+| `skill-sync`    | Sync skill metadata to AGENTS.md              |
+| `project-setup` | Document project context in CLAUDE.md         |
 
 ## Setup
 

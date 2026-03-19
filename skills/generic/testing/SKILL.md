@@ -6,8 +6,12 @@ description: |
 license: MIT
 metadata:
   author: ai-library
-  version: "2.0"
+  version: "3.0"
   scope: [root, testing]
+  requires:
+    node: ">=20.0.0"
+    vite: ">=6.0.0"
+    vitest: ">=4.0.0"
   auto_invoke:
     - "Writing tests"
     - "Creating test files"
@@ -96,6 +100,19 @@ await waitFor(() => {
 // ✅ CORRECT - Use findBy (auto-waits)
 const successMessage = await screen.findByText('Success')
 expect(successMessage).toBeInTheDocument()
+
+// ✅ CORRECT - For timer-dependent logic, use fake timers
+it('should auto-dismiss notification after delay', () => {
+  vi.useFakeTimers()
+  render(<Notification message="Saved!" />)
+
+  expect(screen.getByText('Saved!')).toBeInTheDocument()
+
+  vi.advanceTimersByTime(3000)
+
+  expect(screen.queryByText('Saved!')).not.toBeInTheDocument()
+  vi.useRealTimers()
+})
 ```
 
 ### 3. Never Write Tests Without Assertions
@@ -150,6 +167,20 @@ beforeEach(() => {
       return HttpResponse.json([{ id: 1, name: 'John' }])
     })
   )
+})
+```
+
+### 5. vi.restoreAllMocks Behavior (v4 breaking change)
+
+```typescript
+// ❌ WRONG ASSUMPTION (v4) - restoreAllMocks no longer restores automocks
+vi.mock('@/lib/api')
+afterEach(() => vi.restoreAllMocks()) // Does NOT reset automocks in v4
+
+// ✅ CORRECT - Use resetAllMocks for automocks, restoreAllMocks for manual spies
+afterEach(() => {
+  vi.resetAllMocks()    // resets automocks (vi.mock)
+  vi.restoreAllMocks()  // restores manual spies (vi.spyOn)
 })
 ```
 
@@ -457,6 +488,8 @@ export { customRender as render }
 
 ## ⚙️ Vitest Configuration
 
+> Requires: **Node >=20**, **Vite >=6**, **Vitest >=4**
+
 ```typescript
 // vitest.config.ts
 import { defineConfig } from 'vitest/config'
@@ -470,19 +503,86 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
+    // v4: maxWorkers replaces deprecated maxThreads/maxForks
+    maxWorkers: '50%',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      // v4: coverage.include is REQUIRED (coverage.all was removed)
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'node_modules/',
         '__tests__/',
         '**/*.d.ts',
         '**/*.config.*',
+        '**/*.stories.*',
       ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+      },
     },
   },
 })
 ```
+
+## 🖥️ CLI — Running Tests by Scope
+
+Use these commands to run specific subsets of tests:
+
+```bash
+# Run all tests once (CI mode)
+vitest run
+
+# Run tests matching a path pattern
+vitest run src/auth
+vitest run components/button
+
+# Run a specific file + specific line (v3+)
+vitest run src/auth/login.test.ts:42
+
+# Run only tests whose name matches a pattern
+vitest run -t "should validate email"
+
+# Run only tests affected by recent git changes
+vitest run --changed
+vitest run --changed HEAD~3  # Last 3 commits
+
+# Run with coverage
+vitest run --coverage
+
+# Run with bail — stop after N failures
+vitest run --bail 3
+
+# Filter by tags (requires @tag decorator in test files)
+vitest run --tagsFilter="unit"
+vitest run --tagsFilter="unit|integration"
+
+# List all matching tests without running them
+vitest list src/auth
+vitest list --json  # Machine-readable output
+
+# Shard tests for parallel CI pipelines
+vitest run --shard=1/3  # First third
+vitest run --shard=2/3  # Second third
+```
+
+---
+
+## 🎯 When to Run What
+
+| Changed | Run | Command |
+|---------|-----|---------|
+| Pure utility / function | Unit only | `vitest run src/lib` |
+| UI component | Unit + Integration | `vitest run src/components` |
+| Auth logic | Integration + E2E | `vitest run src/auth` |
+| Server Action | Integration | `vitest run src/actions` |
+| Hook | Unit + Integration | `vitest run -t "useHookName"` |
+| Pre-commit (any change) | Changed files only | `vitest run --changed` |
+| Pre-PR | Full suite | `vitest run` |
+| CI pipeline | Sharded parallel | `vitest run --shard=1/3` |
+| Debugging one test | Exact file + line | `vitest run path/to/file.test.ts:42` |
 
 ---
 
@@ -501,4 +601,4 @@ export default defineConfig({
 
 ---
 
-*Skill Version: 2.0.0 | Compatible with Vitest 2.x & React Testing Library*
+*Skill Version: 3.0.0 | Compatible with Vitest 4.x & React Testing Library | Requires Node >=20, Vite >=6*

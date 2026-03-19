@@ -42,4 +42,5 @@ next-env.d.ts
 
 # ai development docs (local only)
 .gitmodules
+.ai*
 

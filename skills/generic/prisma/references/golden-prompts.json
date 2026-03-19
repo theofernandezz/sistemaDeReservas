@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "skill": "prisma",
+  "cases": [
+    {
+      "id": "prisma-singleton-neon",
+      "title": "Prisma singleton with Neon adapter",
+      "prompt": "Set up the Prisma client for a Next.js app deployed on Vercel using Neon as the database. Show the singleton pattern that prevents connection exhaustion in dev and uses the serverless adapter in prod.",
+      "checks": {
+        "mustIncludeAll": [
+          "globalThis",
+          "PrismaNeon",
+          "neon(",
+          "process.env.NODE_ENV !== 'production'"
+        ],
+        "mustAvoid": [
+          "new PrismaClient() outside singleton",
+          "PrismaClient in every file",
+          "DATABASE_URL!"
+        ]
+      },
+      "tags": ["setup", "neon", "singleton", "serverless"]
+    },
+    {
+      "id": "prisma-service-layer",
+      "title": "Service layer — no raw Prisma in actions",
+      "prompt": "Create a `postService` with findById, create, and softDelete methods. Then show a Server Action that uses the service — never importing Prisma directly. Include typed select shapes with Prisma.validator.",
+      "checks": {
+        "mustIncludeAll": [
+          "Prisma.validator",
+          "Prisma.UserGetPayload",
+          "select:",
+          "deletedAt: null"
+        ],
+        "mustAvoid": [
+          "import { prisma } from '@/lib/db' in action file",
+          "prisma.post.findUnique inside 'use server'",
+          "any"
+        ]
+      },
+      "tags": ["service-layer", "typed-selects", "architecture"]
+    },
+    {
+      "id": "prisma-transaction",
+      "title": "Multi-step transaction with rollback",
+      "prompt": "Implement a `publishPost` function that in a single transaction: marks a post as PUBLISHED, upserts the tags, and links them via the join table. If any step fails, the whole operation rolls back.",
+      "checks": {
+        "mustIncludeAll": [
+          "$transaction",
+          "async (tx) =>",
+          "tx.post.update",
+          "upsert",
+          "createMany"
+        ],
+        "mustAvoid": [
+          "multiple awaits outside transaction",
+          "no rollback"
+        ]
+      },
+      "tags": ["transaction", "atomicity", "relations"]
+    },
+    {
+      "id": "prisma-no-sensitive-fields",
+      "title": "Never expose sensitive fields",
+      "prompt": "A User model has `passwordHash` and `twoFactorSecret`. Show a service method that returns user data to the client — it must never include those fields. Use explicit select with Prisma types, not manual omission.",
+      "checks": {
+        "mustIncludeAll": [
+          "select:",
+          "Prisma.UserSelect",
+          "satisfies"
+        ],
+        "mustAvoid": [
+          "passwordHash: true",
+          "select: '*'",
+          "Omit<User, 'passwordHash'>"
+        ]
+      },
+      "tags": ["security", "select", "sensitive-fields"]
+    },
+    {
+      "id": "prisma-cursor-pagination",
+      "title": "Cursor-based pagination",
+      "prompt": "Implement a paginated `findMany` for posts (published only, soft-delete filtered). Return items, hasMore, and nextCursor. Cap results at 100. Never use offset pagination.",
+      "checks": {
+        "mustIncludeAll": [
+          "cursor:",
+          "skip: 1",
+          "hasMore",
+          "nextCursor",
+          "deletedAt: null"
+        ],
+        "mustAvoid": [
+          "skip: page * limit",
+          "OFFSET",
+          "all records"
+        ]
+      },
+      "tags": ["pagination", "cursor", "performance"]
+    }
+  ]
+}

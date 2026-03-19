@@ -20,6 +20,36 @@ interface BookingCalendarProps {
   memberId?: string // "any" or specific team member ID
 }
 
+// Extracted outside to avoid remounting (which caused animations to replay on every select)
+const TimeSlotBtn = ({ 
+  slot, 
+  index = 0, 
+  selectedTime, 
+  onSelect 
+}: { 
+  slot: TimeSlot
+  index?: number
+  selectedTime: string | null
+  onSelect: (time: string) => void
+}) => (
+  <button
+    onClick={() => slot.available && onSelect(slot.time)}
+    disabled={!slot.available}
+    style={{ animationDelay: `${index * 30}ms` }}
+    className={cn(
+      "h-12 px-5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden",
+      "animate-in fade-in slide-in-from-bottom-2 fill-mode-both",
+      selectedTime === slot.time
+        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02] ring-1 ring-primary/30"
+        : slot.available
+          ? "bg-secondary/30 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5 active:scale-[0.98] border border-transparent hover:border-border/50"
+          : "opacity-40 cursor-not-allowed bg-muted/20 text-muted-foreground line-through"
+    )}
+  >
+    <span className="relative z-10 w-full text-center">{slot.time}</span>
+  </button>
+)
+
 export default function BookingCalendar({
   service,
   serviceId,
@@ -93,29 +123,6 @@ export default function BookingCalendar({
   const formattedDateLong = date
     ? `${capitalize(format(date, "EEEE", { locale: es }))}, ${format(date, "d", { locale: es })} de ${capitalize(format(date, "MMMM", { locale: es }))}`
     : 'Selecciona una fecha'
-
-  // Time slot button component
-  const TimeSlotBtn = ({ slot }: { slot: TimeSlot }) => (
-    <button
-      onClick={() => slot.available && setSelectedTime(slot.time)}
-      disabled={!slot.available}
-      className={cn(
-        "h-12 px-5 rounded-xl text-sm font-medium transition-all duration-200 relative",
-        selectedTime === slot.time
-          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-[1.02] ring-2 ring-primary/20"
-          : slot.available
-            ? "bg-card border border-border/60 hover:border-primary/40 hover:shadow-md hover:bg-secondary/30 hover:-translate-y-0.5 active:scale-[0.98]"
-            : "opacity-40 cursor-not-allowed bg-muted/50 text-muted-foreground line-through"
-      )}
-    >
-      {slot.time}
-      {selectedTime === slot.time && (
-        <span className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-md border-2 border-background">
-          <Check className="h-3 w-3 text-white" strokeWidth={3} />
-        </span>
-      )}
-    </button>
-  )
 
   return (
     <>
@@ -193,39 +200,54 @@ export default function BookingCalendar({
 
         {/* Time Slots */}
         <div className="flex-1 p-4 pb-28 overflow-y-auto">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4 animate-in fade-in duration-500">
             <div className="text-sm font-medium">{formattedDateLong}</div>
             <span className="text-xs text-muted-foreground">Elegí un horario</span>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : slots.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Sin horarios disponibles
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {morningSlots.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Mañana</div>
+          <div className="min-h-[200px] relative">
+            {loading ? (
+              <div className="absolute inset-0 flex items-center justify-center animate-in fade-in duration-300">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+              </div>
+            ) : slots.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground animate-in fade-in duration-500">
+                Sin horarios disponibles
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Mañana</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {morningSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                    {morningSlots.length > 0 ? (
+                      morningSlots.map((slot, i) => (
+                        <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                      ))
+                    ) : (
+                      <div className="col-span-3 text-center py-6 text-sm text-muted-foreground animate-in fade-in duration-300">
+                        <p>No hay turnos mañana</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              {afternoonSlots.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Tarde</div>
+                
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both" style={{ animationDelay: '100ms' }}>
+                  <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Tarde</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {afternoonSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                    {afternoonSlots.length > 0 ? (
+                      afternoonSlots.map((slot, i) => (
+                        <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                      ))
+                    ) : (
+                      <div className="col-span-3 text-center py-6 text-sm text-muted-foreground animate-in fade-in duration-300">
+                        <p>No hay turnos tarde</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sticky Button */}
@@ -240,8 +262,8 @@ export default function BookingCalendar({
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-screen bg-linear-to-br from-background via-background to-secondary/20">
-        <div className="w-full max-w-350 mx-auto px-12 py-12">
+      <div className="hidden lg:flex min-h-[calc(100vh-5rem)] bg-linear-to-br from-background via-background to-secondary/20">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
           <div className="flex items-center justify-between mb-10">
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reserva</p>
@@ -362,35 +384,38 @@ export default function BookingCalendar({
 
               {loading ? (
                 <div className="flex-1 flex items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="flex flex-col items-center animate-in fade-in duration-500">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/30 mb-4" />
+                    <p className="text-sm text-muted-foreground">Buscando horarios...</p>
+                  </div>
                 </div>
               ) : slots.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                  <div className="text-center animate-in fade-in zoom-in-95 duration-500">
+                    <Clock className="h-10 w-10 mx-auto mb-4 opacity-20" />
                     <p className="font-medium">Sin horarios disponibles</p>
-                    <p className="text-sm mt-1">Probá seleccionando otra fecha</p>
+                    <p className="text-sm mt-1 opacity-70">Probá seleccionando otra fecha</p>
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 space-y-8 overflow-y-auto pr-2">
+                <div className="flex-1 space-y-8 overflow-y-auto pr-2 pb-4 scrollbar-thin">
                   {morningSlots.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">
-                        Mañana
+                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                      <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
+                        Turno Mañana
                       </div>
                       <div className="grid grid-cols-4 gap-3">
-                        {morningSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                        {morningSlots.map((slot, i) => <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />)}
                       </div>
                     </div>
                   )}
                   {afternoonSlots.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">
-                        Tarde
+                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both" style={{ animationDelay: '150ms' }}>
+                      <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
+                        Turno Tarde
                       </div>
                       <div className="grid grid-cols-4 gap-3">
-                        {afternoonSlots.map(slot => <TimeSlotBtn key={slot.time} slot={slot} />)}
+                        {afternoonSlots.map((slot, i) => <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />)}
                       </div>
                     </div>
                   )}

@@ -27,16 +27,18 @@
 | `state-management` | `generic/state-management/SKILL.md` | Zustand vs Context, stores, slices, persistence         |
 | `remotion`         | `generic/remotion/SKILL.md`         | Video creation in React, frame-based animations         |
 | `react-native`     | `generic/react-native/SKILL.md`     | Expo, React Navigation, native APIs, mobile performance |
+| `env-config`       | `generic/env-config/SKILL.md`       | Zod env validation, server/public separation, fail-fast |
 
 ---
 
 ## Meta Skills
 
-| Skill           | Path                     | Purpose                                  |
-| --------------- | ------------------------ | ---------------------------------------- |
-| `skill-creator` | `skill-creator/SKILL.md` | Create new skills following the template |
-| `skill-sync`    | `skill-sync/SKILL.md`    | Sync skill metadata to AGENTS.md         |
-| `feedback-loop` | `feedback-loop/SKILL.md` | Capture improvements and learnings       |
+| Skill           | Path                      | Purpose                                        |
+| --------------- | ------------------------- | ---------------------------------------------- |
+| `skill-creator` | `skill-creator/SKILL.md`  | Create new skills following the template       |
+| `skill-sync`    | `skill-sync/SKILL.md`     | Sync skill metadata to AGENTS.md               |
+| `feedback-loop` | `feedback-loop/SKILL.md`  | Capture improvements and learnings             |
+| `project-setup` | `project-setup/SKILL.md`  | Document project context in CLAUDE.md          |
 
 ---
 

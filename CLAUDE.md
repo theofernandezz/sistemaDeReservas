@@ -1,3 +1,42 @@
+# sistemadereservas
+
+> Claude Code configuration for this project.
+> Top section: project-specific context. Bottom section: ai-library rules (don't edit manually).
+
+---
+
+## 📋 Project Context
+
+<!-- Fill this in. Claude uses this to make decisions consistent with your project. -->
+
+### Stack
+- Framework: Next.js 16
+- Backend: Next.js
+- Database: Supabase
+- Auth: Supabase Auth
+- Styling: Tailwind CSS + Shadcn UI + Aceternity UI
+
+### Key decisions
+<!-- Why did you choose this stack? Any non-obvious architectural decisions? -->
+> I choose next.js because it is a framework that allows me to create web applications with a good user experience and performance  this framework is better for (SSG + ISR + SEO).
+> I choose next.js as the backend because it is a framework all in one.
+> I choose supabase because it is a BaaS backend that allows you to create fast the database and the authentication.
+> I choose Supabse Auth for the authentication because it is a service that allows you to create fast the authentication + with better handling of RLS.
+> i choose tailwind css, shadcn and aceternity as the UI frameworks because is fast, clean and modern.
+
+
+### Domain conventions
+<!-- Naming, patterns, or rules specific to this project -->
+
+
+### Constraints
+<!-- Performance requirements, compliance, deadlines, etc. -->
+
+---
+
+<!-- ⬇️ ai-library configuration — do not edit below this line ⬇️ -->
+<!-- Update by re-running: ./deploy.sh /Users/theofernandez/Documents/Projects/ai-library --force -->
+
 # AI Development Library - Claude Code
 
 > This file configures how Claude Code should use the skills library for development.
@@ -29,6 +68,7 @@ When working with these actions/files, **read the corresponding skill FIRST**:
 | Designing UX flows / CRUD dashboards | `ux`                       | `skills/generic/ux/SKILL.md`               |
 | Working with Supabase/DB             | `database`                 | `skills/generic/database/SKILL.md`         |
 | Working with Prisma/PostgreSQL       | `prisma`                   | `skills/generic/prisma/SKILL.md`           |
+| Working with env vars / secrets      | `env-config`               | `skills/generic/env-config/SKILL.md`       |
 | Creating Server Actions              | `nextjs-core` + `security` | Read both skills                           |
 | Handling authentication              | `security`                 | `skills/generic/security/SKILL.md`         |
 | Writing tests                        | `testing`                  | `skills/generic/testing/SKILL.md`          |
@@ -66,6 +106,43 @@ Delegation in Claude Code is done by loading additional context:
 3. Read each listed skill
 4. Execute the task following ALL patterns
 ```
+
+---
+
+## Pending Improvements
+
+**At the start of every session in this library, read `skills/improvements.md`.**
+
+It contains patterns identified in real usage that haven't been merged into skills yet. Apply them when relevant, even if the official skill doesn't document them yet. If you implement a pending improvement, mark it as applied and suggest merging it into the corresponding skill.
+
+---
+
+## Self-Improvement Signals
+
+**You MUST write a SIGNAL to `skills/improvements.md` whenever you encounter any of these during a task:**
+
+| Signal Type       | When to write it                                                       |
+| ----------------- | ---------------------------------------------------------------------- |
+| `SIGNAL:gap`      | You loaded a skill but it was missing a pattern you needed             |
+| `SIGNAL:missing`  | You needed a skill that doesn't exist in this library                  |
+| `SIGNAL:stale`    | A skill referenced an outdated API, version, or deprecated pattern     |
+| `SIGNAL:conflict` | Two loaded skills gave contradictory guidance for the same case        |
+| `SIGNAL:unclear`  | A skill rule was ambiguous and you had to guess the intent             |
+
+**Write signals immediately when you notice them — not at the end of the task.**
+
+Signal format (append to `skills/improvements.md`):
+
+```markdown
+## [Date] — SIGNAL:[type] — [skill-name or "new-skill"]
+
+**Trigger:** [one sentence: what you were doing when you hit this]
+**Gap:** [what was missing, stale, or unclear]
+**Suggested fix:** [what the skill should say / what new skill is needed]
+**Priority:** Critical | High | Low
+```
+
+This is the primary mechanism for the library to improve from real usage. Every signal you write is a future improvement waiting to be merged.
 
 ---
 

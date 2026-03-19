@@ -126,6 +126,23 @@ await waitFor(() => {
 
 // FORBIDDEN - Arbitrary timeouts
 await new Promise(r => setTimeout(r, 1000))
+
+// REQUIRED - Use fake timers for timer-dependent logic (never sleep)
+vi.useFakeTimers()
+vi.advanceTimersByTime(3000)
+vi.useRealTimers()
+```
+
+### Mock Cleanup (Vitest 4 — breaking change)
+```typescript
+// REQUIRED - Use both, they do different things in v4
+afterEach(() => {
+  vi.resetAllMocks()    // resets automocks (vi.mock)
+  vi.restoreAllMocks()  // restores manual spies (vi.spyOn)
+})
+
+// FORBIDDEN - restoreAllMocks alone no longer resets automocks in v4
+afterEach(() => vi.restoreAllMocks())
 ```
 
 ---
@@ -237,4 +254,4 @@ describe('LoginForm', () => {
 
 ---
 
-*Agent Version: 2.1.0 - Claude Code Edition*
+*Agent Version: 3.0.0 - Claude Code Edition | Vitest 4.x*

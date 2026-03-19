@@ -85,6 +85,11 @@ lib/
 - ALWAYS use `findBy*` for async elements
 - NEVER use arbitrary timeouts
 - ALWAYS use `waitFor` with expectations
+- For timer-dependent logic: use `vi.useFakeTimers()` + `vi.advanceTimersByTime()`
+
+### Mock Cleanup (Vitest 4 breaking change)
+- ALWAYS use both `vi.resetAllMocks()` (automocks) + `vi.restoreAllMocks()` (spies) in `afterEach`
+- `vi.restoreAllMocks()` alone no longer resets automocks in v4
 
 ---
 
@@ -138,4 +143,4 @@ beforeEach(() => {
 
 ---
 
-*Agent Version: 2.0.0*
+*Agent Version: 3.0.0 | Vitest 4.x*

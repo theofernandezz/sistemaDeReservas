@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import {
   ArrowLeft, Calendar, Clock, Loader2, CreditCard,
-  ChevronDown, ChevronUp, Check, Store, Sparkles, Copy, CheckCheck
+  ChevronDown, ChevronUp, Check, Store, Sparkles, Copy, CheckCheck, Landmark
 } from 'lucide-react'
 import { createAppointment, getServiceById, getServiceAddons } from '@/app/actions'
 import { getBusinessPaymentConfig, createPendingBookingPreference } from '@/app/actions/payments'
@@ -81,8 +81,6 @@ export default function CompactConfirmPage() {
   // Ref para prevenir race conditions en mobile
   const isMountedRef = useRef(true)
   const paymentConfigLoadedRef = useRef(false)
-  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [copiedTransferField, setCopiedTransferField] = useState<'alias' | 'cvu' | null>(null)
 
   // Validate form in real-time as user types
   useEffect(() => {
@@ -228,35 +226,6 @@ export default function CompactConfirmPage() {
     setTouched(prev => ({ ...prev, [field]: true }))
   }
 
-  const handleCopyTransferField = useCallback(
-    async (field: 'alias' | 'cvu', value: string | null) => {
-      if (!value) return
-
-      try {
-        await navigator.clipboard.writeText(value)
-        setCopiedTransferField(field)
-
-        if (copyResetTimeoutRef.current) {
-          clearTimeout(copyResetTimeoutRef.current)
-        }
-
-        copyResetTimeoutRef.current = setTimeout(() => {
-          setCopiedTransferField(null)
-        }, 1400)
-      } catch {
-        showError('No se pudo copiar', 'Copiá el dato manualmente')
-      }
-    },
-    [showError]
-  )
-
-  useEffect(() => {
-    return () => {
-      if (copyResetTimeoutRef.current) {
-        clearTimeout(copyResetTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const handleSubmit = async () => {
     setTouched({ name: true, email: true, phone: true })
@@ -438,44 +407,7 @@ export default function CompactConfirmPage() {
     ) : null
   )
 
-  const TransferCopyRow = ({
-    label,
-    value,
-    field,
-  }: {
-    label: string
-    value: string | null
-    field: 'alias' | 'cvu'
-  }) => {
-    const isCopied = copiedTransferField === field
 
-    return (
-      <button
-        type="button"
-        onClick={() => handleCopyTransferField(field, value)}
-        className={cn(
-          'w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left transition-all',
-          'hover:border-primary/40 hover:bg-background active:scale-[0.99]'
-        )}
-        aria-label={`Copiar ${label}`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-            <p className="truncate text-sm font-semibold text-foreground">{value || '-'}</p>
-          </div>
-
-          <div className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-            isCopied ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-primary/10 text-primary'
-          )}>
-            {isCopied ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            <span>{isCopied ? 'Copiado' : 'Copiar'}</span>
-          </div>
-        </div>
-      </button>
-    )
-  }
 
   return (
     <>
@@ -505,12 +437,12 @@ export default function CompactConfirmPage() {
         </header>
 
         <main className="flex-1 p-4 space-y-4 pb-28">
-          <div className="rounded-xl border border-border bg-card/60 p-3">
-            <div className="flex items-center justify-between">
+          <div className="rounded-2xl border border-border/50 bg-secondary/20 p-4">
+            <div className="flex items-center justify-between animate-in fade-in duration-500">
               <div>
-                <p className="text-xs text-muted-foreground">Reserva</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Resumen</p>
                 <p className="text-sm font-medium">
-                  {formatLongDate(date)} · {time}
+                  {formatLongDate(date)} <span className="text-muted-foreground mx-1">•</span> {time}
                 </p>
               </div>
               <div className="text-right">
@@ -523,52 +455,55 @@ export default function CompactConfirmPage() {
           <AddonsSection />
 
           {/* Form */}
-          <div className="bg-card border rounded-xl p-4 space-y-4">
-            <div className="text-sm font-medium">Tus datos</div>
-            <div className="space-y-4">
-              <div className="space-y-1">
+          <div className="bg-card border rounded-xl p-4 space-y-3">
+            <div className="text-sm font-semibold tracking-wide">Tus datos</div>
+            <div className="space-y-3">
+              <div className="space-y-1 relative">
                 <Input
-                  placeholder="Ej: María González"
+                  placeholder="Nombre completo (ej: María)"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onBlur={() => handleBlur('name')}
                   className={cn(
-                    "h-10",
-                    touched.name && !validation.name.isValid && "border-destructive focus-visible:ring-destructive"
+                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
+                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                    touched.name && !validation.name.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                   )}
                   required
                 />
                 {touched.name && !validation.name.isValid && (
-                  <p className="text-xs text-destructive">{validation.name.error}</p>
+                  <p className="text-xs text-destructive font-medium ml-2">{validation.name.error}</p>
                 )}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 relative">
                 <Input
-                  placeholder="Ej: maria@ejemplo.com"
+                  placeholder="Tu correo electrónico"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => handleBlur('email')}
                   className={cn(
-                    "h-10",
-                    touched.email && !validation.email.isValid && "border-destructive focus-visible:ring-destructive"
+                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
+                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                    touched.email && !validation.email.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                   )}
                   required
                 />
                 {touched.email && !validation.email.isValid && (
-                  <p className="text-xs text-destructive">{validation.email.error}</p>
+                  <p className="text-xs text-destructive font-medium ml-2">{validation.email.error}</p>
                 )}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 mb-2 relative">
                 <Input
-                  placeholder="Ej: +54 11 1234-5678"
+                  placeholder="Teléfono móvil (+54...)"
                   type="tel"
                   value={phone}
                   onChange={(e) => handlePhoneChange(e.target.value)}
                   onBlur={() => handleBlur('phone')}
                   className={cn(
-                    "h-10",
-                    touched.phone && !validation.phone.isValid && "border-destructive focus-visible:ring-destructive"
+                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
+                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                    touched.phone && !validation.phone.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                   )}
                   required
                 />
@@ -579,22 +514,16 @@ export default function CompactConfirmPage() {
             </div>
           </div>
 
-          {/* Payment */}
           {isManualTransferFlow ? (
             <div className="bg-card border rounded-xl p-4 space-y-3">
               <div className="text-sm font-medium">Datos para transferencia</div>
-              <div className="rounded-lg border border-border/60 bg-secondary/20 p-3 space-y-2 text-sm">
-                <TransferCopyRow label="Alias" value={paymentConfig?.manualTransfer.alias || null} field="alias" />
-                <TransferCopyRow label="CVU" value={paymentConfig?.manualTransfer.cvu || null} field="cvu" />
-                <div className="w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Titular</p>
-                  <p className="truncate text-sm font-semibold text-foreground">{paymentConfig?.manualTransfer.accountHolder || '-'}</p>
-                </div>
+              <div className="rounded-lg border border-border/60 bg-secondary/20 p-4 text-sm text-center">
+                <Landmark className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground font-medium">Pago por transferencia bancaria</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  En el próximo paso verás el alias/CVU para enviar el comprobante y confirmar tu reserva.
+                </p>
               </div>
-              <p className="text-[11px] text-muted-foreground">Tocá cualquier fila para copiar el dato.</p>
-              <p className="text-xs text-muted-foreground">
-                {paymentConfig?.manualTransfer.message || 'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'}
-              </p>
             </div>
           ) : paymentConfig?.hasMPConnected ? (
             <div className="bg-card border rounded-xl p-4 space-y-3">
@@ -665,21 +594,21 @@ export default function CompactConfirmPage() {
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
-        <div className="w-full max-w-[1400px] mx-auto px-12 py-12">
-          <div className="flex items-center justify-between mb-10">
+      <div className="hidden lg:flex min-h-[calc(100vh-5rem)] items-center justify-center bg-linear-to-br from-background via-background to-secondary/20">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 2xl:py-12">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reserva</p>
-              <h2 className="text-3xl font-bold tracking-tight">Confirmá tu reserva</h2>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Reserva</p>
+              <h2 className="text-4xl lg:text-5xl font-bold tracking-tighter">Confirmá tu reserva</h2>
             </div>
             <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-secondary/80 text-muted-foreground">
               Paso 2 de 2
             </span>
           </div>
 
-          <div className="w-full bg-card/60 rounded-3xl shadow-2xl shadow-black/10 overflow-hidden border border-border/50 flex gap-0 backdrop-blur-sm">
+          <div className="w-full bg-card/60 rounded-3xl shadow-2xl shadow-black/10 overflow-hidden border border-border/50 flex gap-0 backdrop-blur-sm lg:h-[calc(100vh-10rem)] lg:max-h-[850px] lg:min-h-[550px]">
             {/* Left Column - Summary & Addons (40%) */}
-            <div className="w-2/5 bg-gradient-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-8 flex flex-col border-r border-border/30">
+            <div className="w-2/5 bg-gradient-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-6 lg:p-8 flex flex-col border-r border-border/30 overflow-y-auto scrollbar-thin">
               <button
                 type="button"
                 onClick={() => router.back()}
@@ -695,7 +624,7 @@ export default function CompactConfirmPage() {
               <div className="flex-1 space-y-8">
                 {/* Service Info */}
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight mb-3">{service.name}</h1>
+                  <h1 className="text-xl lg:text-2xl font-bold tracking-tight mb-3">{service.name}</h1>
 
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-2">
@@ -711,7 +640,7 @@ export default function CompactConfirmPage() {
                 <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
                 {/* Price Summary */}
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="flex justify-between text-sm tabular-nums">
                     <span className="text-foreground">{service.name}</span>
                     <span className="font-medium text-foreground">{formatPrice(service.price)}</span>
@@ -748,12 +677,11 @@ export default function CompactConfirmPage() {
                             key={addon.id}
                             onClick={() => handleToggleAddon(addon)}
                             className={cn(
-                              "w-full p-4 rounded-xl flex items-center justify-between",
-                              "transition-all duration-200",
-                              "hover:-translate-y-0.5 hover:shadow-md",
+                              "w-full py-3 px-4 rounded-xl flex items-center justify-between border-2",
+                              "transition-all duration-200 hover:-translate-y-0.5",
                               isSelected
-                                ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
-                                : "bg-card/50 border border-border/50 hover:border-primary/30 hover:bg-card/60"
+                                ? "bg-primary/10 border-primary/40 shadow-sm"
+                                : "bg-card/50 border-transparent hover:border-primary/20 hover:bg-card/60"
                             )}
                           >
                             <div className="flex items-center gap-4">
@@ -781,71 +709,65 @@ export default function CompactConfirmPage() {
             </div>
 
             {/* Right Column - Form & Payment (60%) */}
-            <div className="flex-1 p-8 flex flex-col bg-background/40">
-              <div className="w-full max-w-[560px] mx-auto flex flex-col flex-1">
-                <h2 className="text-xl font-semibold mb-6 tracking-tight">Completá tu reserva</h2>
+            <div className="flex-1 p-6 lg:p-8 flex flex-col bg-background/40 overflow-y-auto scrollbar-thin">
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+                <h2 className="text-lg lg:text-xl font-semibold mb-6 tracking-tight">Completá tu reserva</h2>
 
-                <div className="space-y-6 flex-1">
+                <div className="space-y-4 flex-1">
                   {/* User Data */}
                   <div className={cn(
-                    "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
-                    "transition-all duration-200",
-                    "hover:border-border/70 hover:shadow-sm"
+                    "bg-card/40 border border-border/40 rounded-3xl p-6 space-y-4",
+                    "transition-all duration-300",
+                    "hover:border-border/60 hover:shadow-md hover:bg-card/60 backdrop-blur-sm"
                   )}>
-                    <div className="text-sm font-medium text-foreground">Tus datos</div>
+                    <div className="text-sm font-semibold tracking-wide text-foreground">Tus datos personales</div>
                     <div className="space-y-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 relative">
                       <Input
-                        placeholder="Ej: María González"
+                        placeholder="Nombre completo"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         onBlur={() => handleBlur('name')}
                         className={cn(
-                          "h-11",
-                          "transition-all duration-200",
-                          "hover:border-border/80",
-                          "focus:ring-2 focus:ring-primary/20",
-                          touched.name && !validation.name.isValid && "border-destructive focus-visible:ring-destructive"
+                          "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
+                          "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                          touched.name && !validation.name.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                         )}
                         required
                       />
                       {touched.name && !validation.name.isValid && (
-                        <p className="text-xs text-destructive">{validation.name.error}</p>
+                        <p className="text-xs text-destructive font-medium ml-2">{validation.name.error}</p>
                       )}
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 relative">
                       <Input
-                        placeholder="Ej: maria@ejemplo.com"
+                        placeholder="Tu correo electrónico"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         onBlur={() => handleBlur('email')}
                         className={cn(
-                          "h-11",
-                          "transition-all duration-200",
-                          "hover:border-border/80",
-                          "focus:ring-2 focus:ring-primary/20",
-                          touched.email && !validation.email.isValid && "border-destructive focus-visible:ring-destructive"
+                          "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
+                          "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                          touched.email && !validation.email.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                         )}
                         required
                       />
                       {touched.email && !validation.email.isValid && (
-                        <p className="text-xs text-destructive">{validation.email.error}</p>
+                        <p className="text-xs text-destructive font-medium ml-2">{validation.email.error}</p>
                       )}
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 relative">
                       <Input
-                        placeholder="Ej: +54 11 1234-5678"
+                        placeholder="Teléfono móvil"
                         type="tel"
                         value={phone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
                         onBlur={() => handleBlur('phone')}
                         className={cn(
-                          "h-11",
-                          "transition-all duration-200",
-                          "hover:border-border/80",
-                          "focus:ring-2 focus:ring-primary/20",
-                          touched.phone && !validation.phone.isValid && "border-destructive focus-visible:ring-destructive"
+                          "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
+                          "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
+                          touched.phone && !validation.phone.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
                         )}
                         required
                       />
@@ -856,26 +778,18 @@ export default function CompactConfirmPage() {
                   </div>
                 </div>
 
-                {/* Payment Method */}
                 {isManualTransferFlow ? (
                   <div className={cn(
-                    "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
-                    "transition-all duration-200",
-                    "hover:border-border/70 hover:shadow-sm"
+                    "bg-card/60 border border-border/50 rounded-2xl p-6 transition-all duration-200 hover:border-border/70 hover:shadow-sm"
                   )}>
-                    <div className="text-sm font-medium text-foreground">Pago por transferencia</div>
-                    <div className="rounded-xl border border-border/50 bg-secondary/20 p-4 space-y-3">
-                      <TransferCopyRow label="Alias" value={paymentConfig?.manualTransfer.alias || null} field="alias" />
-                      <TransferCopyRow label="CVU" value={paymentConfig?.manualTransfer.cvu || null} field="cvu" />
-                      <div className="w-full rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-left">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Titular</p>
-                        <p className="truncate text-sm font-semibold text-foreground">{paymentConfig?.manualTransfer.accountHolder || '-'}</p>
-                      </div>
+                    <div className="text-sm font-medium text-foreground mb-4">Pago por transferencia</div>
+                    <div className="rounded-xl border border-border/50 bg-secondary/20 p-6 text-center space-y-2">
+                      <Landmark className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-muted-foreground font-medium">Pago por transferencia bancaria</p>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        Al confirmar, verás los datos (Alias/CVU) para realizar la transferencia y adjuntar tu comprobante.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Hacé click en cada fila para copiar los datos.</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {paymentConfig?.manualTransfer.message || 'Realiza la transferencia y guarda el comprobante. Nuestro equipo se contactará con vos para solicitarlo y confirmar la reserva.'}
-                    </p>
                   </div>
                 ) : paymentConfig?.hasMPConnected ? (
                   <div className={cn(
@@ -997,7 +911,7 @@ export default function CompactConfirmPage() {
                     Completá todos los campos requeridos correctamente
                   </p>
                 )}
-              </div>
+              </form>
             </div>
           </div>
         </div>

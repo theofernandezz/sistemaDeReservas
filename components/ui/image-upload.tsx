@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, Loader2, X } from 'lucide-react'
+import { Camera, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -82,7 +82,7 @@ export function ImageUpload({
       
       <div className="space-y-2">
         {value ? (
-          <div className="relative w-full h-32 rounded-xl overflow-hidden bg-secondary">
+          <div className="relative w-full h-32 rounded-xl overflow-hidden bg-secondary group">
             <img
               src={value}
               alt="Vista previa"
@@ -91,21 +91,19 @@ export function ImageUpload({
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <Button
+            {/* Change image overlay */}
+            <button
               type="button"
-              variant="destructive"
-              size="icon"
-              onClick={handleRemoveImage}
-              className={cn(
-                'absolute top-2 right-2',
-                'h-8 w-8 rounded-full',
-                'shadow-lg transition-all duration-200',
-                'hover:scale-110'
-              )}
-              aria-label="Eliminar imagen"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+              aria-label="Cambiar imagen"
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <div className="flex flex-col items-center gap-1 text-white">
+                <Camera className="h-5 w-5" />
+                <span className="text-xs font-medium">Cambiar foto</span>
+              </div>
+            </button>
           </div>
         ) : (
           <Button

@@ -744,6 +744,37 @@ const spacing = {
 
 // ❌ AVOID - Arbitrary values break rhythm
 <div className="p-[22px] space-y-[18px]">
+
+---
+
+## 📐 Grid Consistency & Layout Coherence
+
+A "Premium" feel requires rigorous alignment across all pages. The user's eye instantly notices when the header width does not match the page content width or when layouts shift abruptly.
+
+1. **Global `max-w` Constraint**: Pick a single maximum width (e.g., `max-w-5xl` or `max-w-6xl`) and enforce it globally for the main layout wrappers on *every* page.
+2. **Responsive Padding Alignment**: Always pair the global `max-w` with consistent responsive horizontal padding (e.g., `px-4 sm:px-6 lg:px-8`).
+3. **Viewport Height Stability**: When building centered cards or full-height sections below a sticky header, use `min-h-[calc(100vh-VAR)]` (where VAR is the header height) instead of `min-h-screen` to prevent artificial vertical scrolling.
+
+```tsx
+// ❌ AVOID - Inconsistent layouts across pages
+// Header
+<header className="max-w-5xl px-4 mx-auto" />
+// Content Page
+<main className="max-w-[1400px] px-12 mx-auto" />
+
+// ✅ REQUIRED - Strict Grid Consistency
+// Header
+<header className="w-full">
+  <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" />
+</header>
+// Content Page
+<main className="w-full">
+  <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" />
+</main>
+// Centered Card Page
+<div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
+  <Card className="max-w-lg w-full" />
+</div>
 ```
 
 ---
