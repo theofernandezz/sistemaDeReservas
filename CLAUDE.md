@@ -19,7 +19,7 @@
 ### Key decisions
 <!-- Why did you choose this stack? Any non-obvious architectural decisions? -->
 > I choose next.js because it is a framework that allows me to create web applications with a good user experience and performance  this framework is better for (SSG + ISR + SEO).
-> I choose next.js as the backend because it is a framework all in one.
+> I choose next.js as the backend because it is a framework all in one. 
 > I choose supabase because it is a BaaS backend that allows you to create fast the database and the authentication.
 > I choose Supabse Auth for the authentication because it is a service that allows you to create fast the authentication + with better handling of RLS.
 > i choose tailwind css, shadcn and aceternity as the UI frameworks because is fast, clean and modern.

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, CheckCircle2, Calendar, CreditCard, Clock, Bell, CalendarCheck, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
+import logo from '@/public/logo/icon.png'
 
 export function InteractiveFeatureCards() {
   return (
@@ -193,7 +194,7 @@ function IntegrationsOrbit() {
             
             {/* Center Hub */}
             <div className="relative z-20 w-20 h-20 rounded-2xl bg-white flex items-center justify-center shadow-[0_0_60px_-10px_rgba(255,255,255,0.4)]">
-                <span className="text-zinc-900 font-black text-3xl">R</span>
+                <Image src={logo} alt="Buki" width={56} height={56} className="w-12 h-12 object-contain" />
             </div>
 
             {/* Orbit Rings */}

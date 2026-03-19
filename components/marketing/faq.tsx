@@ -42,40 +42,43 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="container px-4 py-24 md:py-32">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12 space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+    <section id="faq" className="bg-secondary/30 py-28 md:py-36">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Editorial header */}
+        <div className="mb-12 space-y-3 max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.15em] font-semibold text-muted-foreground">
             Preguntas frecuentes
-          </h2>
-          <p className="text-muted-foreground text-lg">
-            ¿Tenés dudas? Acá respondemos las más comunes.
           </p>
+          <h2 className="font-extrabold tracking-[-0.03em] leading-tight text-foreground" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.75rem)' }}>
+            Todo lo que querés saber
+          </h2>
         </div>
 
-        <Accordion type="single" collapsible className="w-full">
-          {faqs.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`}>
-              <AccordionTrigger className="text-left text-base font-medium">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <div className="max-w-3xl">
+          <Accordion type="single" collapsible className="w-full">
+            {faqs.map((faq, index) => (
+              <AccordionItem key={index} value={`item-${index}`}>
+                <AccordionTrigger className="text-left text-base font-medium">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
 
-        <div className="mt-12 text-center">
-          <p className="text-muted-foreground">
-            ¿No encontrás lo que buscás?{' '}
-            <a
-              href="mailto:soporte@tudominio.com"
-              className="text-primary hover:underline font-medium"
-            >
-              Escribinos
-            </a>
-          </p>
+          <div className="mt-12">
+            <p className="text-muted-foreground text-sm">
+              ¿No encontrás lo que buscás?{' '}
+              <a
+                href="mailto:soporte@tudominio.com"
+                className="text-primary hover:underline font-medium"
+              >
+                Escribinos
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </section>

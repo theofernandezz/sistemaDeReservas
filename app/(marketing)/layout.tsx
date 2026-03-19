@@ -35,69 +35,44 @@ export default function MarketingLayout({
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/40 py-12">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+      <footer className="bg-background border-t border-border/40 py-16">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10">
+
             {/* Brand */}
-            <div className="max-w-xs">
-              <Link href="/" className="flex items-center gap-2 mb-3">
+            <div className="space-y-3">
+              <Link href="/" className="flex items-center gap-2.5">
                 <Image src={logo} alt="Devora Buki" width={100} height={60} className="h-7 w-auto object-contain" />
-                <span className="font-bold text-lg">Devora Buki</span>
+                <span className="font-bold text-lg tracking-tight">Devora Buki</span>
               </Link>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                La plataforma de gestión de reservas diseñada para profesionales independientes.
+              <p className="text-sm text-muted-foreground max-w-[260px] leading-relaxed">
+                Plataforma de gestión de reservas para profesionales independientes.
               </p>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground/60">
+                <span>🇦🇷 Argentina</span>
+                <span>•</span>
+                <span>💬 Soporte en español</span>
+              </div>
             </div>
 
             {/* Links */}
-            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm">
-              <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                Precios
-              </Link>
-              <Link href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">
-                FAQ
-              </Link>
-              <Link href="/login" className="text-muted-foreground hover:text-foreground transition-colors">
-                Ingresar
-              </Link>
-              <Link href="/signup" className="text-muted-foreground hover:text-foreground transition-colors">
-                Comenzar
-              </Link>
-              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacidad
-              </Link>
-              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
-                Términos
-              </Link>
-            </div>
+            <nav className="flex flex-wrap gap-x-10 gap-y-3 text-sm">
+              <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">Precios</Link>
+              <Link href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
+              <Link href="/login" className="text-muted-foreground hover:text-foreground transition-colors">Ingresar</Link>
+              <Link href="/signup" className="text-muted-foreground hover:text-foreground transition-colors">Comenzar</Link>
+              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacidad</Link>
+              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Términos</Link>
+            </nav>
           </div>
 
-          {/* Trust Signals */}
-          <div className="mt-8 pt-6 border-t">
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span>🇦🇷</span>
-                <span>Hecho en Argentina</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span>💬</span>
-                <span>Soporte en español</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span>🔒</span>
-                <span>Datos seguros</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span>⚡</span>
-                <span>Integración con Mercado Pago</span>
-              </div>
+          {/* Bottom */}
+          <div className="mt-12 pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground/50">© 2026 Devora Buki. Todos los derechos reservados.</p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground/40">
+              <span>🔒 Datos seguros</span>
+              <span>⚡ Integración con Mercado Pago</span>
             </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-xs text-muted-foreground text-center">
-              © 2026 Devora Buki. Todos los derechos reservados.
-            </p>
           </div>
         </div>
       </footer>
