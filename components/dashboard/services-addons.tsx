@@ -162,9 +162,10 @@ export default function ServicesAndAddons({
           if (!result.success) {
             throw new Error(result.error || 'No se pudo actualizar el add-on')
           }
-          if (result.data) {
+          const updatedAddon = result.data
+          if (updatedAddon) {
             setAddons(prev => prev.map(addon =>
-              addon.id === addonId ? result.data as ServiceAddon : addon
+              addon.id === addonId ? updatedAddon : addon
             ))
           }
           toast({ type: 'success', title: 'Add-on actualizado' })
@@ -173,8 +174,9 @@ export default function ServicesAndAddons({
           if (!result.success) {
             throw new Error(result.error || 'No se pudo crear el add-on')
           }
-          if (result.data) {
-            setAddons(prev => [...prev, result.data])
+          const createdAddon = result.data
+          if (createdAddon) {
+            setAddons(prev => [...prev, createdAddon])
           }
           toast({ type: 'success', title: 'Add-on creado' })
         }
