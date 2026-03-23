@@ -305,6 +305,8 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
         name: validationResult.data.name,
         duration_minutes: validationResult.data.duration_minutes,
         price: validationResult.data.price,
+        description: validationResult.data.description ?? null,
+        image: validationResult.data.image ?? null,
         is_active: validationResult.data.is_active ?? true,
         business_id: businessId
       }])

@@ -149,6 +149,8 @@ export interface CreateServiceInput {
   name: string;
   duration_minutes: number;
   price: number;
+  description?: string | null;
+  image?: string | null;
   is_active?: boolean;
 }
 
@@ -156,6 +158,8 @@ export interface UpdateServiceInput {
   name?: string;
   duration_minutes?: number;
   price?: number;
+  description?: string | null;
+  image?: string | null;
   is_active?: boolean;
 }
 

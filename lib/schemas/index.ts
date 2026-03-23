@@ -68,6 +68,8 @@ export const createServiceSchema = z.object({
   price: z.number()
     .nonnegative('El precio no puede ser negativo')
     .max(PAYMENT_LIMITS.MAX_AMOUNT_ARS, 'Precio demasiado alto'),
+  description: z.string().max(500, 'Descripción demasiado larga').optional().nullable(),
+  image: z.string().url('URL de imagen inválida').optional().nullable(),
   is_active: z.boolean().optional(),
 })
 
@@ -82,6 +84,8 @@ export const updateServiceSchema = z.object({
     .nonnegative('El precio no puede ser negativo')
     .max(PAYMENT_LIMITS.MAX_AMOUNT_ARS, 'Precio demasiado alto')
     .optional(),
+  description: z.string().max(500, 'Descripción demasiado larga').optional().nullable(),
+  image: z.string().url('URL de imagen inválida').optional().nullable(),
   is_active: z.boolean().optional(),
 })
 

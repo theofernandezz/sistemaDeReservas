@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Plus,
   Edit2,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
 import { createService, updateService, deleteService } from '@/app/actions'
-import { frontendServiceToDB } from '@/lib/adapters'
+import { dbServiceToFrontend, frontendServiceToDB } from '@/lib/adapters'
 import { useRouter } from 'next/navigation'
 import Switch from '@/components/ui/switch'
 import { useToast } from '@/components/ui/toast'
@@ -40,7 +40,7 @@ export default function ServicesAndAddons({
 }: ServicesAndAddonsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('services')
   const [services, setServices] = useState(initialServices)
-  const [addons] = useState(initialAddons)
+  const [addons, setAddons] = useState(initialAddons)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<FrontendService | ServiceAddon | null>(null)
   const [saving, setSaving] = useState(false)
@@ -53,6 +53,14 @@ export default function ServicesAndAddons({
   const router = useRouter()
   const { toast } = useToast()
   const confirm = useConfirm()
+
+  useEffect(() => {
+    setServices(initialServices)
+  }, [initialServices])
+
+  useEffect(() => {
+    setAddons(initialAddons)
+  }, [initialAddons])
 
   // Form state for services
   const [formData, setFormData] = useState({
@@ -117,10 +125,27 @@ export default function ServicesAndAddons({
         }
 
         if (editingItem) {
-          await updateService((editingItem as FrontendService).id, frontendServiceToDB(serviceData))
+          const serviceId = (editingItem as FrontendService).id
+          const result = await updateService(serviceId, frontendServiceToDB(serviceData))
+          if (!result.success) {
+            throw new Error(result.error || 'No se pudo actualizar el servicio')
+          }
+          if (result.data) {
+            const updatedService = dbServiceToFrontend(result.data)
+            setServices(prev => prev.map(service =>
+              service.id === serviceId ? updatedService : service
+            ))
+          }
           toast({ type: 'success', title: 'Servicio actualizado' })
         } else {
-          await createService(frontendServiceToDB(serviceData))
+          const result = await createService(frontendServiceToDB(serviceData))
+          if (!result.success) {
+            throw new Error(result.error || 'No se pudo crear el servicio')
+          }
+          if (result.data) {
+            const createdService = dbServiceToFrontend(result.data)
+            setServices(prev => [...prev, createdService])
+          }
           toast({ type: 'success', title: 'Servicio creado' })
         }
       } else {
@@ -132,18 +157,34 @@ export default function ServicesAndAddons({
         }
 
         if (editingItem) {
-          await updateServiceAddon((editingItem as ServiceAddon).id, addonData)
+          const addonId = (editingItem as ServiceAddon).id
+          const result = await updateServiceAddon(addonId, addonData)
+          if (!result.success) {
+            throw new Error(result.error || 'No se pudo actualizar el add-on')
+          }
+          if (result.data) {
+            setAddons(prev => prev.map(addon =>
+              addon.id === addonId ? result.data as ServiceAddon : addon
+            ))
+          }
           toast({ type: 'success', title: 'Add-on actualizado' })
         } else {
-          await createServiceAddon(addonData)
+          const result = await createServiceAddon(addonData)
+          if (!result.success) {
+            throw new Error(result.error || 'No se pudo crear el add-on')
+          }
+          if (result.data) {
+            setAddons(prev => [...prev, result.data])
+          }
           toast({ type: 'success', title: 'Add-on creado' })
         }
       }
 
       setIsModalOpen(false)
       router.refresh()
-    } catch {
-      toast({ type: 'error', title: 'Error al guardar' })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error al guardar'
+      toast({ type: 'error', title: message })
     } finally {
       setSaving(false)
     }
@@ -162,7 +203,10 @@ export default function ServicesAndAddons({
     setTogglingId(id)
     try {
       const serviceUpdate: FrontendService = { ...service, active: newActiveState }
-      await updateService(id, frontendServiceToDB(serviceUpdate))
+      const result = await updateService(id, frontendServiceToDB(serviceUpdate))
+      if (!result.success) {
+        throw new Error(result.error || 'No se pudo actualizar el servicio')
+      }
     } catch {
       // Revert on error
       setServices(prev => prev.map(s =>
