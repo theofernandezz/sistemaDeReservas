@@ -8,10 +8,13 @@ import {
   Clock,
   Loader2,
   X,
-  DollarSign
+  DollarSign,
+  ArrowUp,
+  ArrowDown,
+  ListOrdered
 } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
-import { createService, updateService, deleteService } from '@/app/actions'
+import { createService, updateService, deleteService, updateServiceOrder } from '@/app/actions'
 import { dbServiceToFrontend, frontendServiceToDB } from '@/lib/adapters'
 import { useRouter } from 'next/navigation'
 import Switch from '@/components/ui/switch'
@@ -45,6 +48,7 @@ export default function ServicesAndAddons({
   const [editingItem, setEditingItem] = useState<FrontendService | ServiceAddon | null>(null)
   const [saving, setSaving] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [ordering, setOrdering] = useState(false)
 
   // Image upload states
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
@@ -244,6 +248,36 @@ export default function ServicesAndAddons({
     })
   }
 
+  const handleMoveService = async (serviceId: string, direction: 'up' | 'down') => {
+    const currentIndex = services.findIndex(service => service.id === serviceId)
+    if (currentIndex === -1) return
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= services.length) return
+
+    const previousServices = services
+    const reorderedServices = [...services]
+    const [movedService] = reorderedServices.splice(currentIndex, 1)
+    reorderedServices.splice(targetIndex, 0, movedService)
+
+    setServices(reorderedServices)
+    setOrdering(true)
+
+    try {
+      const result = await updateServiceOrder(reorderedServices.map(service => service.id))
+      if (!result.success) {
+        throw new Error(result.error || 'No se pudo actualizar el orden')
+      }
+      toast({ type: 'success', title: 'Orden actualizado' })
+    } catch (error: unknown) {
+      setServices(previousServices)
+      const message = error instanceof Error ? error.message : 'No se pudo actualizar el orden'
+      toast({ type: 'error', title: message })
+    } finally {
+      setOrdering(false)
+    }
+  }
+
   // Image upload handlers
   const handleCropRequest = (imageDataUrl: string) => {
     setImageToCrop(imageDataUrl)
@@ -302,6 +336,12 @@ export default function ServicesAndAddons({
               : `${addons.length} add-ons disponibles`
             }
           </p>
+          {activeTab === 'services' && services.length > 1 && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+              <ListOrdered size={12} />
+              El orden visible acá es el mismo orden de tu página pública.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -340,7 +380,7 @@ export default function ServicesAndAddons({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {activeTab === 'services' ? (
           <>
-            {services.map(service => (
+            {services.map((service, index) => (
               <div
                 key={service.id}
                 className={`bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 flex flex-col group ${service.active === false ? 'opacity-50 grayscale-[50%]' : ''
@@ -361,11 +401,21 @@ export default function ServicesAndAddons({
                 )}
 
                 <div className="p-4 flex flex-col flex-1">
-                  {/* Top row: Title + Toggle */}
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-sm text-foreground truncate flex-1">
-                      {service.title}
-                    </h3>
+                  {/* Top row: Order + Title + Toggle */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold px-1.5">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm text-foreground truncate">
+                          {service.title}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          {index === 0 ? 'Se muestra primero en la página pública' : `Posición ${index + 1} en la página pública`}
+                        </p>
+                      </div>
+                    </div>
                     {togglingId === service.id ? (
                       <Loader2 size={16} className="animate-spin text-muted-foreground shrink-0" />
                     ) : (
@@ -394,6 +444,26 @@ export default function ServicesAndAddons({
 
                   {/* Actions row */}
                   <div className="flex items-center justify-end gap-2 mt-auto pt-3 border-t border-border/30 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <div className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/40 px-1 py-1">
+                      <button
+                        onClick={() => handleMoveService(service.id, 'up')}
+                        disabled={ordering || index === 0}
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Mover arriba"
+                        aria-label="Mover servicio arriba"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveService(service.id, 'down')}
+                        disabled={ordering || index === services.length - 1}
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Mover abajo"
+                        aria-label="Mover servicio abajo"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                    </div>
                     <button
                       onClick={() => handleOpenModal(service)}
                       className="p-2 text-muted-foreground hover:text-primary hover:bg-secondary/80 rounded-lg transition-colors"

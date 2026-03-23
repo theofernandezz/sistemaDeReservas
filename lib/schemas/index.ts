@@ -70,6 +70,7 @@ export const createServiceSchema = z.object({
     .max(PAYMENT_LIMITS.MAX_AMOUNT_ARS, 'Precio demasiado alto'),
   description: z.string().max(500, 'Descripción demasiado larga').optional().nullable(),
   image: z.string().url('URL de imagen inválida').optional().nullable(),
+  display_order: z.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
 })
 
@@ -86,7 +87,12 @@ export const updateServiceSchema = z.object({
     .optional(),
   description: z.string().max(500, 'Descripción demasiado larga').optional().nullable(),
   image: z.string().url('URL de imagen inválida').optional().nullable(),
+  display_order: z.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
+})
+
+export const updateServiceOrderSchema = z.object({
+  serviceIds: z.array(z.string().uuid('ID de servicio inválido')).min(1, 'Debe enviar al menos un servicio'),
 })
 
 // ============================================================================
@@ -239,6 +245,7 @@ export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>
 export type CreateServiceInput = z.infer<typeof createServiceSchema>
 export type UpdateServiceInput = z.infer<typeof updateServiceSchema>
+export type UpdateServiceOrderInput = z.infer<typeof updateServiceOrderSchema>
 export type CreateTeamMemberInput = z.infer<typeof createTeamMemberSchema>
 export type CompleteOnboardingInput = z.infer<typeof completeOnboardingSchema>
 export type PendingBookingInput = z.infer<typeof pendingBookingSchema>

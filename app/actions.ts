@@ -29,6 +29,7 @@ import {
   rescheduleAppointmentSchema,
   createServiceSchema,
   updateServiceSchema,
+  updateServiceOrderSchema,
 } from '@/lib/schemas'
 import {
   startOfDayUTC,
@@ -202,7 +203,8 @@ export async function getServices(): Promise<ServerActionResponse<Service[]>> {
       .select('*')
       .eq('business_id', businessId)
       .eq('is_active', true)
-      .order('name')
+      .order('display_order', { ascending: true })
+      .order('name', { ascending: true })
 
     if (error) throw error
 
@@ -225,7 +227,8 @@ export async function getAllServices(): Promise<ServerActionResponse<Service[]>>
       .from('services')
       .select('*')
       .eq('business_id', businessId)
-      .order('name')
+      .order('display_order', { ascending: true })
+      .order('name', { ascending: true })
 
     if (error) throw error
 
@@ -248,7 +251,8 @@ export async function getServicesByBusinessId(businessId: string): Promise<Serve
       .select('*')
       .eq('business_id', businessId)
       .eq('is_active', true)
-      .order('name')
+      .order('display_order', { ascending: true })
+      .order('name', { ascending: true })
 
     if (error) throw error
 
@@ -299,6 +303,18 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
     const supabase = await createClient()
     const businessId = await requireBusinessId()
 
+    // Place new services at the end by default.
+    const { data: lastService, error: orderError } = await supabase
+      .from('services')
+      .select('display_order')
+      .eq('business_id', businessId)
+      .order('display_order', { ascending: false })
+      .limit(1)
+
+    if (orderError) throw orderError
+
+    const nextDisplayOrder = validationResult.data.display_order ?? ((lastService?.[0]?.display_order ?? 0) + 1)
+
     const { data, error } = await supabase
       .from('services')
       .insert([{
@@ -307,6 +323,7 @@ export async function createService(input: CreateServiceInput): Promise<ServerAc
         price: validationResult.data.price,
         description: validationResult.data.description ?? null,
         image: validationResult.data.image ?? null,
+        display_order: nextDisplayOrder,
         is_active: validationResult.data.is_active ?? true,
         business_id: businessId
       }])
@@ -356,6 +373,41 @@ export async function updateService(id: string, input: UpdateServiceInput): Prom
   } catch (error: unknown) {
     console.error('Error updating service:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error updating service' }
+  }
+}
+
+/**
+ * Update service display order for current business
+ */
+export async function updateServiceOrder(serviceIds: string[]): Promise<ServerActionResponse<void>> {
+  try {
+    const validationResult = updateServiceOrderSchema.safeParse({ serviceIds })
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      return {
+        success: false,
+        error: firstError?.message || 'Error de validación'
+      }
+    }
+
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    for (const [index, serviceId] of validationResult.data.serviceIds.entries()) {
+      const { error } = await supabase
+        .from('services')
+        .update({ display_order: index + 1 })
+        .eq('id', serviceId)
+        .eq('business_id', businessId)
+
+      if (error) throw error
+    }
+
+    revalidatePath('/dashboard/services')
+    return { success: true }
+  } catch (error: unknown) {
+    console.error('Error updating service order:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error updating service order' }
   }
 }
 

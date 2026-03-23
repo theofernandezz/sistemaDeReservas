@@ -65,6 +65,7 @@ describe('services image regression', () => {
       name: 'Manicura',
       duration_minutes: 45,
       price: 18000,
+      display_order: 1,
       is_active: true,
       created_at: '2026-03-23T10:00:00.000Z',
       description: 'Esmaltado semipermanente',
