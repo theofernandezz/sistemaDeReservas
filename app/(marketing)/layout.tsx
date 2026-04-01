@@ -53,7 +53,7 @@ export default function MarketingLayout({
             {/* Brand */}
             <div className="space-y-3">
               <Link href="/" className="flex items-center gap-2.5">
-                <Image src={logo} alt="Devora Buki" width={100} height={60} className="h-7 w-auto object-contain" />
+                <Image src={logo} alt="Devora Buki" width={100} height={60} sizes="(max-width: 640px) 60px, 100px" className="h-7 w-auto object-contain" />
                 <span className="font-bold text-lg tracking-tight">Devora Buki</span>
               </Link>
               <p className="text-sm text-muted-foreground max-w-[260px] leading-relaxed">

@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { Zap, CheckCircle2, Calendar, CreditCard, Clock, Bell, CalendarCheck, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
@@ -99,13 +99,16 @@ export function InteractiveFeatureCards() {
 
 function LiveBookingSimulation() {
     const [currentStep, setCurrentStep] = useState(0)
-    
+    const ref = useRef<HTMLDivElement>(null)
+    const isInView = useInView(ref, { once: false, amount: 0.3 })
+
     useEffect(() => {
+        if (!isInView) return
         const interval = setInterval(() => {
             setCurrentStep((prev) => (prev + 1) % 4)
         }, 2000)
         return () => clearInterval(interval)
-    }, [])
+    }, [isInView])
 
     const timeSlots = [
         { time: '09:00', available: true },
@@ -116,7 +119,7 @@ function LiveBookingSimulation() {
     ]
 
     return (
-        <div className="w-full flex items-center justify-center">
+        <div ref={ref} className="w-full flex items-center justify-center">
             <div className="w-full max-w-[240px] bg-card/80 backdrop-blur-sm rounded-2xl border border-border shadow-xl overflow-hidden relative">
                 {/* Header */}
                 <div className="bg-violet-500/10 px-4 py-3 border-b border-border">
@@ -187,14 +190,17 @@ function LiveBookingSimulation() {
 }
 
 function IntegrationsOrbit() {
+    const ref = useRef<HTMLDivElement>(null)
+    const isInView = useInView(ref, { once: false, amount: 0.3 })
+
     return (
-        <div className="relative w-64 h-64 flex items-center justify-center">
+        <div ref={ref} className="relative w-64 h-64 flex items-center justify-center">
             {/* Glow effect */}
             <div className="absolute inset-0 bg-linear-to-r from-violet-500/20 via-transparent to-blue-500/20 rounded-full blur-2xl animate-pulse" />
             
             {/* Center Hub */}
             <div className="relative z-20 w-20 h-20 rounded-2xl bg-white flex items-center justify-center shadow-[0_0_60px_-10px_rgba(255,255,255,0.4)]">
-                <Image src={logo} alt="Buki" width={56} height={56} className="w-12 h-12 object-contain" />
+                <Image src={logo} alt="Buki" width={56} height={56} sizes="56px" className="w-12 h-12 object-contain" />
             </div>
 
             {/* Orbit Rings */}
@@ -204,73 +210,77 @@ function IntegrationsOrbit() {
             </div>
 
             {/* Inner Orbit - Google Calendar & MercadoPago */}
-            <motion.div 
-                animate={{ rotate: 360 }}
+            <motion.div
+                animate={isInView ? { rotate: 360 } : false}
                 transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
                 className="absolute w-40 h-40"
             >
-                <motion.div 
-                    animate={{ rotate: -360 }}
+                <motion.div
+                    animate={isInView ? { rotate: -360 } : false}
                     transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
                     className="absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 flex items-center justify-center"
                 >
-                    <Image 
-                        src="/integrations/google-calendar.svg" 
+                    <Image
+                        src="/integrations/google-calendar.svg"
                         alt="Google Calendar"
                         width={40}
                         height={40}
+                        sizes="40px"
                         className="object-contain"
                     />
                 </motion.div>
-                <motion.div 
-                    animate={{ rotate: -360 }}
+                <motion.div
+                    animate={isInView ? { rotate: -360 } : false}
                     transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
                     className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-10 h-10 flex items-center justify-center"
                 >
-                    <Image 
-                        src="/integrations/mercadopago.png" 
+                    <Image
+                        src="/integrations/mercadopago.png"
                         alt="MercadoPago"
                         width={40}
                         height={40}
+                        sizes="40px"
                         className="object-contain"
                     />
                 </motion.div>
             </motion.div>
-            
+
             {/* Outer Orbit - Gmail & WhatsApp */}
-            <motion.div 
-                animate={{ rotate: -360 }}
+            <motion.div
+                animate={isInView ? { rotate: -360 } : false}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                 className="absolute w-64 h-64"
             >
-                <motion.div 
-                    animate={{ rotate: 360 }}
+                <motion.div
+                    animate={isInView ? { rotate: 360 } : false}
                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                     className="absolute top-1/2 -right-5 -translate-y-1/2 w-10 h-10 flex items-center justify-center"
                 >
-                    <Image 
-                        src="/integrations/gmail.svg" 
+                    <Image
+                        src="/integrations/gmail.svg"
                         alt="Gmail"
                         width={40}
                         height={40}
+                        sizes="40px"
                         className="object-contain"
                     />
                 </motion.div>
-                <motion.div 
-                    animate={{ rotate: 360 }}
+                <motion.div
+                    animate={isInView ? { rotate: 360 } : false}
                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                     className="absolute top-1/2 -left-5 -translate-y-1/2 w-10 h-10 flex items-center justify-center"
                 >
-                    <Image 
-                        src="/integrations/whatsapp.svg" 
+                    <Image
+                        src="/integrations/whatsapp.svg"
                         alt="WhatsApp"
                         width={32}
                         height={32}
+                        sizes="32px"
                         className="object-contain"
                     />
                 </motion.div>
             </motion.div>
-            
+
             {/* Floating particles - valores fijos para evitar hydration mismatch */}
             {[
                 { x: 15, y: -10, duration: 3.5, left: 25, top: 30 },
@@ -283,11 +293,11 @@ function IntegrationsOrbit() {
                 <motion.div
                     key={i}
                     className="absolute w-1.5 h-1.5 bg-white/40 rounded-full"
-                    animate={{
+                    animate={isInView ? {
                         x: [0, particle.x],
                         y: [0, particle.y],
                         opacity: [0.2, 0.6, 0.2],
-                    }}
+                    } : false}
                     transition={{
                         duration: particle.duration,
                         repeat: Infinity,

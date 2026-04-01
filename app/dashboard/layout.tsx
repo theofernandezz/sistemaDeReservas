@@ -17,8 +17,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const result = await getCurrentBusiness()
-  const isAdmin = await isSuperAdmin()
+  const [result, isAdmin] = await Promise.all([getCurrentBusiness(), isSuperAdmin()])
 
   if (!result.success || !result.data) {
     // Si es super admin sin negocio, redirigir al panel de admin
