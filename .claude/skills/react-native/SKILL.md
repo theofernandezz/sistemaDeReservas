@@ -185,7 +185,7 @@ const parsedLocation = locationPayloadSchema.parse(nativeLocationPayload);
 
 ## Verification Metadata
 
-- Last verified: 2026-03-13
+- Last verified: 2026-03-23
 - Verification cadence: 7 days
 - Owner: @mobile
 

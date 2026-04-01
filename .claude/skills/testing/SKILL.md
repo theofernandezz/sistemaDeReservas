@@ -30,6 +30,18 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| Vitest 4.x | `maxThreads`/`maxForks` config removed → use `maxWorkers` | `vitest.config.ts` |
+| Vitest 4.x | `coverage.all` removed → `coverage.include` is now required | Coverage config |
+| Vitest 4.x | `vi.restoreAllMocks()` no longer resets automocks — use `vi.resetAllMocks()` + `vi.restoreAllMocks()` together in `afterEach` | Any test using `vi.mock()` |
+
+---
+
 ## 🏗️ Testing Architecture
 
 ```

@@ -24,6 +24,18 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| TS 5.5 | Inferred type predicates — `arr.filter(Boolean)` now correctly narrows to non-nullable | Array filtering patterns |
+| TS 5.4 | `NoInfer<T>` utility type — prevents inference from a specific type parameter | Generic utility functions |
+| TS 5.2 | `using` / `await using` — explicit resource disposal (like `Disposable` in C#) | DB connections, file handles |
+
+---
+
 ## 🚫 FORBIDDEN PATTERNS
 
 These patterns are **strictly prohibited**. Violations require immediate refactoring.

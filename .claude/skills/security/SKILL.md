@@ -6,7 +6,7 @@ description: |
 license: MIT
 metadata:
   author: ai-library
-  version: "2.0"
+  version: "2.1"
   scope: [root, backend, auth]
   auto_invoke:
     - "Handling user input"
@@ -23,6 +23,20 @@ metadata:
 # Security Best Practices
 
 > **Core Principle:** Never trust user input. Defense in depth. Fail secure, not open.
+
+---
+
+## What's New
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| 2.1 (2026-03-31) | `X-XSS-Protection` removed — OWASP 2025 recommends omitting it (can introduce XSS in IE/Chrome <78) | middleware.ts |
+| 2.1 (2026-03-31) | In-memory rate limiter is serverless-unsafe — use Upstash/Redis in production | rate-limit.ts |
+| 2.1 (2026-03-31) | CSP `unsafe-eval` + `unsafe-inline` flagged by OWASP 2025 — prefer nonce-based CSP | middleware.ts |
+| 2.1 (2026-03-31) | `headers()` in Next.js 15+ must be `await`-ed — CSRF helper updated | lib/security/csrf.ts |
+| 2.0 | `javascript:` URLs blocked automatically in Next.js 16.2.1 for router/Link/redirect | router, Link |
+
+> **Check this table before writing security code** and surface any applicable changes to the user.
 
 ---
 
@@ -182,10 +196,12 @@ export function middleware(request: NextRequest) {
   
   // Prevent MIME type sniffing
   headers.set('X-Content-Type-Options', 'nosniff')
-  
-  // XSS protection (legacy, but still useful)
-  headers.set('X-XSS-Protection', '1; mode=block')
-  
+
+  // X-XSS-Protection intentionally OMITTED:
+  // OWASP 2025 recommends not setting this header — it can introduce XSS
+  // vulnerabilities in browsers older than Chrome 78 / IE 11.
+  // Modern protection comes from CSP, not this legacy header.
+
   // Referrer policy
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   
@@ -195,12 +211,23 @@ export function middleware(request: NextRequest) {
     'camera=(), microphone=(), geolocation=()'
   )
   
-  // Content Security Policy (customize per app)
+  // Content Security Policy
+  // ⚠️ OWASP 2025: 'unsafe-inline' and 'unsafe-eval' defeat CSP's XSS protection.
+  // Prefer nonce-based CSP for script-src. 'unsafe-inline' is acceptable for
+  // style-src only if you cannot use nonces (e.g., third-party component libraries).
+  //
+  // Option A — nonce-based (recommended for new apps):
+  //   const nonce = crypto.randomUUID()
+  //   headers.set('Content-Security-Policy',
+  //     `script-src 'self' 'nonce-${nonce}'; ...`)
+  //   // Pass nonce via header/cookie to layout for <Script nonce={nonce}>
+  //
+  // Option B — fallback for apps using inline scripts (e.g. next/script strategy="beforeInteractive"):
   headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Adjust for your needs
+      "script-src 'self' 'unsafe-inline'", // Replace with nonce if possible
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self'",
@@ -221,24 +248,38 @@ export function middleware(request: NextRequest) {
 }
 ```
 
-### 3. CSRF Protection for Server Actions
+### 3. JavaScript URL Blocking
+
+As of Next.js 16.2.1, `javascript:` URLs are blocked automatically in `router.push()`, `router.replace()`, `<Link href>`, and `redirect()`. No manual sanitization needed for these cases.
 
 ```typescript
-// Server Actions have built-in CSRF protection in Next.js
-// But for custom API routes, add explicit checks
+// ✅ These are now blocked automatically by Next.js 16.2.1+
+router.push('javascript:alert(1)')   // throws
+redirect('javascript:alert(1)')      // throws
+
+// ⚠️ Still sanitize user-supplied URLs going into OTHER sinks
+const safeUrl = url.startsWith('https://') ? url : '/fallback'
+```
+
+### 4. CSRF Protection for Server Actions
+
+```typescript
+// Server Actions have built-in CSRF protection in Next.js.
+// For custom API routes, add explicit origin checks.
+// Next.js 15+: headers() returns a Promise — always await it.
 
 // lib/security/csrf.ts
 import { headers } from 'next/headers'
 
-export async function validateOrigin() {
-  const headersList = await headers()
+export async function validateOrigin(): Promise<void> {
+  const headersList = await headers() // required await in Next.js 15+
   const origin = headersList.get('origin')
   const host = headersList.get('host')
-  
+
   if (!origin || !host) {
     throw new Error('Missing origin or host header')
   }
-  
+
   const originUrl = new URL(origin)
   if (originUrl.host !== host) {
     throw new Error('Origin mismatch - possible CSRF')
@@ -252,18 +293,22 @@ export async function POST(request: Request) {
 }
 ```
 
-### 4. Rate Limiting
+### 5. Rate Limiting
+
+> **WARNING (serverless/edge):** The in-memory `Map` implementation below resets on every cold start and is not shared across serverless function instances. It is only suitable for local development or long-lived Node.js servers. **For production on Vercel/edge, use Upstash Redis** (see Option B).
 
 ```typescript
 // lib/security/rate-limit.ts
-import { headers } from 'next/headers'
 
-const rateLimit = new Map<string, { count: number; resetTime: number }>()
+// ── Option A: In-memory (dev / single-instance Node server only) ──────────────
+import { headers } from 'next/headers'
 
 interface RateLimitOptions {
   limit: number
   windowMs: number
 }
+
+const rateLimit = new Map<string, { count: number; resetTime: number }>()
 
 export async function checkRateLimit(
   key: string,
@@ -271,39 +316,55 @@ export async function checkRateLimit(
 ): Promise<{ allowed: boolean; remaining: number }> {
   const now = Date.now()
   const record = rateLimit.get(key)
-  
+
   if (!record || now > record.resetTime) {
     rateLimit.set(key, { count: 1, resetTime: now + options.windowMs })
     return { allowed: true, remaining: options.limit - 1 }
   }
-  
+
   if (record.count >= options.limit) {
     return { allowed: false, remaining: 0 }
   }
-  
+
   record.count++
   return { allowed: true, remaining: options.limit - record.count }
 }
 
+// ── Option B: Upstash Redis (recommended for Vercel / serverless) ─────────────
+// Install: pnpm add @upstash/ratelimit @upstash/redis
+//
+// import { Ratelimit } from '@upstash/ratelimit'
+// import { Redis } from '@upstash/redis'
+//
+// const ratelimit = new Ratelimit({
+//   redis: Redis.fromEnv(),
+//   limiter: Ratelimit.slidingWindow(10, '1 m'),
+// })
+//
+// export async function checkRateLimit(key: string) {
+//   const { success, remaining } = await ratelimit.limit(key)
+//   return { allowed: success, remaining }
+// }
+
 // Usage in Server Action
 export async function submitForm(formData: FormData) {
-  const headersList = await headers()
+  const headersList = await headers() // Next.js 15+: await required
   const ip = headersList.get('x-forwarded-for') ?? 'unknown'
-  
-  const { allowed, remaining } = await checkRateLimit(`form:${ip}`, {
+
+  const { allowed } = await checkRateLimit(`form:${ip}`, {
     limit: 5,
     windowMs: 60000, // 5 requests per minute
   })
-  
+
   if (!allowed) {
     return { error: 'Too many requests. Please wait a moment.' }
   }
-  
+
   // Process form...
 }
 ```
 
-### 5. Secure Authentication Pattern
+### 6. Secure Authentication Pattern
 
 ```typescript
 // lib/auth/server.ts
@@ -360,7 +421,7 @@ export default async function AdminPage() {
 }
 ```
 
-### 6. Secure Cookie Configuration
+### 7. Secure Cookie Configuration
 
 ```typescript
 // For custom cookies (Supabase handles auth cookies)
@@ -441,11 +502,14 @@ middleware.ts              # Security headers, auth refresh
 - [ ] Parameterized queries only (no string interpolation)
 - [ ] Server-side auth checks on all protected routes
 - [ ] Security headers configured in middleware
-- [ ] Rate limiting on sensitive endpoints
+- [ ] `X-XSS-Protection` NOT set (OWASP 2025 recommendation)
+- [ ] CSP uses nonces instead of `unsafe-inline`/`unsafe-eval` where possible
+- [ ] Rate limiting on sensitive endpoints (Upstash/Redis in serverless)
+- [ ] `headers()` and `cookies()` are `await`-ed (Next.js 15+)
 - [ ] Secrets never exposed to client
 - [ ] HTTPS enforced in production
 - [ ] Cookies marked as HttpOnly and Secure
 
 ---
 
-*Skill Version: 2.0.0 | SaaS Security Standards 2026*
+*Skill Version: 2.1.0 | SaaS Security Standards 2026 | Last verified: 2026-03-31*

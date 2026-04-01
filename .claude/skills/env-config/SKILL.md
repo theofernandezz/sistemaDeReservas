@@ -25,6 +25,16 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| — | No tracked changes yet | — |
+
+---
+
 ## 🚫 FORBIDDEN PATTERNS
 
 ### 1. Raw process.env access

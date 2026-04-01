@@ -10,24 +10,16 @@
 <!-- Fill this in. Claude uses this to make decisions consistent with your project. -->
 
 ### Stack
-- Framework: Next.js 16
-- Backend: Next.js
-- Database: Supabase
-- Auth: Supabase Auth
-- Styling: Tailwind CSS + Shadcn UI + Aceternity UI
+- Framework:
+- Database:
+- Auth:
+- Styling:
 
 ### Key decisions
 <!-- Why did you choose this stack? Any non-obvious architectural decisions? -->
-> I choose next.js because it is a framework that allows me to create web applications with a good user experience and performance  this framework is better for (SSG + ISR + SEO).
-> I choose next.js as the backend because it is a framework all in one. 
-> I choose supabase because it is a BaaS backend that allows you to create fast the database and the authentication.
-> I choose Supabse Auth for the authentication because it is a service that allows you to create fast the authentication + with better handling of RLS.
-> i choose tailwind css, shadcn and aceternity as the UI frameworks because is fast, clean and modern.
-
 
 ### Domain conventions
 <!-- Naming, patterns, or rules specific to this project -->
-
 
 ### Constraints
 <!-- Performance requirements, compliance, deadlines, etc. -->
@@ -45,19 +37,23 @@
 
 ## Skills System
 
-This library contains **skills** (code patterns) and **specialized agents** (domain-specific context) that you MUST use BEFORE writing code.
+This library contains **skills** (code patterns) and **specialized agents** (domain-specific context) that guide how code should be written.
 
-### Critical Rule
+### Skill Loading (Lazy)
 
-**ALWAYS load and read the relevant skills BEFORE writing code.**
+**Load skills on demand — not all upfront.**
 
-No matter how "simple" the task seems. No exceptions. If you don't follow the skill patterns, the code will be rejected.
+1. Consult `skills/_index.md` to know what skills exist (lightweight, ~20 lines)
+2. Load a skill ONLY when you are about to write code in that domain
+3. If the task touches multiple domains, load each skill at the moment you need to write in that domain — not all at the beginning
+
+If you don't follow the skill patterns, the code will be rejected.
 
 ---
 
 ## Automatic Skill Detection
 
-When working with these actions/files, **read the corresponding skill FIRST**:
+When about to write code in these areas, **load the corresponding skill at that moment**:
 
 | If you're...                         | Skill                      | Path                                       |
 | ------------------------------------ | -------------------------- | ------------------------------------------ |
@@ -103,17 +99,19 @@ Delegation in Claude Code is done by loading additional context:
 ```
 1. Read the agent file (e.g. agents/ui.md)
 2. Identify the skills it orchestrates
-3. Read each listed skill
-4. Execute the task following ALL patterns
+3. Load each skill when you are about to write code in that domain
+4. Execute the task following the loaded patterns
 ```
 
 ---
 
 ## Pending Improvements
 
-**At the start of every session in this library, read `skills/improvements.md`.**
+**At the start of every session in this library, read both:**
+- **`skills/improvements.md`** — patterns identified in real usage not yet merged into skills
+- **`skills/changelog.md`** — recent breaking changes and new APIs across all skills
 
-It contains patterns identified in real usage that haven't been merged into skills yet. Apply them when relevant, even if the official skill doesn't document them yet. If you implement a pending improvement, mark it as applied and suggest merging it into the corresponding skill.
+Apply pending improvements when relevant. Before writing code, mention any changelog entry that applies to the developer's current task.
 
 ---
 
@@ -236,15 +234,17 @@ import { cn } from "@/lib/utils";
 ```
 User requests something
     ↓
-1. Analyze the task — identify domain and technologies
+1. Analyze the task — identify domains and technologies involved
     ↓
-2. Load the relevant domain agent (if applicable)
+2. Consult _index.md if unsure which skill applies
     ↓
-3. Load the necessary skills (read each SKILL.md)
+3. When about to write code in domain X → load skill X at that moment
     ↓
-4. Write code following ALL patterns
+4. Write code following the loaded skill's patterns
     ↓
-5. Verify against each skill's checklist
+5. Move to next domain → load its skill when you get there
+    ↓
+6. Verify against each loaded skill's checklist
 ```
 
 ---

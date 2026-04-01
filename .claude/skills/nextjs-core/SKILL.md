@@ -20,9 +20,23 @@ metadata:
     - "lib/actions/**/*.ts"
 ---
 
-# Next.js 16 Core Patterns
+# Next.js 16.2.1 Core Patterns
 
 > **Core Principle:** Server-first architecture. Fetch data on the server, mutate through Server Actions. The client is for interactivity, not data management.
+
+---
+
+## 🆕 What's New — surface these when relevant
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| 16.2 | `experimental.strictRouteTypes: true` now available — type-checks page props and return types at build time | Any new `page.tsx` or `layout.tsx` |
+| 16.2 | `logging.serverFunctions: true` — server action calls logged with timing by default | Any Server Action |
+| 16.2.1 | `javascript:` URLs blocked automatically in `router.push`, `redirect`, `<Link>` | Any redirect/navigation code |
+| 15+ → 16 | `params` and `searchParams` are now `Promise<{...}>` — must be `await`-ed | All dynamic routes `[id]` |
+| React 19 | `useFormState` removed — use `useActionState` from `react` (not `react-dom`) | All forms wired to Server Actions |
+
+> **Instruction for Claude:** When working on Server Actions or dynamic routes, check this table and mention any applicable entry to the developer before writing code.
 
 ---
 
@@ -94,8 +108,9 @@ API routes are for external consumers. Internal data flows through Server Compon
 ```typescript
 // ❌ FORBIDDEN - API route for internal use
 // app/api/users/[id]/route.ts
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const user = await db.users.findById(params.id)
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const user = await db.users.findById(id)
   return Response.json(user)
 }
 
@@ -111,8 +126,10 @@ export async function getUser(id: string): Promise<User | null> {
 // app/users/[id]/page.tsx
 import { getUser } from '@/lib/data/users'
 
-export default async function UserPage({ params }: { params: { id: string } }) {
-  const user = await getUser(params.id)
+// Next.js 15+: params is a Promise — always await it
+export default async function UserPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const user = await getUser(id)
   // ...
 }
 ```
@@ -240,15 +257,17 @@ export async function updateProfile(
 }
 ```
 
-### 3. Client Components with `useFormState`
+### 3. Client Components with `useActionState`
 
-Use the new React 19 form hooks for optimal UX.
+Use the React 19 `useActionState` hook — `isPending` is built-in as a 3rd return value.
+
+> **Note:** `useFormState` (react-dom) was removed in React 19. Use `useActionState` from `react` instead.
 
 ```typescript
 // components/forms/profile-form.tsx
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useActionState } from 'react'
 import { updateProfile, type UpdateProfileState } from '@/lib/actions/user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -256,7 +275,7 @@ import { Input } from '@/components/ui/input'
 const initialState: UpdateProfileState = {}
 
 export function ProfileForm({ defaultValues }: { defaultValues: { name: string; bio?: string } }) {
-  const [state, formAction] = useFormState(updateProfile, initialState)
+  const [state, formAction, isPending] = useActionState(updateProfile, initialState)
 
   return (
     <form action={formAction} className="space-y-4">
@@ -294,23 +313,49 @@ export function ProfileForm({ defaultValues }: { defaultValues: { name: string; 
         </Alert>
       )}
 
-      <SubmitButton />
+      <Button type="submit" disabled={isPending}>
+        {isPending ? 'Saving...' : 'Save Changes'}
+      </Button>
     </form>
-  )
-}
-
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? 'Saving...' : 'Save Changes'}
-    </Button>
   )
 }
 ```
 
-### 4. Route Groups for Organization
+### 4. Type-Safe Route Config (16.2+)
+
+Enable `strictRouteTypes` to catch type errors in page props and return types at build time.
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  experimental: {
+    strictRouteTypes: true, // Type-checks params, searchParams, and page return types
+  },
+}
+
+export default nextConfig
+```
+
+With this enabled, passing the wrong param shape to a page will fail at compile time instead of silently breaking at runtime. Required in all new projects.
+
+### 5. Server Action Logging (16.2+)
+
+Server function calls are logged by default. Opt in for full request/response detail:
+
+```typescript
+// next.config.ts
+const nextConfig: NextConfig = {
+  logging: {
+    serverFunctions: true, // Logs each server action call with timing
+  },
+}
+```
+
+Useful during development to trace which actions fire and how long they take.
+
+### 6. Route Groups for Organization
 
 Use route groups to organize without affecting URLs.
 
@@ -325,7 +370,7 @@ Use route groups to organize without affecting URLs.
 // app/(app)/layout.tsx - App sidebar, auth check
 ```
 
-### 5. Parallel Routes for Complex UIs
+### 7. Parallel Routes for Complex UIs
 
 ```typescript
 // app/dashboard/@stats/page.tsx
@@ -502,10 +547,11 @@ export const config = {
 
 ## 📋 Checklist Before Commit
 
+- [ ] `experimental.strictRouteTypes: true` enabled in next.config.ts
 - [ ] No `useEffect` for data fetching
 - [ ] No internal API route usage
 - [ ] All mutations through Server Actions
-- [ ] Forms use `useFormState` + `useFormStatus`
+- [ ] Forms use `useActionState` (from `react`, not `react-dom`)
 - [ ] Proper error boundaries (`error.tsx`)
 - [ ] Loading states defined (`loading.tsx`)
 - [ ] Suspense boundaries for async components
@@ -513,4 +559,4 @@ export const config = {
 
 ---
 
-*Skill Version: 2.0.0 | Compatible with Next.js 16.x & React 19*
+*Skill Version: 2.1.0 | Compatible with Next.js 16.2.1 & React 19*

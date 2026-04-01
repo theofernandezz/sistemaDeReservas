@@ -27,6 +27,16 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| — | No tracked changes yet | — |
+
+---
+
 ## 🎬 What is Remotion?
 
 Remotion lets you create videos programmatically using React. Each frame is a React component rendered at a specific point in time.

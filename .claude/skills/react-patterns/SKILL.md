@@ -25,6 +25,18 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| React 19 | `useFormState` removed — use `useActionState` from `react` (returns `[state, action, isPending]`) | Any form wired to a Server Action |
+| React 19 | `use()` hook — read a Promise or Context directly in render without `useEffect` | Data fetching in Client Components |
+| React 19 | `useOptimistic()` — optimistic UI updates while an async action is pending | Forms, like/vote buttons |
+
+---
+
 ## 🏗️ Component Architecture Patterns
 
 ### 1. Compound Components Pattern

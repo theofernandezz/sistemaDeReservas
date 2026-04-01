@@ -58,6 +58,18 @@ auto_invoke:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded for a task, check this table and mention any entry relevant to what the developer is working on. This table is also the source for `skills/changelog.md` — every skill version bump MUST add a row here.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| x.x | [brief description of what changed] | [file type / feature area] |
+
+_Start with an empty table. Add a row for every version update — breaking changes, new patterns, removed patterns. This is the skill's changelog._
+
+---
+
 ## 🏗️ Architecture Overview
 
 [Optional: Include a diagram or description of how components relate]
@@ -142,6 +154,10 @@ When creating a skill, determine its category:
 
 ## 📝 Writing Guidelines
 
+### Agents Are Lean
+
+Agents (`.claude/agents/*.md`) are **routing context only** — ~75 lines max. They define the role, core rules, file structure, and a checklist. All code examples, detailed patterns, and anti-patterns live in the SKILL.md files, not in the agent. The agent declares which skills it orchestrates via the `skills:` frontmatter field for automatic lazy loading.
+
 ### Rule Clarity
 
 Each rule must be:
@@ -188,6 +204,10 @@ Use consistent terminology:
 
 ## 🔗 Skill Integration
 
+### How Skills Are Loaded
+
+Skills are loaded **on demand (lazy)**, not all upfront. Claude consults `skills/_index.md` to know what exists, then loads a specific skill only when about to write code in that domain. Native agents (`.claude/agents/*.md`) declare their skills in the frontmatter `skills:` field — Claude Code loads these automatically when the agent is invoked.
+
 ### Updating AGENTS.md
 
 After creating a skill, add it to the router:
@@ -199,6 +219,8 @@ After creating a skill, add it to the router:
 <!-- In Skills Index table -->
 | [Name] | `/skills/[category]/[name]/SKILL.md` | [Description] |
 ```
+
+Also add the skill to `skills/_index.md` and to the `skills:` field of any relevant agent in `.claude/agents/`.
 
 ### Cross-Skill References
 
@@ -347,14 +369,18 @@ it('should create a new project', async () => {
 
 ## 🚀 Skill Maintenance
 
+### Replace, Not Append
+
+When updating a skill, **replace the old pattern with the new one** — do not accumulate both. The file should stay the same length or get shorter. Old patterns that no longer apply must be removed, not commented out or kept "for reference". Every update must also add a row to the What's New table — this feeds `skills/changelog.md`.
+
 ### Version Updates
 
 When updating a skill:
 
 1. Increment version in frontmatter
-2. Document breaking changes
-3. Update compatibility note
-4. Add migration guide if needed
+2. **Add a row to the What's New table** with what changed and what it affects
+3. Replace outdated patterns — do not keep the old version alongside the new one
+4. Update compatibility note
 
 ### Deprecation Process
 

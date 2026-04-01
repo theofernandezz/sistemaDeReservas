@@ -22,47 +22,6 @@ Middleware (token refresh)
   → RLS (database-level enforcement)
 ```
 
-## Core patterns
-
-### Auth check (server.ts)
-```typescript
-export const getUser = cache(async () => {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-})
-
-export async function requireAuth() {
-  const user = await getUser()
-  if (!user) redirect('/login')
-  return user
-}
-```
-
-### Middleware
-```typescript
-export async function middleware(request: NextRequest) {
-  return await updateSession(request)
-}
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
-}
-```
-
-### RLS — user-owned data
-```sql
-CREATE POLICY "Users own their data" ON profiles FOR ALL
-  USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-```
-
-### RLS — org-based access
-```sql
-CREATE POLICY "Org members can view" ON projects FOR SELECT
-  USING (organization_id IN (
-    SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
-  ));
-```
-
 ## Key files
 
 ```
@@ -72,6 +31,15 @@ lib/supabase/server.ts  # Server client
 middleware.ts           # Root middleware
 lib/actions/auth.ts     # signIn, signUp, signOut
 ```
+
+## Critical rules
+
+- Always use `supabase.auth.getUser()` — never `getSession()` (unverified)
+- `requireAuth()` in every Server Component and Server Action that needs auth
+- RLS enabled on ALL new tables — no exceptions
+- No client-side-only auth checks
+- `headers()` and `cookies()` must be `await`-ed (Next.js 15+)
+- Error messages must not expose internal details
 
 ## Before finishing
 

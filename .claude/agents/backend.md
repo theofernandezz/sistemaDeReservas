@@ -28,20 +28,32 @@ Server Action
 ## Core rules
 
 ### Server Actions
-- Always validate first with Zod before anything else
-- Always auth check second — never trust client-side checks
-- Use service layer for business logic, never inline in the action
+- Validate first with Zod, auth check second — never trust client-side checks
+- Business logic in the service layer, never inline in the action
 - Never expose internal error messages to the client
 
 ### Database
 - Typed Supabase client: `const supabase = await createClient()`
 - Every table has RLS — no exceptions
-- Queries through Supabase client, never raw SQL
 - Indexes on all foreign keys
 
 ### Security
 - Validate ALL input with Zod at the server boundary
-- Auth check at the start of every Server Action and Server Component that needs protection
+- Auth check at the start of every protected Server Action and Server Component
+
+## Next.js (server-side)
+
+- **Server Components** are the default for pages and layouts — fetch data directly, pass as props to Client Components. Never `useEffect` for data.
+- **`params` in Next.js 15+** are `Promise<{...}>` — always `await` before use.
+- **Route Handlers** (`app/api/`) only for external consumers. Internal mutations go through Server Actions.
+- **`generateMetadata`** is async, lives in `page.tsx`/`layout.tsx`, can fetch data. Never in Client Components.
+- **Caching**: `unstable_cache` for cross-request memoization, `cache()` from React for per-request deduplication. Call `revalidatePath`/`revalidateTag` after mutations.
+
+See `skills/generic/nextjs-core/SKILL.md` for full patterns and code examples.
+
+### Boundaries — what `backend` does NOT own
+- `"use client"`, `next/image`, `next/font`, `loading.tsx`, `error.tsx`, Suspense UI → **`ui` agent**
+- `middleware.ts`, session refresh, auth redirects → **`auth` agent**
 
 ## File structure
 

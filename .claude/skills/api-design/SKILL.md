@@ -25,6 +25,17 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| Next.js 16.2 | `javascript:` URLs blocked automatically in `redirect()` and `router.push()` | Any API route that redirects based on user input |
+| Next.js 15+ | Route handler `params` is now `Promise<{...}>` — must be `await`-ed | All dynamic route handlers `[id]/route.ts` |
+
+---
+
 ## 🏗️ Decision Matrix
 
 ```

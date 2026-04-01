@@ -27,6 +27,18 @@ metadata:
 
 ---
 
+## 🆕 What's New
+
+> **Instruction for Claude:** When this skill is loaded, check this table and mention any entry relevant to what the developer is working on — before writing code.
+
+| Version | Change | Affects |
+|---------|--------|---------|
+| React 19 | `useOptimistic()` is now stable — prefer it over manual optimistic state patterns | Like, vote, toggle, reorder interactions |
+| React 19 | `use()` hook reads a Context or Promise synchronously — replaces `useContext` for many cases | Global state reads in deeply nested components |
+| Zustand 5 | `create` no longer requires wrapping in `immer` for nested updates — use `set` with draft directly | Any Zustand store with nested objects |
+
+---
+
 ## 🧭 Decision Matrix
 
 ```
