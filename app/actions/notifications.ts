@@ -9,6 +9,32 @@ import {
   ServerActionResponse,
 } from '@/types/database.types'
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as {
+    digest?: unknown
+    message?: unknown
+    description?: unknown
+  }
+
+  return (
+    maybeError.digest === 'DYNAMIC_SERVER_USAGE' ||
+    (typeof maybeError.message === 'string' && maybeError.message.includes('Dynamic server usage')) ||
+    (typeof maybeError.description === 'string' && maybeError.description.includes('Dynamic server usage'))
+  )
+}
+
+function logNotificationActionError(message: string, error: unknown): void {
+  if (isDynamicServerUsageError(error)) {
+    return
+  }
+
+  console.error(message, error)
+}
+
 // ============================================
 // Helper: Get current business ID
 // ============================================
@@ -58,7 +84,7 @@ export async function getNotifications(
 
     return { success: true, data: data as Notification[] }
   } catch (error: unknown) {
-    console.error('Error fetching notifications:', error)
+    logNotificationActionError('Error fetching notifications:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al obtener notificaciones',
@@ -147,7 +173,7 @@ export async function getNotificationsWithCount(
       },
     }
   } catch (error: unknown) {
-    console.error('Error fetching notifications with count:', error)
+    logNotificationActionError('Error fetching notifications with count:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al obtener notificaciones',

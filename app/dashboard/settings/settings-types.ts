@@ -10,6 +10,7 @@ export interface SettingsProps {
   businessId?: string
   reservationSettings?: {
     minAdvanceHours?: number
+    maxAdvanceDays?: number
     cancellationHours?: number
   }
   businessName?: string

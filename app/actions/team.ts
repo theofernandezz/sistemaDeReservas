@@ -11,6 +11,32 @@ import {
 import { getCurrentBusiness } from './auth'
 import { createTeamMemberSchema } from '@/lib/schemas'
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as {
+    digest?: unknown
+    message?: unknown
+    description?: unknown
+  }
+
+  return (
+    maybeError.digest === 'DYNAMIC_SERVER_USAGE' ||
+    (typeof maybeError.message === 'string' && maybeError.message.includes('Dynamic server usage')) ||
+    (typeof maybeError.description === 'string' && maybeError.description.includes('Dynamic server usage'))
+  )
+}
+
+function logTeamActionError(message: string, error: unknown): void {
+  if (isDynamicServerUsageError(error)) {
+    return
+  }
+
+  console.error(message, error)
+}
+
 // Default weekly schedule for new team members
 const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
   '0': { isOpen: false, startTime: '10:00', endTime: '14:00', breaks: [] },
@@ -49,14 +75,14 @@ export async function getTeamMembers(): Promise<ServerActionResponse<TeamMember[
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('Error fetching team members:', error)
+      logTeamActionError('Error fetching team members:', error)
       return { success: false, error: error.message }
     }
 
     return { success: true, data: data as TeamMember[] }
   } catch (error) {
     const err = error as Error
-    console.error('Error in getTeamMembers:', err)
+    logTeamActionError('Error in getTeamMembers:', err)
     return { success: false, error: err.message }
   }
 }
@@ -329,7 +355,7 @@ export async function getSoloAvailability(): Promise<ServerActionResponse<{
     }
   } catch (error) {
     const err = error as Error
-    console.error('Error in getSoloAvailability:', err)
+    logTeamActionError('Error in getSoloAvailability:', err)
     return { success: false, error: err.message }
   }
 }

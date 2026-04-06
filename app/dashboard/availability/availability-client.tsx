@@ -100,7 +100,8 @@ export default function AvailabilityClient({
   ): Promise<boolean> => {
     const result = await createTeamMember(input)
     if (result.success && result.data) {
-      setTeamMembers((prev) => [...prev, result.data])
+      const createdMember = result.data
+      setTeamMembers((prev) => [...prev, createdMember])
       setViewMode('team')
       return true
     }
@@ -111,8 +112,9 @@ export default function AvailabilityClient({
     async (memberId: string, updates: Partial<TeamMember>) => {
       const result = await updateTeamMember(memberId, updates)
       if (result.success && result.data) {
+        const updatedMember = result.data
         setTeamMembers((prev) =>
-          prev.map((member) => (member.id === memberId ? result.data : member))
+          prev.map((member) => (member.id === memberId ? updatedMember : member))
         )
       }
     },
@@ -122,8 +124,9 @@ export default function AvailabilityClient({
   const handleToggleMemberStatus = useCallback(async (memberId: string) => {
     const result = await toggleTeamMemberStatus(memberId)
     if (result.success && result.data) {
+      const updatedMember = result.data
       setTeamMembers((prev) =>
-        prev.map((member) => (member.id === memberId ? result.data : member))
+        prev.map((member) => (member.id === memberId ? updatedMember : member))
       )
     }
   }, [])

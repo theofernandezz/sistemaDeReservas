@@ -37,6 +37,7 @@ export interface BusinessSettings {
   bufferTime?: number;
   // Configuración de reservas
   minAdvanceHours?: number;
+  maxAdvanceDays?: number;
   cancellationHours?: number;
   rescheduleHours?: number;
   // Notificaciones
@@ -366,4 +367,3 @@ export interface NotificationFilters {
   limit?: number;
   offset?: number;
 }
-

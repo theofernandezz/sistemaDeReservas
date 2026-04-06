@@ -13,9 +13,11 @@ interface ReservationsSectionProps {
 
 export function ReservationsSection({ reservationSettings }: ReservationsSectionProps) {
   const initialMinAdvance = reservationSettings?.minAdvanceHours ?? 2
+  const initialMaxAdvanceDays = reservationSettings?.maxAdvanceDays ?? 21
   const initialCancelHours = reservationSettings?.cancellationHours ?? 24
 
   const [minAdvance, setMinAdvance] = useState(String(initialMinAdvance))
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(String(initialMaxAdvanceDays))
   const [cancelHours, setCancelHours] = useState(String(initialCancelHours))
   const [saving, setSaving] = useState(false)
   const { success: showSuccess, error: showError } = useToast()
@@ -23,15 +25,22 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
 
   useEffect(() => {
     setMinAdvance(String(initialMinAdvance))
+    setMaxAdvanceDays(String(initialMaxAdvanceDays))
     setCancelHours(String(initialCancelHours))
-  }, [initialMinAdvance, initialCancelHours])
+  }, [initialMinAdvance, initialMaxAdvanceDays, initialCancelHours])
 
   const handleSave = async () => {
     const minAdvanceValue = Number(minAdvance)
+    const maxAdvanceDaysValue = Number(maxAdvanceDays)
     const cancelHoursValue = Number(cancelHours)
 
-    if (Number.isNaN(minAdvanceValue) || Number.isNaN(cancelHoursValue)) {
+    if (Number.isNaN(minAdvanceValue) || Number.isNaN(maxAdvanceDaysValue) || Number.isNaN(cancelHoursValue)) {
       showError('Error', 'Ingresá valores válidos')
+      return
+    }
+
+    if (maxAdvanceDaysValue < 1) {
+      showError('Error', 'La anticipación máxima debe ser al menos 1 día')
       return
     }
 
@@ -39,6 +48,7 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
     try {
       const result = await updateBusinessSettings({
         minAdvanceHours: Math.max(0, minAdvanceValue),
+        maxAdvanceDays: Math.max(1, maxAdvanceDaysValue),
         cancellationHours: Math.max(0, cancelHoursValue),
       })
       if (result.success) {
@@ -73,6 +83,26 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
             />
           </div>
           <span className="text-sm font-medium text-muted-foreground/60 tracking-tight">horas</span>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Anticipación máxima</label>
+        <p className="text-sm text-muted-foreground/80 mb-3">
+          Hasta cuántos días hacia adelante se pueden reservar turnos
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+            <Input
+              type="number"
+              value={maxAdvanceDays}
+              onChange={e => setMaxAdvanceDays(e.target.value)}
+              className="pl-10 w-28 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
+              min="1"
+            />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground/60 tracking-tight">días</span>
         </div>
       </div>
 

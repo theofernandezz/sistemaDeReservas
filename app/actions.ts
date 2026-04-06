@@ -40,6 +40,32 @@ import {
   doTimeRangesOverlap
 } from '@/lib/utils/timezone'
 
+function isDynamicServerUsageError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as {
+    digest?: unknown
+    message?: unknown
+    description?: unknown
+  }
+
+  return (
+    maybeError.digest === 'DYNAMIC_SERVER_USAGE' ||
+    (typeof maybeError.message === 'string' && maybeError.message.includes('Dynamic server usage')) ||
+    (typeof maybeError.description === 'string' && maybeError.description.includes('Dynamic server usage'))
+  )
+}
+
+function logServerActionError(message: string, error: unknown): void {
+  if (isDynamicServerUsageError(error)) {
+    return
+  }
+
+  console.error(message, error)
+}
+
 // Helper to get current business ID for data isolation
 async function requireBusinessId(): Promise<string> {
   const result = await getCurrentBusiness()
@@ -234,7 +260,7 @@ export async function getAllServices(): Promise<ServerActionResponse<Service[]>>
 
     return { success: true, data: data || [] }
   } catch (error: unknown) {
-    console.error('Error fetching all services:', error)
+    logServerActionError('Error fetching all services:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching all services' }
   }
 }
@@ -517,7 +543,7 @@ export async function getAppointments(filters?: AppointmentFilters): Promise<Ser
 
     return { success: true, data: data || [] }
   } catch (error: unknown) {
-    console.error('Error fetching appointments:', error)
+    logServerActionError('Error fetching appointments:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointments' }
   }
 }
@@ -807,6 +833,7 @@ export async function getAvailableSlots(
 ): Promise<ServerActionResponse<TimeSlot[]>> {
   try {
     const supabase = await createClient()
+    const TIMEZONE = 'America/Argentina/Buenos_Aires'
 
     const [dateYear, dateMonth, dateDay] = date.split('-').map(Number)
     const requestedDateLocal = new Date(dateYear, dateMonth - 1, dateDay)
@@ -819,6 +846,31 @@ export async function getAvailableSlots(
       .single()
 
     if (serviceError) throw serviceError
+
+    const { data: businessData, error: businessError } = await supabase
+      .from('businesses')
+      .select('settings')
+      .eq('id', service.business_id)
+      .single()
+
+    if (businessError) throw businessError
+
+    const businessSettings = (businessData?.settings as {
+      businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string; breaks?: { name: string; start: string; end: string }[] }[]
+      slotInterval?: number
+      bufferTime?: number
+      maxAdvanceDays?: number
+    } | undefined) || {}
+
+    const maxAdvanceDays = Math.max(1, Number(businessSettings.maxAdvanceDays ?? 21))
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE }) // YYYY-MM-DD
+    const todayLocal = new Date(`${todayStr}T00:00:00`)
+    const maxDateLocal = new Date(todayLocal)
+    maxDateLocal.setDate(maxDateLocal.getDate() + maxAdvanceDays)
+
+    if (requestedDateLocal < todayLocal || requestedDateLocal > maxDateLocal) {
+      return { success: true, data: [] }
+    }
 
     // Get appointments for that day - use UTC boundaries for database query
     const dayStartUTC = startOfDayUTC(date)
@@ -1020,17 +1072,7 @@ export async function getAvailableSlots(
     // This is the source of truth set by the dashboard availability editor
     if (!businessHoursJson) {
       try {
-        const { data: businessData } = await supabase
-          .from('businesses')
-          .select('settings')
-          .eq('id', service.business_id)
-          .single()
-
-        const settings = businessData?.settings as {
-          businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string; breaks?: { name: string; start: string; end: string }[] }[]
-          slotInterval?: number
-          bufferTime?: number
-        } | undefined
+        const settings = businessSettings
 
         if (settings?.slotInterval) {
           slotInterval = settings.slotInterval
@@ -1068,15 +1110,14 @@ export async function getAvailableSlots(
     // Appointments are stored as UTC in the DB but were entered in local (ART) time by users.
     // On a UTC server, createSlotTimeUTC("2026-03-12", "10:30") produces 10:30Z, but the
     // appointment was saved as 13:30Z (ART=UTC-3). So we compare in local time minutes instead.
-    const TZ = 'America/Argentina/Buenos_Aires'
     const aptMinuteRanges = (appointments || []).map(apt => {
       const startLocal = new Date(apt.start_time)
       const endLocal   = new Date(apt.end_time)
       // Extract local HH:mm for this timezone
-      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
-      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
-      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
-      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
+      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
+      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
+      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
       return {
         startMin: startH * 60 + parseInt(startM),
         endMin:   endH   * 60 + parseInt(endM),
@@ -1086,10 +1127,10 @@ export async function getAvailableSlots(
     const blockedMinuteRanges = (blocked || []).map(block => {
       const startLocal = new Date(block.start_time)
       const endLocal   = new Date(block.end_time)
-      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
-      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
-      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
-      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }).padStart(2, '0')
+      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
+      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
+      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
+      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
       return {
         startMin: startH * 60 + parseInt(startM),
         endMin:   endH   * 60 + parseInt(endM),
@@ -1098,13 +1139,12 @@ export async function getAvailableSlots(
 
     const nowLocalMin = (() => {
       const now = new Date()
-      const h = parseInt(now.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TZ }))
-      const m = parseInt(now.toLocaleString('en-US', { minute: '2-digit', timeZone: TZ }))
+      const h = parseInt(now.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
+      const m = parseInt(now.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }))
       return h * 60 + m
     })()
 
     // Is today? (compare date in local timezone)
-    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ }) // YYYY-MM-DD
     const isToday = date === todayStr
 
     // Generate time slots based on business hours and interval
@@ -1188,7 +1228,7 @@ export async function getBlockedSlots(
 
     return { success: true, data: data || [] }
   } catch (error: unknown) {
-    console.error('Error fetching blocked slots:', error)
+    logServerActionError('Error fetching blocked slots:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching blocked slots' }
   }
 }
@@ -1333,7 +1373,7 @@ export async function getAllServiceAddons(): Promise<ServerActionResponse<Servic
 
     return { success: true, data: data || [] }
   } catch (error: unknown) {
-    console.error('Error fetching all addons:', error)
+    logServerActionError('Error fetching all addons:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching all addons' }
   }
 }
@@ -1727,7 +1767,7 @@ export async function getMercadoPagoStatus(): Promise<ServerActionResponse<Merca
       }
     }
   } catch (error: unknown) {
-    console.error('Error getting MP status:', error)
+    logServerActionError('Error getting MP status:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error getting MP status' }
   }
 }
@@ -1811,7 +1851,7 @@ export async function getPendingAppointments(): Promise<ServerActionResponse<App
 
     return { success: true, data: data || [] }
   } catch (error: unknown) {
-    console.error('Error fetching pending appointments:', error)
+    logServerActionError('Error fetching pending appointments:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching pending appointments' }
   }
 }

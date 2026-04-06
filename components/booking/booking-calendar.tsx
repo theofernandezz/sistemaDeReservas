@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { format, addMonths, subMonths } from 'date-fns'
+import { format, addMonths, subMonths, addDays, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ArrowLeft, Clock, Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
@@ -18,6 +18,7 @@ interface BookingCalendarProps {
   initialDate: string
   initialSlots: TimeSlot[]
   memberId?: string // "any" or specific team member ID
+  maxAdvanceDays?: number
 }
 
 // Extracted outside to avoid remounting (which caused animations to replay on every select)
@@ -56,6 +57,7 @@ export default function BookingCalendar({
   initialDate,
   initialSlots,
   memberId,
+  maxAdvanceDays = 21,
 }: BookingCalendarProps) {
   const router = useRouter()
   const params = useParams()
@@ -70,6 +72,8 @@ export default function BookingCalendar({
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [loading, setLoading] = useState(false)
+  const minBookableDate = startOfDay(new Date())
+  const maxBookableDate = addDays(minBookableDate, Math.max(1, maxAdvanceDays))
 
   useEffect(() => {
     if (!initialDate) return
@@ -85,6 +89,9 @@ export default function BookingCalendar({
 
   const handleDateSelect = async (newDate: Date | undefined) => {
     if (!newDate) return
+    if (newDate < minBookableDate || newDate > maxBookableDate) {
+      return
+    }
     setDate(newDate)
     setSelectedTime(null)
     setLoading(true)
@@ -192,7 +199,7 @@ export default function BookingCalendar({
             onSelect={handleDateSelect}
             month={month}
             onMonthChange={setMonth}
-            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+            disabled={(d) => d < minBookableDate || d > maxBookableDate}
             className="rounded-xl border bg-card p-3 shadow-sm"
             hideNavigation
           />
@@ -345,7 +352,7 @@ export default function BookingCalendar({
                     onSelect={handleDateSelect}
                     month={month}
                     onMonthChange={setMonth}
-                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                    disabled={(d) => d < minBookableDate || d > maxBookableDate}
                     className={cn(
                       "rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm w-full p-4",
                       "transition-all duration-200",

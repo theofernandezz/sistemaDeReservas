@@ -38,6 +38,7 @@ export default async function SettingsServerPage() {
   const reservationSettings = business?.settings
     ? {
         minAdvanceHours: business.settings.minAdvanceHours,
+        maxAdvanceDays: business.settings.maxAdvanceDays,
         cancellationHours: business.settings.cancellationHours
       }
     : undefined
