@@ -1,9 +1,37 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Términos y Condiciones',
-  description:
-    'Leé los términos que regulan el uso de Buki, incluyendo responsabilidades, pagos y uso aceptable.',
+export function generateMetadata(): Metadata {
+  const title = 'Términos y Condiciones'
+  const description =
+    'Leé los términos que regulan el uso de Devora Buki, incluyendo responsabilidades, pagos y uso aceptable.'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: '/terms',
+    },
+    openGraph: {
+      title,
+      description,
+      url: '/terms',
+      type: 'article',
+      images: [
+        {
+          url: '/og/home.png',
+          width: 1200,
+          height: 630,
+          alt: 'Términos y condiciones de Devora Buki',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og/home.png'],
+    },
+  }
 }
 
 export default function TermsPage() {

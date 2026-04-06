@@ -1,9 +1,37 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Política de Privacidad',
-  description:
-    'Conocé cómo Buki recopila, usa y protege tus datos personales y de reservas.',
+export function generateMetadata(): Metadata {
+  const title = 'Política de Privacidad'
+  const description =
+    'Conocé cómo Devora Buki recopila, usa y protege tus datos personales y de reservas.'
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: '/privacy',
+    },
+    openGraph: {
+      title,
+      description,
+      url: '/privacy',
+      type: 'article',
+      images: [
+        {
+          url: '/og/home.png',
+          width: 1200,
+          height: 630,
+          alt: 'Política de privacidad de Devora Buki',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og/home.png'],
+    },
+  }
 }
 
 export default function PrivacyPage() {
