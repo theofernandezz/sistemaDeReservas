@@ -1,0 +1,8 @@
+export { AccountSection } from './account-section'
+export { AppearanceSection } from './appearance-section'
+export { ContactSection } from './contact-section'
+export { IntegrationsSection } from './integrations-section'
+export { NotificationsSection } from './notifications-section'
+export { PaymentsSection } from './payments-section'
+export { ProfileSection } from './profile-section'
+export { ReservationsSection } from './reservations-section'
