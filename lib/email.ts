@@ -249,12 +249,14 @@ function ghostButton(text: string, url: string): string {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const AR_TZ = 'America/Argentina/Buenos_Aires'
+
 function formatDate(value: string, locale: string = 'es-AR'): string {
-  return new Date(value).toLocaleDateString(locale)
+  return new Date(value).toLocaleDateString(locale, { timeZone: AR_TZ })
 }
 
 function formatTime(value: string, locale: string = 'es-AR'): string {
-  return new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+  return new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: AR_TZ })
 }
 
 function generateGoogleCalendarLink(data: AppointmentEmailData): string {
@@ -378,8 +380,8 @@ export async function sendAppointmentRescheduleEmails(
     const oldDate = new Date(data.oldStartTime)
     const newDate = new Date(data.newStartTime)
 
-    const fmtDate = (d: Date) => d.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    const fmtTime = (d: Date) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const fmtDate = (d: Date) => d.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: AR_TZ })
+    const fmtTime = (d: Date) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: AR_TZ })
 
     // Admin email
     const adminRows =

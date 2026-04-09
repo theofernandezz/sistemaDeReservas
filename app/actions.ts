@@ -668,8 +668,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
           clientEmail: validatedInput.client_email || undefined,
           serviceName: service.name,
           servicePrice: service.price,
-          date: startDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-          time: startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          date: startDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
+          time: startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }),
           startDateTime: startDate,
           endDateTime: endDate
         }

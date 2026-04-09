@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/utils/supabase/server'
 import { sendAppointmentReminder } from '@/lib/email'
-import { format, addHours } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { toUTC, fromUTC } from '@/lib/utils/timezone'
+import { addHours } from 'date-fns'
+import { toUTC } from '@/lib/utils/timezone'
+
+const AR_TZ = 'America/Argentina/Buenos_Aires'
 
 // Secret para autenticar el cron job
 const CRON_SECRET = process.env.CRON_SECRET
@@ -97,8 +98,8 @@ export async function GET(request: NextRequest) {
         clientPhone: apt.client_phone || undefined,
         serviceName: service.name,
         servicePrice: service.price,
-        date: format(startTime, "EEEE d 'de' MMMM", { locale: es }),
-        time: format(startTime, 'HH:mm'),
+        date: startTime.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: AR_TZ }),
+        time: startTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: AR_TZ }),
         startDateTime: startTime,
         endDateTime: endTime
       }, apt.business_id)
