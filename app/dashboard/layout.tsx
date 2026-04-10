@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getCurrentBusiness, isSuperAdmin, getAllBusinesses } from '@/app/actions/auth'
+import { getCachedCurrentBusiness, getCachedIsSuperAdmin, getCachedAllBusinesses } from '@/app/actions/cached'
 import { BusinessProvider } from '@/lib/business-context'
 import { DashboardNavbar } from '@/components/dashboard/navbar'
 import { ConfirmProvider } from '@/components/ui/confirm-dialog'
 
 export const metadata: Metadata = {
+  title: 'Dashboard',
+  description: 'Gestioná tus reservas, servicios y disponibilidad desde tu panel de control.',
   robots: {
     index: false,
     follow: false,
@@ -17,7 +19,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [result, isAdmin] = await Promise.all([getCurrentBusiness(), isSuperAdmin()])
+  const [result, isAdmin] = await Promise.all([getCachedCurrentBusiness(), getCachedIsSuperAdmin()])
 
   if (!result.success || !result.data) {
     // Si es super admin sin negocio, redirigir al panel de admin
@@ -33,7 +35,7 @@ export default async function DashboardLayout({
   // Obtener todos los negocios solo si es super admin
   let allBusinesses = null
   if (isAdmin) {
-    const businessesResult = await getAllBusinesses()
+    const businessesResult = await getCachedAllBusinesses()
     if (businessesResult.success) {
       allBusinesses = businessesResult.data
     }

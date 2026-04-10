@@ -1,5 +1,5 @@
 import { getAppointments } from '@/app/actions'
-import { getCurrentBusiness } from '@/app/actions/auth'
+import { getCachedCurrentBusiness } from '@/app/actions/cached'
 import Link from 'next/link'
 import { CalendarCheck, Clock, Ban, ExternalLink, ChevronRight, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -44,7 +44,7 @@ export default async function DashboardHomePage() {
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
 
   const [businessResult, appointmentsResult] = await Promise.all([
-    getCurrentBusiness(),
+    getCachedCurrentBusiness(),
     getAppointments({
       startDate: startOfDay.toISOString(),
       endDate: endOfDay.toISOString(),
@@ -209,7 +209,7 @@ export default async function DashboardHomePage() {
           
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
             {/* Stat 1 */}
-            <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5">
+            <div className="bg-card border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                   <CalendarCheck className="h-4 w-4 text-primary" />
@@ -225,7 +225,7 @@ export default async function DashboardHomePage() {
             </div>
 
             {/* Stat 2 */}
-            <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5">
+            <div className="bg-card border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                   <Clock className="h-4 w-4 text-amber-500" />
@@ -241,7 +241,7 @@ export default async function DashboardHomePage() {
             </div>
 
             {/* Stat 3 */}
-            <div className="col-span-2 lg:col-span-1 bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5">
+            <div className="col-span-2 lg:col-span-1 bg-card border border-border/50 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                   <CheckCircle className="h-4 w-4 text-emerald-500" />

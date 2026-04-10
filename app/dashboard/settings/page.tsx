@@ -1,5 +1,5 @@
 import { getGoogleCalendarSettings, getAdminNotificationEmail, getMercadoPagoStatus } from '@/app/actions'
-import { getCurrentBusiness } from '@/app/actions/auth'
+import { getCachedCurrentBusiness } from '@/app/actions/cached'
 import SettingsPage from './settings-client'
 
 export default async function SettingsServerPage() {
@@ -7,7 +7,7 @@ export default async function SettingsServerPage() {
     getGoogleCalendarSettings(),
     getAdminNotificationEmail(),
     getMercadoPagoStatus(),
-    getCurrentBusiness()
+    getCachedCurrentBusiness()
   ])
 
   const calendarResult =

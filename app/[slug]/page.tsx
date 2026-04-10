@@ -7,7 +7,7 @@ import { ServiceCard } from '@/components/booking/service-card'
 import { BusinessHero } from '@/components/booking/business-hero'
 import { cn } from '@/lib/utils'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60 // Revalida cada 60 segundos
 
 interface PageProps {
   params: Promise<{ slug: string }>

@@ -64,7 +64,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
   return (
     <>
       {/* Desktop & Mobile Navbar */}
-      <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/60 backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-md">
         <div className="flex h-16 items-center justify-between px-4 md:px-6">
           {/* Left: Logo/Business Name */}
           <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
           </div>
 
           {/* Center: Navigation (Desktop - Floating Pill Style) */}
-          <nav className="hidden md:flex items-center gap-1 bg-secondary/30 backdrop-blur-md rounded-full p-1 border border-white/5 shadow-sm">
+          <nav className="hidden md:flex items-center gap-1 bg-secondary/40 rounded-full p-1 border border-white/5 shadow-sm">
             {navItems.map(item => {
               const isActive = pathname === item.href ||
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -138,7 +138,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
 
               {/* Dropdown Menu (Premium Glassmorphism Card) */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-3 w-64 rounded-[1.5rem] border border-white/10 bg-card/80 backdrop-blur-3xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] p-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 z-50 overflow-hidden origin-top-right">
+                <div className="absolute right-0 top-full mt-3 w-64 rounded-[1.5rem] border border-white/10 bg-card shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] p-2 animate-in fade-in zoom-in-95 slide-in-from-top-2 z-50 overflow-hidden origin-top-right">
                   {/* Glowing header section */}
                   <div className="relative px-4 py-5 rounded-2xl bg-secondary/30 mb-2 overflow-hidden flex flex-col items-center text-center">
                     {/* Background glow effect */}
@@ -204,6 +204,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
               size="icon"
               className="md:hidden"
               onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Abrir menú"
             >
               <Menu size={20} />
             </Button>
@@ -221,7 +222,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
           />
 
           {/* Menu Panel (Glassmorphism Offcanvas) */}
-          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-card/90 backdrop-blur-2xl border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-card border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-white/10 bg-background/50">
               <div className="flex items-center gap-3">
@@ -236,7 +237,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
                   <p className="text-xs text-muted-foreground/80 font-medium">Dashboard</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="rounded-full hover:bg-secondary/50">
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="rounded-full hover:bg-secondary/50" aria-label="Cerrar menú">
                 <X size={20} />
               </Button>
             </div>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
-import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { getAppUrl } from "@/lib/config";
 import "./globals.css";
 
@@ -90,9 +89,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
       >
         <ToastProvider>
-          <SmoothScrollProvider>
-            {children}
-          </SmoothScrollProvider>
+          {children}
         </ToastProvider>
       </body>
     </html>

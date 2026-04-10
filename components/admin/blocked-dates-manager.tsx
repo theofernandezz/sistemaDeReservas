@@ -174,6 +174,7 @@ export default function BlockedDatesManager() {
                       className="h-9 w-9 text-destructive hover:bg-destructive/10"
                       disabled={deletingId === slot.id || isPending}
                       onClick={() => handleRemoveDate(slot.id)}
+                      aria-label="Eliminar horario bloqueado"
                     >
                       {deletingId === slot.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MarketingHeader } from '@/components/marketing/marketing-header'
+import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider'
 import type { Metadata } from 'next'
 import logo from '@/public/logo/icon.png'
 
@@ -36,6 +37,7 @@ export default function MarketingLayout({
   children: React.ReactNode
 }) {
   return (
+    <SmoothScrollProvider>
     <div className="min-h-dvh flex flex-col bg-background font-sans selection:bg-primary/10">
       {/* Navigation */}
       <MarketingHeader />
@@ -88,5 +90,6 @@ export default function MarketingLayout({
         </div>
       </footer>
     </div>
+    </SmoothScrollProvider>
   )
 }

@@ -32,6 +32,7 @@ function SidebarContent({ pathname, onClose }: { pathname: string, onClose?: () 
             size="icon"
             className="md:hidden text-muted-foreground"
             onClick={onClose}
+            aria-label="Cerrar menú"
           >
             <X size={20} />
           </Button>
@@ -89,7 +90,7 @@ export default function AdminLayoutClient({
           </div>
           <span className="font-serif font-bold tracking-tight text-lg">Siv Nails</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
+        <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} aria-label="Abrir menú">
           <Menu className="h-5 w-5" />
         </Button>
       </div>

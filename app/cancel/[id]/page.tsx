@@ -10,6 +10,11 @@ import { Badge } from '@/components/ui/badge'
 
 export const metadata: Metadata = {
   title: 'Gestionar Turno',
+  description: 'Cancelá o reprogramá tu turno de forma rápida y sencilla.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 function PageWrapper({ children, businessSlug, businessName }: {
