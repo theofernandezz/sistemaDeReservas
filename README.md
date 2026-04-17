@@ -2,8 +2,9 @@
 
 Aplicación web multi-tenant diseñada para profesionales y pequeños negocios que necesitan gestionar turnos de forma automatizada, reemplazando flujos manuales como Excel o WhatsApp.
 
-👉 **Demo en vivo:** *(agregar link)*
-👉 **Video demo (2–3 min):** *(agregar link)*
+👉 **Demo en vivo:[** *(agregar link)*](https://buki.devora.lat/)
+Usuario demo: maelcum69@gmail.com
+Password demo: PyH*iS9pu-*q3Ha
 
 ---
 
@@ -31,7 +32,6 @@ Este sistema permite:
 * Implementado en entorno real (no solo demo)
 * Validación práctica del flujo de reservas
 
-> *(Opcional: agregar métricas si podés — cantidad de turnos, usuarios, etc.)*
 
 ---
 
@@ -148,7 +148,7 @@ types/                 # Tipos TypeScript
 
 ### Prerrequisitos
 
-* Node.js 18+
+* Node.js 16+
 * pnpm o npm
 * Cuenta en Supabase
 
