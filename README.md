@@ -2,7 +2,7 @@
 
 Aplicación web multi-tenant diseñada para profesionales y pequeños negocios que necesitan gestionar turnos de forma automatizada, reemplazando flujos manuales como Excel o WhatsApp.
 
-👉 **Demo en vivo:[** *(agregar link)*](https://buki.devora.lat/)
+👉 **Demo en vivo:[https://buki.devora.lat/]
 Usuario demo: maelcum69@gmail.com
 Password demo: PyH*iS9pu-*q3Ha
 
