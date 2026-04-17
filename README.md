@@ -1,187 +1,209 @@
-# 📅 Sistema de Reservas
+# 📅 Turnero SaaS para Profesionales
 
-Sistema de gestión de citas y reservas **multi-tenant SaaS**, diseñado para profesionales y negocios que necesitan automatizar su agenda de manera inteligente.
+Aplicación web multi-tenant diseñada para profesionales y pequeños negocios que necesitan gestionar turnos de forma automatizada, reemplazando flujos manuales como Excel o WhatsApp.
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?logo=supabase)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
-![TailwindCSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss)
+👉 **Demo en vivo:** *(agregar link)*
+👉 **Video demo (2–3 min):** *(agregar link)*
 
-## ✨ Características Principales
+---
+
+## 🚀 Problema que resuelve
+
+Muchos profesionales gestionan turnos de forma manual, lo que genera:
+
+* Doble reserva de horarios
+* Pérdida de tiempo en coordinación
+* Mala experiencia para el cliente
+* Falta de control sobre disponibilidad
+
+Este sistema permite:
+
+* Reservas online en tiempo real
+* Gestión automática de disponibilidad
+* Pagos anticipados
+* Centralización de clientes y servicios
+
+---
+
+## 📊 Uso real
+
+* 1 negocio activo utilizando el sistema
+* Implementado en entorno real (no solo demo)
+* Validación práctica del flujo de reservas
+
+> *(Opcional: agregar métricas si podés — cantidad de turnos, usuarios, etc.)*
+
+---
+
+## ✨ Funcionalidades principales
 
 ### 🏢 Multi-Tenant
-- **Aislamiento de datos** por negocio/empresa
-- Cada negocio tiene su propia página pública de reservas (`/[slug]`)
-- Dashboard personalizado para cada usuario
 
-### 📆 Gestión de Citas
-- Calendario interactivo con vistas: día, semana, mes
-- Slots de disponibilidad automáticos
-- Bloqueo de horarios (almuerzo, vacaciones, etc.)
-- Confirmación y cancelación de citas
+* Aislamiento de datos por negocio
+* Página pública por usuario (`/[slug]`)
+* Panel independiente por cliente
 
-### 💼 Servicios y Add-ons
-- CRUD completo de servicios
-- Precios y duración personalizables
-- Add-ons opcionales por servicio
-- Activación/desactivación de servicios
+### 📆 Gestión de Turnos
 
-### 👥 Gestión de Clientes
-- Registro de clientes con información de contacto
-- Historial de citas por cliente
-- Notificaciones por email (Resend)
+* Calendario con vistas (día / semana / mes)
+* Generación automática de slots disponibles
+* Bloqueo de horarios (vacaciones, almuerzos, etc.)
+* Confirmación y cancelación de citas
 
-### 💳 Pagos Integrados
-- Integración con **MercadoPago**
-- Pagos anticipados o al momento (seña previa o pago completo)
-- Historial de transacciones
+### 💼 Servicios
+
+* CRUD completo
+* Configuración de duración y precio
+* Add-ons opcionales
+* Activación/desactivación dinámica
+
+### 👥 Clientes
+
+* Registro de clientes
+* Historial de citas
+* Notificaciones por email
+
+### 💳 Pagos
+
+* Integración con MercadoPago
+* Pagos anticipados o completos
+* Registro de transacciones
 
 ### 🔐 Autenticación
-- Login/Signup con email
-- Autenticación segura con **Supabase Auth**
-- Middleware de protección de rutas
+
+* Login / Signup con email
+* Protección de rutas
+* Gestión de sesión segura
+
+---
+
+## 🧠 Decisiones Técnicas
+
+* **Arquitectura multi-tenant:** separación lógica por `slug` para soportar múltiples negocios en una sola instancia
+* **Supabase (PostgreSQL):** elegido para acelerar desarrollo sin sacrificar relaciones complejas entre entidades
+* **Server Actions (Next.js):** simplificación del backend evitando una capa REST innecesaria
+* **TypeScript:** tipado fuerte para reducir errores en runtime
+* **FullCalendar:** manejo eficiente de visualización de turnos
+
+---
 
 ## 🛠️ Stack Tecnológico
 
-| Categoría | Tecnología |
-|-----------|------------|
-| **Framework** | Next.js 16 (App Router) |
-| **Base de Datos** | Supabase (PostgreSQL) |
-| **Autenticación** | Supabase Auth |
-| **Estilos** | Tailwind CSS 4 |
-| **UI Components** | Radix UI + shadcn/ui |
-| **Calendario** | FullCalendar |
-| **Animaciones** | Framer Motion |
-| **Emails** | Resend |
-| **Pagos** | MercadoPago |
-| **Lenguaje** | TypeScript |
+* **Frontend / Backend:** Next.js (App Router)
+* **Lenguaje:** TypeScript
+* **Base de Datos:** PostgreSQL (Supabase)
+* **Autenticación:** Supabase Auth
+* **UI:** Tailwind CSS + shadcn/ui
+* **Calendario:** FullCalendar
+* **Pagos:** MercadoPago
+* **Emails:** Resend
+
+---
+
+## 🧩 Arquitectura (Resumen)
+
+* Aplicación fullstack con Next.js
+
+* Server Actions para lógica de negocio
+
+* Base de datos relacional con entidades principales:
+
+  * negocios
+  * servicios
+  * clientes
+  * turnos
+
+* Separación de dominios:
+
+  * panel administrativo
+  * flujo público de reservas
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
-sistemadereservas/
-├── app/
-│   ├── (marketing)/      # Landing page, login, signup, pricing
-│   ├── [slug]/           # Páginas públicas de reservas por negocio
-│   ├── admin/            # Panel de administración
-│   ├── api/              # API routes (webhooks, etc.)
-│   ├── booking/          # Flujo de reservas
-│   ├── dashboard/        # Dashboard del usuario
-│   ├── onboarding/       # Configuración inicial del negocio
-│   └── actions.ts        # Server Actions centralizados
-├── components/
-│   ├── admin/            # Componentes del panel admin
-│   ├── availability/     # Gestión de disponibilidad
-│   ├── booking/          # Componentes de reserva
-│   ├── dashboard/        # Componentes del dashboard
-│   ├── marketing/        # Landing page components
-│   └── ui/               # Componentes base (shadcn/ui)
-├── lib/                  # Utilidades y configuración
-├── supabase/
-│   └── migrations/       # Migraciones de base de datos
-├── types/                # TypeScript types
-└── docs/                 # Documentación adicional
+app/
+ ├── (marketing)/      # Landing, auth
+ ├── [slug]/           # Página pública de reservas
+ ├── dashboard/        # Panel del usuario
+ ├── admin/            # Gestión interna
+ ├── api/              # Webhooks / integraciones
+ └── actions.ts        # Server Actions
+
+components/
+ ├── booking/
+ ├── dashboard/
+ ├── admin/
+ └── ui/
+
+lib/                   # Configuración y helpers
+supabase/              # Migraciones
+types/                 # Tipos TypeScript
 ```
 
-## 🚀 Instalación
+---
+
+## ⚙️ Instalación
 
 ### Prerrequisitos
 
-- Node.js 18+
-- pnpm (recomendado) o npm
-- Cuenta de Supabase
+* Node.js 18+
+* pnpm o npm
+* Cuenta en Supabase
 
-### 1. Clonar el repositorio
+### Setup
 
 ```bash
 git clone https://github.com/tu-usuario/sistemadereservas.git
 cd sistemadereservas
-```
-
-### 2. Instalar dependencias
-
-```bash
 pnpm install
 ```
 
-### 3. Configurar variables de entorno
+### Variables de entorno
 
-Crea un archivo `.env.local` en la raíz del proyecto:
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
-
-# MercadoPago (opcional)
-MP_ACCESS_TOKEN=tu-access-token
-
-# Resend (opcional)
-RESEND_API_KEY=tu-api-key
+MP_ACCESS_TOKEN=
+RESEND_API_KEY=
 ```
 
-> 📘 Ver [docs/ENV_SETUP.md](./docs/ENV_SETUP.md) para guía detallada de credenciales.
-
-### 4. Ejecutar en desarrollo
+### Ejecutar
 
 ```bash
 pnpm dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+---
 
-## 📖 Documentación
+## 🔄 Flujo de Usuario
 
-- [Guía de Integración Supabase](./docs/INTEGRATION_GUIDE.md) - Cómo usar las Server Actions
-- [Configuración de Variables](./docs/ENV_SETUP.md) - Setup de credenciales
-
-## 🔧 Scripts Disponibles
-
-```bash
-pnpm dev      # Servidor de desarrollo
-pnpm build    # Build de producción
-pnpm start    # Servidor de producción
-pnpm lint     # Ejecutar ESLint
-```
-
-## 📚 Server Actions
-
-El proyecto utiliza **Server Actions** para todas las operaciones de base de datos. Ejemplos de uso:
-
-```typescript
-import { getServices, createAppointment, getAvailableSlots } from '@/app/actions'
-
-// Obtener servicios
-const services = await getServices()
-
-// Ver disponibilidad
-const slots = await getAvailableSlots(serviceId, '2024-12-20')
-
-// Crear una cita
-const appointment = await createAppointment({
-  start_time: '2024-12-20T10:00:00Z',
-  client_name: 'Juan Pérez',
-  service_id: serviceId
-})
-```
-
-## 🌐 Flujo de Usuario
-
-1. **Registro** → El profesional crea una cuenta
-2. **Onboarding** → Configura su negocio (nombre, slug, horarios)
-3. **Servicios** → Agrega sus servicios y precios
-4. **Compartir** → Su página pública: `dominio.com/[slug]`
-5. **Clientes** → Los clientes reservan desde la página pública
-6. **Dashboard** → El profesional gestiona sus citas
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor, abre un issue primero para discutir los cambios propuestos.
-
-## 📄 Licencia
-
-Este proyecto es privado y de uso exclusivo.
+1. Registro del profesional
+2. Configuración del negocio (slug, horarios)
+3. Creación de servicios
+4. Publicación de página de reservas
+5. Cliente agenda turno
+6. Gestión desde dashboard
 
 ---
 
-Desarrollado con ❤️ para facilitar la gestión de reservas.
+## 📌 Posibles mejoras (roadmap)
+
+* Notificaciones push
+* Integración con Google Calendar
+* Reportes y métricas de negocio
+* Multi-usuario por negocio
+
+---
+
+## 🤝 Conclusión
+
+Este proyecto no es solo un ejercicio técnico, sino una solución funcional validada en un caso real, enfocada en resolver un problema común de gestión de turnos en pequeños negocios.
+
+---
+
+## 📄 Licencia
+
+Proyecto privado.
