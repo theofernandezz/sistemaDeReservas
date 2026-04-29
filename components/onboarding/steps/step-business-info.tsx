@@ -40,7 +40,10 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
   const [dragActive, setDragActive] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
-  const [baseUrl] = useState(() => typeof window !== 'undefined' ? window.location.host : 'reserva.com')
+  const [baseUrl] = useState(() => {
+    if (typeof window === 'undefined') return 'reserva.com'
+    return process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || window.location.host
+  })
 
   // Debounced slug check
   const checkSlug = useDebouncedCallback(async (slug: string) => {
@@ -140,86 +143,94 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
 
   return (
     <div className="space-y-6">
-      {/* Business Name */}
-      <div className="space-y-2">
-        <Label htmlFor="businessName">Nombre del negocio *</Label>
-        <Input
-          id="businessName"
-          placeholder="Ej: Estudio Creativo, Barbería Don Juan..."
-          value={data.name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          className="h-12"
-        />
-      </div>
-
-      {/* Slug */}
-      <div className="space-y-2">
-        <Label htmlFor="slug">Link de tu página *</Label>
-        <div className="flex items-center">
-          <span className="bg-muted border border-r-0 rounded-l-md px-3 h-12 flex items-center text-muted-foreground text-sm">
-            {baseUrl}/
-          </span>
-          <div className="relative flex-1">
-            <Input
-              id="slug"
-              placeholder="mi-negocio"
-              value={data.slug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              className="h-12 rounded-l-none pr-10"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              {slugStatus === 'checking' && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
-              {slugStatus === 'available' && <Check size={16} className="text-green-500" />}
-              {slugStatus === 'taken' && <AlertCircle size={16} className="text-destructive" />}
-            </div>
+      {/* Basic Info Card */}
+      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Store size={20} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Datos básicos</h3>
+            <p className="text-sm text-muted-foreground">Información principal de tu negocio</p>
           </div>
         </div>
-        {slugStatus === 'taken' && (
-          <p className="text-sm text-destructive">Esta URL ya está en uso. Prueba con otra.</p>
-        )}
-        {slugStatus === 'available' && data.slug.length >= 2 && (
-          <p className="text-sm text-green-600">¡URL disponible!</p>
-        )}
+
+        {/* Business Name */}
+        <div className="space-y-2">
+          <Label htmlFor="businessName">Nombre del negocio *</Label>
+          <Input
+            id="businessName"
+            placeholder="Ej: Estudio Creativo, Barbería Don Juan..."
+            value={data.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            className="h-11"
+          />
+        </div>
+
+        {/* Slug */}
+        <div className="space-y-2">
+          <Label htmlFor="slug">Link de tu página *</Label>
+          <div className="flex items-center">
+            <span className="bg-muted border border-r-0 rounded-l-md px-3 h-11 flex items-center text-muted-foreground text-sm">
+              {baseUrl}/
+            </span>
+            <div className="relative flex-1">
+              <Input
+                id="slug"
+                placeholder="mi-negocio"
+                value={data.slug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                className="h-11 rounded-l-none pr-10"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {slugStatus === 'checking' && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
+                {slugStatus === 'available' && <Check size={16} className="text-green-500" />}
+                {slugStatus === 'taken' && <AlertCircle size={16} className="text-destructive" />}
+              </div>
+            </div>
+          </div>
+          {slugStatus === 'taken' && (
+            <p className="text-sm text-destructive">Esta URL ya está en uso. Prueba con otra.</p>
+          )}
+          {slugStatus === 'available' && data.slug.length >= 2 && (
+            <p className="text-sm text-green-600">¡URL disponible!</p>
+          )}
+        </div>
       </div>
 
-      {/* Logo Upload */}
-      <div className="space-y-2">
-        <Label>Logo (opcional)</Label>
+      {/* Logo Card */}
+      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Upload size={20} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Logo (opcional)</h3>
+            <p className="text-sm text-muted-foreground">PNG, JPG hasta 5MB</p>
+          </div>
+        </div>
 
         {data.logo ? (
-          <div className="flex items-start gap-4">
-            {/* Logo Preview */}
-            <div className="relative">
+          <div className="flex items-start gap-5">
+            <div className="relative shrink-0">
               <img
                 src={data.logo}
                 alt="Logo preview"
-                className="w-20 h-20 rounded-xl object-cover border"
+                className="w-24 h-24 rounded-xl object-cover border shadow-sm"
               />
               <button
                 onClick={removeLogo}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
+                className="absolute -top-2 -right-2 w-7 h-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 transition-colors shadow-sm"
               >
                 <X size={14} />
               </button>
-            </div>
-
-            {/* Preview Card */}
-            <div className="flex-1 bg-muted/30 rounded-xl p-4 border border-dashed">
-              <p className="text-xs text-muted-foreground mb-2">Así se verá en tu página:</p>
-              <div className="flex items-center gap-3">
-                <img src={data.logo} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                <div>
-                  <p className="font-semibold text-sm">{data.name || 'Tu Negocio'}</p>
-                  <p className="text-xs text-muted-foreground">{baseUrl}/{data.slug || 'tu-negocio'}</p>
-                </div>
-              </div>
             </div>
           </div>
         ) : (
           <div
             className={`
-              border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
-              ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+              border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+              ${dragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/30'}
             `}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -239,45 +250,58 @@ export default function StepBusinessInfo({ data, onChange }: StepBusinessInfoPro
               <Loader2 size={32} className="mx-auto text-muted-foreground animate-spin" />
             ) : (
               <>
-                <Upload size={32} className="mx-auto text-muted-foreground mb-3" />
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                  <Upload size={20} className="text-muted-foreground" />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Arrastra tu logo aquí o <span className="text-primary font-medium">haz clic para subir</span>
                 </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">PNG, JPG hasta 5MB</p>
               </>
             )}
           </div>
         )}
-
-        {/* Preview without logo */}
-        {!data.logo && data.name && (
-          <div className="bg-muted/30 rounded-xl p-4 border border-dashed">
-            <p className="text-xs text-muted-foreground mb-2">Sin logo, se verá así:</p>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Store size={20} className="text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">{data.name}</p>
-                <p className="text-xs text-muted-foreground">{baseUrl}/{data.slug || 'tu-negocio'}</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Description */}
-      <div className="space-y-2">
+      {/* Live Preview Card */}
+      {(data.name || data.logo) && (
+        <div className="bg-primary/5 border border-primary/10 rounded-xl p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3">Así se verá tu página</p>
+          <div className="flex items-center gap-4">
+            {data.logo ? (
+              <img src={data.logo} alt="" className="w-14 h-14 rounded-xl object-cover border shadow-sm" />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Store size={24} className="text-primary" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground truncate">{data.name || 'Tu Negocio'}</p>
+              <p className="text-sm text-muted-foreground">{baseUrl}/{data.slug || 'tu-negocio'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Description Card */}
+      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <Label htmlFor="description">Descripción corta (opcional)</Label>
-          <span className="text-xs text-muted-foreground">{data.description.length}/160</span>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Descripción</h3>
+              <p className="text-sm text-muted-foreground">Opcional · Máximo 160 caracteres</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">{data.description.length}/160</span>
         </div>
         <Textarea
           id="description"
           placeholder="Cuéntale a tus clientes qué haces en una frase..."
           value={data.description}
           onChange={(e) => handleDescriptionChange(e.target.value)}
-          rows={2}
+          rows={3}
           className="resize-none"
         />
       </div>

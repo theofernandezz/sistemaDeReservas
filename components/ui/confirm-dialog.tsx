@@ -88,7 +88,7 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
                   </div>
                 )}
                 <div>
-                  <h3 className="font-serif font-semibold text-lg text-foreground">
+                  <h3 className="font-semibold text-lg text-foreground tracking-tight">
                     {options.title}
                   </h3>
                 </div>

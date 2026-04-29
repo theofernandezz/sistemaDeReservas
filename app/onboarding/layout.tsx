@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ConfirmProvider } from '@/components/ui/confirm-dialog'
 
 export const metadata: Metadata = {
   title: 'Configurar tu negocio',
@@ -15,8 +16,10 @@ export default function OnboardingLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      {children}
-    </div>
+    <ConfirmProvider>
+      <div className="min-h-screen bg-background">
+        {children}
+      </div>
+    </ConfirmProvider>
   )
 }

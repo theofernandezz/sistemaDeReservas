@@ -1,7 +1,14 @@
 'use client'
 
 import Switch from '@/components/ui/switch'
-import { Clock } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Clock, Timer, Info } from 'lucide-react'
 
 interface DaySchedule {
   dayOfWeek: number
@@ -73,14 +80,19 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
 
   return (
     <div className="space-y-6">
-      {/* Interval Selector */}
-      <div className="bg-card border rounded-xl p-4">
+      {/* Interval Selector Card */}
+      <div className="bg-card border border-border/60 rounded-xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h3 className="font-medium text-foreground">Intervalo entre turnos</h3>
-            <p className="text-sm text-muted-foreground">
-              Cada cuánto pueden agendar tus clientes
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Timer size={20} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Intervalo entre turnos</h3>
+              <p className="text-sm text-muted-foreground">
+                Cada cuánto pueden agendar tus clientes
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             {INTERVAL_OPTIONS.map(option => (
@@ -88,8 +100,8 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
                 key={option.value}
                 type="button"
                 onClick={() => handleIntervalChange(option.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${data.slotInterval === option.value
-                    ? 'bg-primary text-primary-foreground'
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${data.slotInterval === option.value
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
               >
@@ -101,17 +113,25 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
       </div>
 
       {/* Schedule Grid */}
-      <div className="space-y-3">
-        <h3 className="font-medium text-foreground">Horarios por día</h3>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Clock size={20} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Horarios por día</h3>
+            <p className="text-sm text-muted-foreground">Activá los días que atendés y definí los horarios</p>
+          </div>
+        </div>
 
         {data.schedule.map((day) => (
           <div
             key={day.dayOfWeek}
-            className={`bg-card border rounded-xl p-4 transition-opacity ${!day.isOpen ? 'opacity-50' : ''}`}
+            className={`bg-card border border-border/60 rounded-xl p-4 transition-all shadow-sm ${!day.isOpen ? 'opacity-60' : ''}`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               {/* Day Toggle */}
-              <div className="flex items-center justify-between sm:justify-start gap-4 sm:min-w-[140px]">
+              <div className="flex items-center justify-between sm:justify-start gap-4 sm:w-40">
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={day.isOpen}
@@ -122,33 +142,40 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
                   </span>
                 </div>
                 {!day.isOpen && (
-                  <span className="sm:hidden text-xs text-muted-foreground italic">Cerrado</span>
+                  <span className="sm:hidden text-sm text-muted-foreground italic">Cerrado</span>
                 )}
               </div>
 
               {/* Time Selectors */}
               {day.isOpen ? (
                 <div className="flex items-center gap-2 pl-12 sm:pl-0">
-                  <Clock size={16} className="text-muted-foreground shrink-0" />
-                  <select
+                  <Select
                     value={day.startTime}
-                    onChange={(e) => handleTimeChange(day.dayOfWeek, 'startTime', e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-muted/50 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    onValueChange={(value) => handleTimeChange(day.dayOfWeek, 'startTime', value)}
                   >
-                    {timeOptions.map(time => (
-                      <option key={`start-${time}`} value={time}>{time}</option>
-                    ))}
-                  </select>
-                  <span className="text-muted-foreground text-sm">a</span>
-                  <select
+                    <SelectTrigger className="w-28 h-10 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.map(time => (
+                        <SelectItem key={`start-${time}`} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-muted-foreground text-sm font-medium">a</span>
+                  <Select
                     value={day.endTime}
-                    onChange={(e) => handleTimeChange(day.dayOfWeek, 'endTime', e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-muted/50 border border-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    onValueChange={(value) => handleTimeChange(day.dayOfWeek, 'endTime', value)}
                   >
-                    {getEndTimeOptions(day.startTime).map(time => (
-                      <option key={`end-${time}`} value={time}>{time}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-28 h-10 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getEndTimeOptions(day.startTime).map(time => (
+                        <SelectItem key={`end-${time}`} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : (
                 <span className="hidden sm:inline-block text-sm text-muted-foreground italic">Cerrado</span>
@@ -158,10 +185,11 @@ export default function StepHours({ data, onChange }: StepHoursProps) {
         ))}
       </div>
 
-      {/* Info */}
-      <div className="bg-muted/30 rounded-xl p-4 text-sm text-muted-foreground">
-        <p>
-          💡 <strong>Tip:</strong> Estos son tus horarios base. Podrás bloquear días específicos
+      {/* Info Card */}
+      <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-start gap-3">
+        <Info size={16} className="text-primary shrink-0 mt-0.5" />
+        <p className="text-sm text-muted-foreground">
+          Estos son tus horarios base. Podrás bloquear días específicos
           (vacaciones, feriados) desde el panel de control.
         </p>
       </div>
