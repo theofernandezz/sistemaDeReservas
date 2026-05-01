@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import AvailabilityManager from '@/components/admin/availability-manager'
 import BlockedDatesManager from '@/components/admin/blocked-dates-manager'
+import { getSoloAvailability, saveSoloAvailability } from '@/app/actions/team'
+import { WeeklySchedule } from '@/types/database.types'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,8 +21,15 @@ interface AvailabilityConfig {
   slotInterval: number
 }
 
-// Storage key
-const STORAGE_KEY = 'luxenail_business_hours'
+const DAY_NAMES: Record<string, string> = {
+  '0': 'Domingo',
+  '1': 'Lunes',
+  '2': 'Martes',
+  '3': 'Miércoles',
+  '4': 'Jueves',
+  '5': 'Viernes',
+  '6': 'Sábado',
+}
 
 const DEFAULT_SCHEDULE: DaySchedule[] = [
   { dayOfWeek: 1, dayName: 'Lunes', isOpen: true, startTime: '09:00', endTime: '18:00' },
@@ -32,25 +41,29 @@ const DEFAULT_SCHEDULE: DaySchedule[] = [
   { dayOfWeek: 0, dayName: 'Domingo', isOpen: false, startTime: '10:00', endTime: '14:00' },
 ]
 
-function getStoredConfig(): { schedule: DaySchedule[], interval: number } {
-  if (typeof window === 'undefined') return { schedule: DEFAULT_SCHEDULE, interval: 30 }
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      // Support both old format (array) and new format (object with schedule + slotInterval)
-      if (Array.isArray(parsed)) {
-        return { schedule: parsed, interval: 30 }
-      }
-      return {
-        schedule: parsed.schedule || DEFAULT_SCHEDULE,
-        interval: parsed.slotInterval || 30
-      }
-    }
-    return { schedule: DEFAULT_SCHEDULE, interval: 30 }
-  } catch {
-    return { schedule: DEFAULT_SCHEDULE, interval: 30 }
-  }
+function weeklyScheduleToDaySchedules(schedule: WeeklySchedule): DaySchedule[] {
+  return Object.entries(schedule)
+    .map(([dayKey, dayData]) => ({
+      dayOfWeek: parseInt(dayKey),
+      dayName: DAY_NAMES[dayKey] || `Día ${dayKey}`,
+      isOpen: dayData.isOpen,
+      startTime: dayData.startTime,
+      endTime: dayData.endTime,
+    }))
+    .sort((a, b) => {
+      // Sort Mon–Sun (1,2,3,4,5,6,0)
+      const order = [1, 2, 3, 4, 5, 6, 0]
+      return order.indexOf(a.dayOfWeek) - order.indexOf(b.dayOfWeek)
+    })
+}
+
+function daySchedulesToWeeklySchedule(schedule: DaySchedule[]): WeeklySchedule {
+  return Object.fromEntries(
+    schedule.map(day => [
+      String(day.dayOfWeek),
+      { isOpen: day.isOpen, startTime: day.startTime, endTime: day.endTime, breaks: [] }
+    ])
+  ) as WeeklySchedule
 }
 
 export default function AvailabilityPage() {
@@ -62,23 +75,32 @@ export default function AvailabilityPage() {
   const [activeTab, setActiveTab] = useState<'schedule' | 'blocked'>('schedule')
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInitialConfig(getStoredConfig())
-    setMounted(true)
+    async function loadAvailability() {
+      const result = await getSoloAvailability()
+      if (result.success && result.data) {
+        setInitialConfig({
+          schedule: weeklyScheduleToDaySchedules(result.data.schedule),
+          interval: result.data.interval,
+        })
+      }
+      setMounted(true)
+    }
+    loadAvailability()
   }, [])
 
   const handleSave = async (config: AvailabilityConfig): Promise<boolean> => {
     try {
-      // Save to localStorage for client-side access
-      const dataToStore = {
-        schedule: config.schedule,
-        slotInterval: config.slotInterval
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore))
+      const weeklySchedule = daySchedulesToWeeklySchedule(config.schedule)
+      const result = await saveSoloAvailability({
+        schedule: weeklySchedule,
+        interval: config.slotInterval,
+        buffer: 0,
+      })
 
-      // Also save to cookie for server-side access (Server Components)
-      const cookieValue = encodeURIComponent(JSON.stringify(dataToStore))
-      document.cookie = `business_hours=${cookieValue};path=/;max-age=31536000;SameSite=Lax`
+      if (!result.success) {
+        alert(result.error || 'Error al guardar la configuración')
+        return false
+      }
 
       return true
     } catch (error) {

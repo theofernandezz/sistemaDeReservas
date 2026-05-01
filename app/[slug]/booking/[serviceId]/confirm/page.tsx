@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Check, Store, Sparkles, Copy, CheckCheck, Landmark
 } from 'lucide-react'
 import { createAppointment, getServiceById, getServiceAddons } from '@/app/actions'
+import { getActiveTeamMembersForBusiness } from '@/app/actions/team'
 import { getBusinessPaymentConfig, createPendingBookingPreference } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,9 +36,10 @@ export default function CompactConfirmPage() {
   const slug = params.slug as string
   const date = searchParams.get('date')
   const time = searchParams.get('time')
-  // member: specific team member ID, "any" = no preference, null = solo business
+  // member: specific team member ID, "any" = no preference, null/absent = auto-assign
   const memberParam = searchParams.get('member')
-  const teamMemberId = memberParam && memberParam !== 'any' ? memberParam : null
+  // If a specific member is selected, use it directly. Otherwise, auto-assign at submit time.
+  const specificMemberId = memberParam && memberParam !== 'any' ? memberParam : null
 
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(true)
@@ -258,6 +260,16 @@ export default function CompactConfirmPage() {
 
     setLoading(true)
 
+    // Resolve team member: use the specific member if selected, otherwise auto-assign
+    // to the first active team member of the business (owner, ordered by created_at).
+    let resolvedTeamMemberId: string | null = specificMemberId
+    if (!resolvedTeamMemberId && service?.business_id) {
+      const membersResult = await getActiveTeamMembersForBusiness(service.business_id)
+      if (membersResult.success && membersResult.data && membersResult.data.length > 0) {
+        resolvedTeamMemberId = membersResult.data[0].id
+      }
+    }
+
     const startDateTime = `${date}T${time}:00`
     const endDateTime = new Date(startDateTime)
     endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
@@ -273,7 +285,7 @@ export default function CompactConfirmPage() {
         client_email: email.trim(),
         status: 'pending',
         addons: selectedAddons,
-        team_member_id: teamMemberId,
+        team_member_id: resolvedTeamMemberId,
       })
 
       if (!result.success || !result.data) {
@@ -325,7 +337,7 @@ export default function CompactConfirmPage() {
       client_email: email.trim(),
       status: 'confirmed',
       addons: selectedAddons,
-      team_member_id: teamMemberId,
+      team_member_id: resolvedTeamMemberId,
     })
 
     if (!result.success || !result.data) {

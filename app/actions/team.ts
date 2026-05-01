@@ -266,8 +266,9 @@ export async function toggleTeamMemberStatus(memberId: string): Promise<ServerAc
 }
 
 /**
- * Save solo business availability (for businesses without team members)
- * This saves to the business settings
+ * Save solo business availability.
+ * Writes to the owner's team_member (first active member by created_at).
+ * Also keeps business settings in sync for backwards compatibility.
  */
 export async function saveSoloAvailability(data: {
   schedule: WeeklySchedule
@@ -281,8 +282,38 @@ export async function saveSoloAvailability(data: {
     }
 
     const supabase = await createClient()
-    
-    // Update business settings with new availability
+    const businessId = businessResult.data.id
+
+    // 1. Write to the owner's team_member (primary source of truth)
+    const { data: ownerMember, error: memberFetchError } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (memberFetchError || !ownerMember) {
+      return { success: false, error: 'No se encontró el miembro del equipo para guardar la disponibilidad' }
+    }
+
+    const { error: memberUpdateError } = await supabase
+      .from('team_members')
+      .update({
+        weekly_schedule: data.schedule,
+        slot_interval: data.interval,
+        buffer_time: data.buffer,
+      })
+      .eq('id', ownerMember.id)
+      .eq('business_id', businessId)
+
+    if (memberUpdateError) {
+      console.error('Error saving team member availability:', memberUpdateError)
+      return { success: false, error: memberUpdateError.message }
+    }
+
+    // 2. Also keep business settings in sync for backwards compatibility
     const currentSettings = businessResult.data.settings || {}
     const newSettings = {
       ...currentSettings,
@@ -297,15 +328,11 @@ export async function saveSoloAvailability(data: {
       bufferTime: data.buffer,
     }
 
-    const { error } = await supabase
+    await supabase
       .from('businesses')
       .update({ settings: newSettings })
-      .eq('id', businessResult.data.id)
-
-    if (error) {
-      console.error('Error saving solo availability:', error)
-      return { success: false, error: error.message }
-    }
+      .eq('id', businessId)
+    // Non-fatal: primary write to team_member already succeeded
 
     return { success: true }
   } catch (error) {
@@ -316,7 +343,9 @@ export async function saveSoloAvailability(data: {
 }
 
 /**
- * Get solo business availability (for businesses without team members)
+ * Get solo business availability.
+ * Reads from the owner's team_member (first active member by created_at).
+ * Falls back to business settings if no team_member exists yet.
  */
 export async function getSoloAvailability(): Promise<ServerActionResponse<{
   schedule: WeeklySchedule
@@ -329,11 +358,34 @@ export async function getSoloAvailability(): Promise<ServerActionResponse<{
       return { success: false, error: 'No se encontró el negocio' }
     }
 
+    const supabase = await createClient()
+    const businessId = businessResult.data.id
+
+    // Try to read from the owner's team_member first (primary source of truth)
+    const { data: ownerMember } = await supabase
+      .from('team_members')
+      .select('weekly_schedule, slot_interval, buffer_time')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (ownerMember?.weekly_schedule) {
+      return {
+        success: true,
+        data: {
+          schedule: ownerMember.weekly_schedule as WeeklySchedule,
+          interval: ownerMember.slot_interval || 30,
+          buffer: ownerMember.buffer_time || 0,
+        }
+      }
+    }
+
+    // Fallback: read from business settings (legacy path)
     const settings = businessResult.data.settings || {}
-    
-    // Convert business hours to weekly schedule format
     const schedule: WeeklySchedule = { ...DEFAULT_WEEKLY_SCHEDULE }
-    
+
     if (settings.businessHours) {
       settings.businessHours.forEach((day: BusinessHourSetting) => {
         schedule[day.dayOfWeek.toString()] = {

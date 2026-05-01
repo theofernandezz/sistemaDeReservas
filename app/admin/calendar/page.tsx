@@ -1,4 +1,5 @@
 import { getAppointments } from '@/app/actions'
+import { getTeamMembers } from '@/app/actions/team'
 import CalendarView from '@/components/admin/calendar-view'
 
 export const dynamic = 'force-dynamic'
@@ -9,12 +10,17 @@ export default async function CalendarPage() {
   const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
   const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0)
 
-  const result = await getAppointments({
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString()
-  })
+  const [appointmentsResult, membersResult] = await Promise.all([
+    getAppointments({
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    }),
+    getTeamMembers()
+  ])
 
-  const appointments = result.success ? result.data || [] : []
+  const appointments = appointmentsResult.success ? appointmentsResult.data || [] : []
+  const allMembers = membersResult.success ? membersResult.data || [] : []
+  const members = allMembers.filter(m => m.is_active)
 
   return (
     <div className="space-y-6">
@@ -25,7 +31,7 @@ export default async function CalendarPage() {
         </p>
       </div>
 
-      <CalendarView initialAppointments={appointments} />
+      <CalendarView initialAppointments={appointments} members={members} />
     </div>
   )
 }

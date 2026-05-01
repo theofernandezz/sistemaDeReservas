@@ -828,8 +828,8 @@ export async function deleteAppointment(id: string): Promise<ServerActionRespons
 export async function getAvailableSlots(
   serviceId: string,
   date: string,
-  businessHoursJson?: string, // Optional: pass business hours as JSON string (legacy/cookie)
-  teamMemberId?: string        // Optional: "any" = no preference (union), or specific member ID
+  _businessHoursJson?: string, // Deprecated: kept for backwards compatibility, ignored
+  teamMemberId?: string         // Optional: "any" = no preference (union), or specific member ID
 ): Promise<ServerActionResponse<TimeSlot[]>> {
   try {
     const supabase = await createClient()
@@ -896,295 +896,115 @@ export async function getAvailableSlots(
 
     if (blockedError) throw blockedError
 
-    // ─── Team Member Schedule Path ───────────────────────────────────────────
-    // Only enter this path when a teamMemberId is provided AND real members are found.
-    // If member=any but there are 0 team members → skip and fall through to business hours.
-    let teamPathHandled = false
+    // ─── Unified Team Member Schedule Path ───────────────────────────────────
+    // Always use team members as the single source of truth for availability.
+    // When teamMemberId is undefined or 'any', fetch all active members (union of slots).
+    // When a specific member ID is provided, fetch only that member.
+    const effectiveMemberId = teamMemberId ?? 'any'
 
-    if (teamMemberId) {
-      // Fetch member(s)
-      let members: { id: string; slot_interval: number; buffer_time: number; weekly_schedule: Record<string, { isOpen: boolean; startTime: string; endTime: string; breaks: { name: string; start: string; end: string }[] }> }[] = []
+    let members: { id: string; slot_interval: number; buffer_time: number; weekly_schedule: Record<string, { isOpen: boolean; startTime: string; endTime: string; breaks: { name: string; start: string; end: string }[] }> }[] = []
 
-      if (teamMemberId === 'any') {
-        const { data: allMembers, error: membersErr } = await supabase
-          .from('team_members')
-          .select('id, slot_interval, buffer_time, weekly_schedule')
-          .eq('business_id', service.business_id)
-          .eq('is_active', true)
-        if (membersErr) throw membersErr
-        members = allMembers || []
-      } else {
-        const { data: member, error: memberErr } = await supabase
-          .from('team_members')
-          .select('id, slot_interval, buffer_time, weekly_schedule')
-          .eq('id', teamMemberId)
-          .eq('business_id', service.business_id)
-          .single()
-        if (memberErr) throw memberErr
-        if (member) members = [member]
-      }
-
-      if (members.length === 0 && teamMemberId !== 'any') {
-        // Specific member not found
-        return { success: true, data: [] }
-      }
-
-      if (members.length > 0) {
-        // Have team members → compute slots from their schedules
-        teamPathHandled = true
-
-        const dayKey = String(requestedDateLocal.getDay())
-
-        type MinuteRange = {
-          startMin: number
-          endMin: number
-          interval: number
-          memberId: string
-          breaks: { startMin: number; endMin: number }[]
-        }
-        const ranges: MinuteRange[] = []
-
-        for (const member of members) {
-          const daySchedule = member.weekly_schedule?.[dayKey]
-          if (!daySchedule?.isOpen) continue
-
-          const [sh, sm = 0] = daySchedule.startTime.split(':').map(Number)
-          const [eh, em = 0] = daySchedule.endTime.split(':').map(Number)
-          const breaks = (daySchedule.breaks || []).map((rest) => {
-            const [bsh, bsm = 0] = rest.start.split(':').map(Number)
-            const [beh, bem = 0] = rest.end.split(':').map(Number)
-            return {
-              startMin: bsh * 60 + bsm,
-              endMin: beh * 60 + bem,
-            }
-          })
-
-          ranges.push({
-            startMin: sh * 60 + sm,
-            endMin:   eh * 60 + em,
-            interval: member.slot_interval || 30,
-            memberId: member.id,
-            breaks,
-          })
-        }
-
-        if (ranges.length === 0) {
-          return { success: true, data: [] }
-        }
-
-        const slotMap = new Map<string, boolean>()
-
-        for (const range of ranges) {
-          const memberAppts = teamMemberId === 'any'
-            ? (appointments || []).filter(a => (a as unknown as { team_member_id?: string }).team_member_id === range.memberId)
-            : (appointments || [])
-
-          let cur = range.startMin
-          while (cur < range.endMin) {
-            const hour   = Math.floor(cur / 60)
-            const minute = cur % 60
-            const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-
-            const slotStartUTC = createSlotTimeUTC(date, slotTime)
-            const slotEndUTC   = addMinutesToUTC(slotStartUTC, service.duration_minutes)
-
-            const isPast    = isPastDate(slotStartUTC, 30)
-            const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
-            const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
-            const isBreak = range.breaks.some(rest => cur < rest.endMin && (cur + service.duration_minutes) > rest.startMin)
-
-            const available = !isPast && !isBooked && !isBlocked && !isBreak
-            if (available || !slotMap.has(slotTime)) {
-              slotMap.set(slotTime, available)
-            }
-
-            cur += range.interval
-          }
-        }
-
-        const slots: TimeSlot[] = Array.from(slotMap.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([time, available]) => ({ time, available }))
-
-        return { success: true, data: slots }
-      }
-      // members.length === 0 && teamMemberId === 'any' → fall through to business hours
-    }
-    void teamPathHandled
-    // ─── End Team Member Path ─────────────────────────────────────────────────
-
-    // Parse business hours or use defaults
-    const dayOfWeek = requestedDateLocal.getDay() // 0 = Sunday, 1 = Monday, etc.
-
-    // Default schedule (fallback only if DB has no config)
-    // startMinutes/endMinutes: total minutes from midnight for precision
-    const defaultSchedule: Record<number, { isOpen: boolean; startMinutes: number; endMinutes: number }> = {
-      0: { isOpen: false, startMinutes: 10 * 60, endMinutes: 14 * 60 }, // Sunday
-      1: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Monday
-      2: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Tuesday
-      3: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Wednesday
-      4: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Thursday
-      5: { isOpen: true,  startMinutes:  9 * 60, endMinutes: 18 * 60 }, // Friday
-      6: { isOpen: true,  startMinutes: 10 * 60, endMinutes: 14 * 60 }, // Saturday
+    if (effectiveMemberId === 'any') {
+      const { data: allMembers, error: membersErr } = await supabase
+        .from('team_members')
+        .select('id, slot_interval, buffer_time, weekly_schedule')
+        .eq('business_id', service.business_id)
+        .eq('is_active', true)
+      if (membersErr) throw membersErr
+      members = allMembers || []
+    } else {
+      const { data: member, error: memberErr } = await supabase
+        .from('team_members')
+        .select('id, slot_interval, buffer_time, weekly_schedule')
+        .eq('id', effectiveMemberId)
+        .eq('business_id', service.business_id)
+        .single()
+      if (memberErr) throw memberErr
+      if (member) members = [member]
     }
 
-    let dayConfig = defaultSchedule[dayOfWeek]
-    let slotInterval = 30 // default 30 minutes
-    let dayBreaks: { startMin: number; endMin: number }[] = []
-
-    // Priority 1: use businessHoursJson if provided (legacy / cookie path)
-    if (businessHoursJson) {
-      try {
-        const config = JSON.parse(businessHoursJson)
-        const schedule = Array.isArray(config) ? config : config.schedule
-        slotInterval = config.slotInterval || 30
-
-        const dayHours = schedule?.find((h: {
-          dayOfWeek: number
-          isOpen: boolean
-          startTime: string
-          endTime: string
-          breaks?: { name: string; start: string; end: string }[]
-        }) => h.dayOfWeek === dayOfWeek)
-        if (dayHours) {
-          const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
-          const [endH,   endM   = 0] = dayHours.endTime.split(':').map(Number)
-          dayConfig = {
-            isOpen: dayHours.isOpen,
-            startMinutes: startH * 60 + startM,
-            endMinutes:   endH   * 60 + endM,
-          }
-          dayBreaks = (dayHours.breaks || []).map((rest: { start: string; end: string }) => {
-            const [bsh, bsm = 0] = rest.start.split(':').map(Number)
-            const [beh, bem = 0] = rest.end.split(':').map(Number)
-            return {
-              startMin: bsh * 60 + bsm,
-              endMin: beh * 60 + bem,
-            }
-          })
-        }
-      } catch {
-        console.warn('Could not parse business hours JSON, will try DB')
-      }
-    }
-
-    // Priority 2 (primary path): fetch business settings directly from DB
-    // This is the source of truth set by the dashboard availability editor
-    if (!businessHoursJson) {
-      try {
-        const settings = businessSettings
-
-        if (settings?.slotInterval) {
-          slotInterval = settings.slotInterval
-        }
-
-        if (settings?.businessHours && settings.businessHours.length > 0) {
-          const dayHours = settings.businessHours.find(h => h.dayOfWeek === dayOfWeek)
-          if (dayHours) {
-            const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
-            const [endH,   endM   = 0] = dayHours.endTime.split(':').map(Number)
-            dayConfig = {
-              isOpen: dayHours.isOpen,
-              startMinutes: startH * 60 + startM,
-              endMinutes:   endH   * 60 + endM,
-            }
-            // Store breaks for this day
-            dayBreaks = (dayHours.breaks || []).map(b => {
-              const [bsh, bsm = 0] = b.start.split(':').map(Number)
-              const [beh, bem = 0] = b.end.split(':').map(Number)
-              return { startMin: bsh * 60 + bsm, endMin: beh * 60 + bem }
-            })
-          }
-        }
-      } catch {
-        console.warn('Could not fetch business settings from DB, using defaults')
-      }
-    }
-
-    // If day is closed, return empty slots
-    if (!dayConfig.isOpen) {
+    if (members.length === 0) {
+      // No team members configured for this business
       return { success: true, data: [] }
     }
 
-    // Convert appointments to local-time minute ranges for comparison
-    // Appointments are stored as UTC in the DB but were entered in local (ART) time by users.
-    // On a UTC server, createSlotTimeUTC("2026-03-12", "10:30") produces 10:30Z, but the
-    // appointment was saved as 13:30Z (ART=UTC-3). So we compare in local time minutes instead.
-    const aptMinuteRanges = (appointments || []).map(apt => {
-      const startLocal = new Date(apt.start_time)
-      const endLocal   = new Date(apt.end_time)
-      // Extract local HH:mm for this timezone
-      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
-      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
-      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
-      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
-      return {
-        startMin: startH * 60 + parseInt(startM),
-        endMin:   endH   * 60 + parseInt(endM),
-      }
-    })
+    const dayKey = String(requestedDateLocal.getDay())
 
-    const blockedMinuteRanges = (blocked || []).map(block => {
-      const startLocal = new Date(block.start_time)
-      const endLocal   = new Date(block.end_time)
-      const startH = parseInt(startLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
-      const startM = startLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
-      const endH   = parseInt(endLocal.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
-      const endM   = endLocal.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }).padStart(2, '0')
-      return {
-        startMin: startH * 60 + parseInt(startM),
-        endMin:   endH   * 60 + parseInt(endM),
-      }
-    })
+    type MinuteRange = {
+      startMin: number
+      endMin: number
+      interval: number
+      memberId: string
+      breaks: { startMin: number; endMin: number }[]
+    }
+    const ranges: MinuteRange[] = []
 
-    const nowLocalMin = (() => {
-      const now = new Date()
-      const h = parseInt(now.toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: TIMEZONE }))
-      const m = parseInt(now.toLocaleString('en-US', { minute: '2-digit', timeZone: TIMEZONE }))
-      return h * 60 + m
-    })()
+    for (const member of members) {
+      const daySchedule = member.weekly_schedule?.[dayKey]
+      if (!daySchedule?.isOpen) continue
 
-    // Is today? (compare date in local timezone)
-    const isToday = date === todayStr
-
-    // Generate time slots based on business hours and interval
-    const slots: TimeSlot[] = []
-
-    let currentMinutes = dayConfig.startMinutes
-    const endMinutes = dayConfig.endMinutes
-
-    while (currentMinutes < endMinutes) {
-      const hour = Math.floor(currentMinutes / 60)
-      const minute = currentMinutes % 60
-      const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      const slotEndMin = currentMinutes + service.duration_minutes
-
-      // Past: only check if today, with 30 min buffer
-      const isPast = isToday && (currentMinutes < nowLocalMin + 30)
-
-      // Booked: slot overlaps with any appointment (in local minutes)
-      const isBooked = aptMinuteRanges.some(apt =>
-        currentMinutes < apt.endMin && slotEndMin > apt.startMin
-      )
-
-      // Blocked: slot overlaps with any blocked range (in local minutes)
-      const isBlocked = blockedMinuteRanges.some(block =>
-        currentMinutes < block.endMin && slotEndMin > block.startMin
-      )
-
-      // Break: slot overlaps with configured rest ranges for that weekday
-      const isBreak = dayBreaks.some(rest =>
-        currentMinutes < rest.endMin && slotEndMin > rest.startMin
-      )
-
-      slots.push({
-        time: slotTime,
-        available: !isBooked && !isBlocked && !isPast && !isBreak,
-        reason: isPast ? 'past' : isBooked ? 'booked' : isBlocked ? 'blocked' : isBreak ? 'blocked' : undefined
+      const [sh, sm = 0] = daySchedule.startTime.split(':').map(Number)
+      const [eh, em = 0] = daySchedule.endTime.split(':').map(Number)
+      const breaks = (daySchedule.breaks || []).map((rest) => {
+        const [bsh, bsm = 0] = rest.start.split(':').map(Number)
+        const [beh, bem = 0] = rest.end.split(':').map(Number)
+        return {
+          startMin: bsh * 60 + bsm,
+          endMin: beh * 60 + bem,
+        }
       })
 
-      currentMinutes += slotInterval
+      ranges.push({
+        startMin: sh * 60 + sm,
+        endMin:   eh * 60 + em,
+        interval: member.slot_interval || 30,
+        memberId: member.id,
+        breaks,
+      })
     }
+
+    if (ranges.length === 0) {
+      return { success: true, data: [] }
+    }
+
+    const slotMap = new Map<string, boolean>()
+
+    for (const range of ranges) {
+      // For 'any': only count appointments assigned to this specific member.
+      // For a specific member: count appointments assigned to that member OR unassigned (null).
+      const memberAppts = effectiveMemberId === 'any'
+        ? (appointments || []).filter(a => (a as unknown as { team_member_id?: string }).team_member_id === range.memberId)
+        : (appointments || []).filter(a => {
+            const appt = a as unknown as { team_member_id?: string | null }
+            return appt.team_member_id === range.memberId || appt.team_member_id === null
+          })
+
+      let cur = range.startMin
+      while (cur < range.endMin) {
+        const hour   = Math.floor(cur / 60)
+        const minute = cur % 60
+        const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+
+        const slotStartUTC = createSlotTimeUTC(date, slotTime)
+        const slotEndUTC   = addMinutesToUTC(slotStartUTC, service.duration_minutes)
+
+        const isPast    = isPastDate(slotStartUTC, 30)
+        const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
+        const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
+        const isBreak = range.breaks.some(rest => cur < rest.endMin && (cur + service.duration_minutes) > rest.startMin)
+
+        const available = !isPast && !isBooked && !isBlocked && !isBreak
+        if (available || !slotMap.has(slotTime)) {
+          slotMap.set(slotTime, available)
+        }
+
+        cur += range.interval
+      }
+    }
+
+    const slots: TimeSlot[] = Array.from(slotMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([time, available]) => ({ time, available }))
 
     return { success: true, data: slots }
   } catch (error: unknown) {

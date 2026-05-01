@@ -168,7 +168,39 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
     return { success: false, error: 'No se pudo completar la configuración. Por favor, intenta de nuevo.' }
   }
 
-  // 7. Create services (if any)
+  // 7. Create owner team_member on first-time onboarding
+  if (!business) {
+    const weeklySchedule = Object.fromEntries(
+      validatedData.businessHours.map(day => [
+        String(day.dayOfWeek),
+        { isOpen: day.isOpen, startTime: day.startTime, endTime: day.endTime, breaks: [] }
+      ])
+    )
+
+    const ownerName = (user.user_metadata?.full_name as string | undefined)
+      || user.email?.split('@')[0]
+      || validatedData.businessName
+
+    const { error: teamMemberError } = await supabase
+      .from('team_members')
+      .insert({
+        business_id: businessId,
+        name: ownerName,
+        role: null,
+        avatar_color: 'bg-blue-500',
+        is_active: true,
+        slot_interval: validatedData.slotInterval,
+        buffer_time: 0,
+        weekly_schedule: weeklySchedule,
+      })
+
+    if (teamMemberError) {
+      console.error('Error creating owner team member:', teamMemberError)
+      // Non-fatal: onboarding continues even if team_member creation fails
+    }
+  }
+
+  // 8. Create services (if any)
   if (validatedData.services.length > 0) {
     const servicesToInsert = validatedData.services
       .filter(s => s.name.trim()) // Only insert services with names
@@ -192,7 +224,7 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
     }
   }
 
-  // 8. Return updated business
+  // 9. Return updated business
   const { data: updatedBusiness } = await supabase
     .from('businesses')
     .select('*')
