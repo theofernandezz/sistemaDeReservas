@@ -337,7 +337,7 @@ export function NotificationCenter() {
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center justify-center h-9 w-9 rounded-lg hover:bg-secondary/50 transition-colors"
+        className="relative flex items-center justify-center h-9 w-9 rounded-full hover:bg-secondary/60 transition-colors"
         aria-label="Notificaciones"
       >
         <Bell size={18} className="text-muted-foreground" />

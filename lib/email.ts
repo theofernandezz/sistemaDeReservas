@@ -550,6 +550,72 @@ export async function sendNewAppointmentNotification(
 }
 
 /**
+ * Send pending payment email to client for manual transfer bookings.
+ * Includes a link to /reserva/[id] so they can upload the proof later.
+ */
+export async function sendManualTransferPendingEmail(
+  data: AppointmentEmailData & {
+    startDateTime: Date
+    endDateTime: Date
+  },
+  businessId: string
+) {
+  if (!data.clientEmail) {
+    return { success: false, error: 'No client email' }
+  }
+
+  try {
+    const config = await getBusinessEmailConfig(businessId)
+    const appUrl = getAppUrl()
+    const uploadUrl = `${appUrl}/reserva/${data.id}`
+
+    const rows =
+      infoRow('Servicio', data.serviceName) +
+      infoRow('Fecha', data.date) +
+      infoRow('Hora', data.time) +
+      infoRow('Total', `$${data.servicePrice}`)
+
+    const body = `
+      <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Hola ${data.clientName}, tu turno fue pre-confirmado. Para completar la reserva, realizá la transferencia y subí el comprobante.
+      </p>
+      ${infoCard(rows, config.brandColor)}
+      <div style="margin-bottom: 12px;">
+        ${primaryButton('Subir comprobante de pago', uploadUrl, config.brandColor)}
+      </div>
+      <p style="margin: 16px 0 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+        Si cerraste esta página, usá el botón de arriba para acceder a tu reserva y adjuntar el comprobante cuando quieras.
+      </p>
+    `
+
+    const html = baseEmailTemplate({
+      brandName: config.brandName,
+      brandColor: config.brandColor,
+      title: 'Reserva pre-confirmada',
+      subtitle: 'Falta tu comprobante de transferencia para confirmar.',
+      body,
+    })
+
+    const { error } = await resend.emails.send({
+      from: `${config.emailFromName} <${config.emailFrom}>`,
+      to: data.clientEmail,
+      subject: `Completá tu reserva — ${data.serviceName}`,
+      html,
+    })
+
+    if (error) {
+      console.error('Error sending manual transfer pending email:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    console.error('Error sending manual transfer pending email:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error sending email' }
+  }
+}
+
+/**
  * Send confirmation email to client when they book
  */
 export async function sendClientConfirmation(

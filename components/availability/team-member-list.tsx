@@ -12,16 +12,16 @@ interface TeamMemberListProps {
   onManageTeam: () => void
 }
 
-// Avatar colors for team members
+// Professional muted palette for team member avatars
 export const AVATAR_COLORS = [
-  'bg-linear-to-br from-orange-400 to-orange-600',
-  'bg-linear-to-br from-blue-400 to-blue-600',
-  'bg-linear-to-br from-pink-400 to-pink-600',
-  'bg-linear-to-br from-green-400 to-green-600',
-  'bg-linear-to-br from-purple-400 to-purple-600',
-  'bg-linear-to-br from-cyan-400 to-cyan-600',
-  'bg-linear-to-br from-rose-400 to-rose-600',
-  'bg-linear-to-br from-amber-400 to-amber-600',
+  'bg-slate-600',
+  'bg-sky-700',
+  'bg-teal-700',
+  'bg-amber-700',
+  'bg-rose-700',
+  'bg-violet-700',
+  'bg-stone-600',
+  'bg-emerald-700',
 ]
 
 function getInitials(name: string): string {
@@ -42,20 +42,20 @@ export default function TeamMemberList({
   const activeMembers = members.filter(m => m.is_active)
 
   return (
-    <div className="bg-card/30 backdrop-blur-md border border-white/5 rounded-3xl p-6 w-full shadow-sm">
+    <div className="bg-card border border-border rounded-xl p-5 w-full shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Equipo</h2>
-          <p className="text-sm text-muted-foreground/80">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">Equipo</h2>
+          <p className="text-sm text-muted-foreground">
             {activeMembers.length} miembro{activeMembers.length !== 1 ? 's' : ''} activo{activeMembers.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={onAddMember}
-          className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 hover:bg-primary/20 transition-all hover:scale-105"
+          className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors"
         >
-          <Plus size={18} />
+          <Plus size={16} />
         </button>
       </div>
 
@@ -63,49 +63,49 @@ export default function TeamMemberList({
       <button
         onClick={() => onSelectMember(null)}
         className={cn(
-          'w-full flex items-center gap-3 p-3 rounded-xl mb-2 transition-all',
+          'w-full flex items-center gap-3 p-3 rounded-lg mb-2 transition-colors',
           selectedMemberId === null
-            ? 'bg-linear-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30'
-            : 'hover:bg-secondary/50'
+            ? 'bg-secondary border border-border'
+            : 'hover:bg-secondary/50 border border-transparent'
         )}
       >
-        <div className="h-11 w-11 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-          <Users size={20} className="text-white" />
+        <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+          <Users size={18} className="text-primary-foreground" />
         </div>
         <div className="text-left">
-          <p className="font-medium text-foreground">Todo el equipo</p>
+          <p className="font-medium text-foreground text-sm">Todo el equipo</p>
           <p className="text-xs text-muted-foreground">Vista consolidada</p>
         </div>
       </button>
 
       {/* Team Members */}
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {members.map((member, index) => (
           <button
             key={member.id}
             onClick={() => onSelectMember(member.id)}
             className={cn(
-              'w-full flex items-center gap-3 p-3 rounded-xl transition-all',
+              'w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors',
               selectedMemberId === member.id
-                ? 'bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30 shadow-sm'
-                : 'hover:bg-secondary/40 border border-transparent',
+                ? 'bg-secondary border border-border'
+                : 'hover:bg-secondary/50 border border-transparent',
               !member.is_active && 'opacity-60'
             )}
           >
             <div className={cn(
-              'h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm border border-white/10 filter drop-shadow-sm',
+              'h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0',
               member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
             )}>
               {getInitials(member.name)}
             </div>
-            <div className="flex-1 text-left">
-              <p className="font-medium text-foreground">{member.name}</p>
+            <div className="flex-1 text-left min-w-0">
+              <p className="font-medium text-foreground text-sm truncate">{member.name}</p>
               {member.role && (
-                <p className="text-xs text-muted-foreground">{member.role}</p>
+                <p className="text-xs text-muted-foreground truncate">{member.role}</p>
               )}
             </div>
             {!member.is_active && (
-              <span className="text-xs bg-secondary px-2 py-1 rounded-md text-muted-foreground">
+              <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground font-medium shrink-0">
                 Inactivo
               </span>
             )}
@@ -116,7 +116,7 @@ export default function TeamMemberList({
       {/* Manage Team Button */}
       <button
         onClick={onManageTeam}
-        className="w-full mt-6 py-2.5 rounded-xl bg-background/50 border border-white/5 text-muted-foreground/80 hover:bg-background hover:text-foreground shadow-sm transition-all font-medium text-sm flex items-center justify-center"
+        className="w-full mt-5 py-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground transition-colors font-medium text-sm flex items-center justify-center"
       >
         Gestionar equipo
       </button>

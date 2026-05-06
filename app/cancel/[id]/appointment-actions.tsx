@@ -19,7 +19,7 @@ interface AppointmentActionsProps {
   appointmentId: string
   serviceId: string
   serviceDuration: number
-  businessHours?: string
+  teamMemberId?: string
   canReschedule: boolean
   rescheduleMessage?: string
 }
@@ -28,7 +28,7 @@ export default function AppointmentActions({
   appointmentId,
   serviceId,
   serviceDuration,
-  businessHours,
+  teamMemberId,
   canReschedule,
   rescheduleMessage
 }: AppointmentActionsProps) {
@@ -80,7 +80,7 @@ export default function AppointmentActions({
           appointmentId={appointmentId}
           serviceId={serviceId}
           serviceDuration={serviceDuration}
-          businessHours={businessHours}
+          teamMemberId={teamMemberId}
         />
       </div>
     )

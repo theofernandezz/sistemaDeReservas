@@ -45,7 +45,8 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [sessionReady, setSessionReady] = useState(false)
+  const isDevPreview = process.env.NODE_ENV === 'development' && searchParams.get('preview') === '1'
+  const [sessionReady, setSessionReady] = useState(isDevPreview)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [capsLockOn, setCapsLockOn] = useState(false)
@@ -60,6 +61,8 @@ export default function ResetPasswordPage() {
   ]
 
   useEffect(() => {
+    if (isDevPreview) return
+
     let isActive = true
 
     const initSession = async () => {

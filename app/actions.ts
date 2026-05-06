@@ -618,13 +618,24 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
     const businessId = service.business_id || await requireBusinessId()
 
-    // Check for overlapping appointments (prevent double booking)
-    const { data: existingAppointments, error: checkError } = await supabase
+    // Check for overlapping appointments (prevent double booking).
+    // Scoped to the specific team member when one is assigned, so two different
+    // members can take concurrent bookings at the same time slot.
+    // TODO: TOCTOU race condition — two concurrent requests for the same member+slot
+    // can both pass this check before either inserts. Fix: PostgreSQL exclusion constraint
+    // using btree_gist + tsrange(start_time, end_time) per team_member_id.
+    let overlapQuery = supabase
       .from('appointments')
       .select('id, start_time, end_time')
       .neq('status', 'cancelled')
       .eq('business_id', businessId)
       .or(`and(start_time.lt.${validatedInput.end_time},end_time.gt.${validatedInput.start_time})`)
+
+    if (validatedInput.team_member_id) {
+      overlapQuery = overlapQuery.eq('team_member_id', validatedInput.team_member_id)
+    }
+
+    const { data: existingAppointments, error: checkError } = await overlapQuery
 
     if (checkError) throw checkError
 
@@ -635,6 +646,11 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       }
     }
 
+    // For manual transfer bookings, set a deadline for the client to upload proof.
+    const proofExpiresAt = validatedInput.payment_status === 'pending'
+      ? new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString()
+      : null
+
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
@@ -644,6 +660,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
         client_phone: validatedInput.client_phone,
         client_email: validatedInput.client_email,
         status: validatedInput.status || 'pending',
+        payment_status: validatedInput.payment_status ?? null,
+        proof_expires_at: proofExpiresAt,
         service_id: validatedInput.service_id,
         business_id: businessId,
         team_member_id: validatedInput.team_member_id ?? null,
@@ -657,7 +675,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     try {
       // Get service info for email
       if (service) {
-        const { sendNewAppointmentNotification, sendClientConfirmation } = await import('@/lib/email')
+        const { sendNewAppointmentNotification, sendClientConfirmation, sendManualTransferPendingEmail } = await import('@/lib/email')
         const startDate = new Date(validatedInput.start_time)
         const endDate = new Date(validatedInput.end_time)
 
@@ -679,12 +697,21 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
         // Email to client (if email provided)
         if (input.client_email) {
-          await sendClientConfirmation({
-            ...emailData,
-            clientEmail: input.client_email,
-            startDateTime: startDate,
-            endDateTime: endDate
-          }, businessId)
+          if (validatedInput.payment_status === 'pending') {
+            await sendManualTransferPendingEmail({
+              ...emailData,
+              clientEmail: input.client_email,
+              startDateTime: startDate,
+              endDateTime: endDate,
+            }, businessId)
+          } else {
+            await sendClientConfirmation({
+              ...emailData,
+              clientEmail: input.client_email,
+              startDateTime: startDate,
+              endDateTime: endDate,
+            }, businessId)
+          }
         }
 
         // ==========================================

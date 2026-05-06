@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const cancelledCutoff = new Date(now.getTime() - CANCELLED_DAYS * 24 * 60 * 60 * 1000)
     const completedCutoff = new Date(now.getTime() - COMPLETED_DAYS * 24 * 60 * 60 * 1000)
 
-    const [cancelledResult, completedResult] = await Promise.all([
+    const [cancelledResult, completedResult, autoApproveResult, expiredProofResult] = await Promise.all([
       supabase
         .from('appointments')
         .delete()
@@ -44,6 +44,19 @@ export async function GET(request: NextRequest) {
         .delete()
         .eq('status', 'completed')
         .lt('end_time', completedCutoff.toISOString()),
+      // Auto-approve proofs where the business hasn't acted within the deadline
+      supabase
+        .from('appointments')
+        .update({ payment_status: 'paid' })
+        .eq('payment_status', 'pending_confirmation')
+        .lt('proof_auto_approve_at', now.toISOString()),
+      // Cancel appointments where the client never uploaded a proof in time
+      supabase
+        .from('appointments')
+        .update({ status: 'cancelled' })
+        .eq('payment_status', 'pending')
+        .is('proof_url', null)
+        .lt('proof_expires_at', now.toISOString()),
     ])
 
     if (cancelledResult.error) {
@@ -52,8 +65,14 @@ export async function GET(request: NextRequest) {
     if (completedResult.error) {
       console.error('Error deleting completed appointments:', completedResult.error)
     }
+    if (autoApproveResult.error) {
+      console.error('Error auto-approving payment proofs:', autoApproveResult.error)
+    }
+    if (expiredProofResult.error) {
+      console.error('Error cancelling appointments with expired proof deadline:', expiredProofResult.error)
+    }
 
-    if (cancelledResult.error || completedResult.error) {
+    if (cancelledResult.error || completedResult.error || autoApproveResult.error || expiredProofResult.error) {
       return NextResponse.json({ error: 'Partial cleanup failure' }, { status: 500 })
     }
 

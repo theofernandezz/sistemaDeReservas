@@ -10,6 +10,7 @@ import { es } from 'date-fns/locale'
 import { getAppUrl } from '@/lib/config'
 import CopyLinkButton from './copy-link-button'
 import { TransferDetailsCard } from '@/components/booking/transfer-details-card'
+import { ProofUploadCard } from '@/components/booking/proof-upload-card'
 import { BusinessSettings } from '@/types/database.types'
 
 interface SuccessPageProps {
@@ -105,7 +106,6 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
   }
 
   // Determine payment status
-  // @ts-expect-error - payment_status may exist
   const paymentStatus = appointment?.payment_status as string | undefined
   const appointmentStatus = appointment?.status
   const pendingStatus = pendingBooking?.status
@@ -193,20 +193,24 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                 />
               </div>
 
-              <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-700 fill-mode-both">
-                <Button 
-                  asChild 
-                  className="w-full h-12 rounded-2xl text-base font-semibold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-xl shadow-[#25D366]/20 transition-all hover:-translate-y-1 active:scale-95"
-                >
-                  <a href={waLink} target="_blank" rel="noopener noreferrer">
-                    Enviar comprobante por WhatsApp
-                  </a>
-                </Button>
-                
-                <p className="text-xs text-center text-muted-foreground/80">
-                  Si cerrás esta página, te enviaremos estos datos por email.
-                </p>
+              <div className="pt-2 animate-in fade-in-from-bottom-2 duration-500 delay-700 fill-mode-both">
+                <ProofUploadCard
+                  appointmentId={appointment?.id || ''}
+                  currentProofUrl={(appointment as unknown as Record<string, unknown>)?.proof_url as string | null}
+                />
               </div>
+
+              {appointment?.id && (
+                <p className="text-xs text-center text-muted-foreground/70 -mt-1">
+                  ¿Cerraste la página?{' '}
+                  <a
+                    href={`/reserva/${appointment.id}`}
+                    className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+                  >
+                    Accedé a tu reserva
+                  </a>
+                </p>
+              )}
 
               <div className="pt-0 animate-in fade-in duration-500 delay-1000 fill-mode-both">
                 <Button asChild variant="ghost" className="w-full rounded-xl hover:bg-secondary/50">

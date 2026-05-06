@@ -14,7 +14,7 @@ interface RescheduleFormProps {
   appointmentId: string
   serviceId: string
   serviceDuration: number
-  businessHours?: string
+  teamMemberId?: string
 }
 
 const STATUSES = {
@@ -32,7 +32,7 @@ export default function RescheduleForm({
   appointmentId,
   serviceId,
   serviceDuration,
-  businessHours
+  teamMemberId
 }: RescheduleFormProps) {
   const [status, setStatus] = useState<Status>(STATUSES.Idle)
   const [selectedDate, setSelectedDate] = useState<string>('')
@@ -59,7 +59,7 @@ export default function RescheduleForm({
     setStatus(STATUSES.SelectingTime)
 
     try {
-      const result = await getAvailableSlots(serviceId, dateStr, businessHours)
+      const result = await getAvailableSlots(serviceId, dateStr, undefined, teamMemberId ?? 'any')
       if (result.success && result.data) {
         setAvailableSlots(result.data)
       } else {

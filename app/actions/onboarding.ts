@@ -23,6 +23,37 @@ interface OnboardingData {
     endTime: string
   }[]
   slotInterval: number
+  payment?: {
+    mode: 'none' | 'mercadopago' | 'manual_transfer'
+    manualTransfer: {
+      alias: string
+      cvu: string
+      accountHolder: string
+    }
+  }
+}
+
+const DEFAULT_TRANSFER_MESSAGE =
+  'Realiza la transferencia y guarda el comprobante. Nuestro equipo lo revisará y confirmará tu reserva.'
+
+function buildPaymentSettings(payment?: OnboardingData['payment']): Record<string, unknown> {
+  if (!payment || payment.mode === 'none') return {}
+
+  if (payment.mode === 'mercadopago') {
+    return { paymentFlowMode: 'mercadopago' }
+  }
+
+  // manual_transfer
+  return {
+    paymentFlowMode: 'manual_transfer',
+    manualTransfer: {
+      enabled: true,
+      alias: payment.manualTransfer.alias,
+      cvu: payment.manualTransfer.cvu,
+      accountHolder: payment.manualTransfer.accountHolder,
+      message: DEFAULT_TRANSFER_MESSAGE,
+    },
+  }
 }
 
 export async function checkSlugAvailability(slug: string): Promise<{ available: boolean }> {
@@ -157,6 +188,7 @@ export async function completeOnboarding(data: OnboardingData): Promise<ServerAc
         ...existingSettings,
         businessHours: validatedData.businessHours,
         slotInterval: validatedData.slotInterval,
+        ...buildPaymentSettings(validatedData.payment),
       },
       // Set admin notification email to owner's email only on first-time creation
       ...(!business && user.email ? { admin_notification_email: user.email } : {}),

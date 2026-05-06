@@ -66,25 +66,25 @@ export default function TeamMemberModal({
       />
       
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-md mx-4 p-8 shadow-xl">
+      <div className="relative bg-card border border-border rounded-xl w-full max-w-md mx-4 p-6 shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-bold text-foreground">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-foreground">
             {existingMember ? 'Editar miembro' : 'Nuevo miembro'}
           </h2>
           <button
             onClick={onClose}
-            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Avatar Preview */}
           <div className="flex justify-center">
             <div className={cn(
-              'h-24 w-24 rounded-full flex items-center justify-center text-white font-bold text-2xl',
+              'h-20 w-20 rounded-full flex items-center justify-center text-white font-bold text-xl',
               selectedColor
             )}>
               {name ? getInitials(name) : '??'}
@@ -93,17 +93,17 @@ export default function TeamMemberModal({
 
           {/* Color Picker */}
           <div>
-            <Label className="text-sm text-muted-foreground mb-3 block">Color del avatar</Label>
-            <div className="flex flex-wrap gap-3 justify-center">
+            <Label className="text-sm text-muted-foreground mb-2 block">Color del avatar</Label>
+            <div className="flex flex-wrap gap-2 justify-center">
               {AVATAR_COLORS.map((color, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => setSelectedColor(color)}
                   className={cn(
-                    'h-9 w-9 rounded-full transition-transform',
+                    'h-8 w-8 rounded-full transition-transform',
                     color,
-                    selectedColor === color && 'ring-2 ring-white ring-offset-2 ring-offset-background scale-110'
+                    selectedColor === color && 'ring-2 ring-border ring-offset-2 ring-offset-background scale-105'
                   )}
                 />
               ))}
@@ -112,7 +112,7 @@ export default function TeamMemberModal({
 
           {/* Name Input */}
           <div>
-            <Label htmlFor="name" className="text-sm text-muted-foreground mb-3 block">
+            <Label htmlFor="name" className="text-sm text-muted-foreground mb-2 block">
               Nombre completo
             </Label>
             <Input
@@ -120,14 +120,13 @@ export default function TeamMemberModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Ana García"
-              className="bg-secondary/50"
               required
             />
           </div>
 
           {/* Role Input */}
           <div>
-            <Label htmlFor="role" className="text-sm text-muted-foreground mb-3 block">
+            <Label htmlFor="role" className="text-sm text-muted-foreground mb-2 block">
               Rol / Especialidad <span className="text-muted-foreground/60">(opcional)</span>
             </Label>
             <Input
@@ -135,24 +134,23 @@ export default function TeamMemberModal({
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="Ej: Estilista Senior"
-              className="bg-secondary/50"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1 h-11"
+              className="flex-1 h-10"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={!name.trim() || saving}
-              className="flex-1 h-11"
+              className="flex-1 h-10"
             >
               {saving ? (
                 <>

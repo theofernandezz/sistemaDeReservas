@@ -126,8 +126,8 @@ export default function AvailabilityPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-serif font-bold text-foreground">Gestión de Disponibilidad</h1>
-        <p className="text-sm text-muted-foreground">Configura los horarios de atención y bloquea fechas específicas</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Gestión de Disponibilidad</h1>
+        <p className="text-sm text-muted-foreground mt-1">Configura los horarios de atención y bloquea fechas específicas</p>
       </div>
 
       <div className="flex bg-secondary/30 w-full rounded-lg p-1 mb-6">

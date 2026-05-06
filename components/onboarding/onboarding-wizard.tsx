@@ -4,13 +4,14 @@ import { useState, useCallback, useMemo, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, ArrowRight, Check, Store, Briefcase, Clock, RotateCcw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Store, Briefcase, Clock, CreditCard, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import StepWelcome from './steps/step-welcome'
 import StepBusinessInfo, { BusinessInfoData } from './steps/step-business-info'
 import StepServices, { ServiceData } from './steps/step-services'
 import StepHours, { HoursData } from './steps/step-hours'
+import StepPayments, { PaymentData } from './steps/step-payments'
 import StepSummary from './steps/step-summary'
 import { completeOnboarding } from '@/app/actions/onboarding'
 
@@ -18,12 +19,14 @@ const FORM_STEPS = [
   { id: 1, title: 'Tu Negocio', icon: Store, description: 'Información básica' },
   { id: 2, title: 'Servicios', icon: Briefcase, description: 'Qué ofreces' },
   { id: 3, title: 'Horarios', icon: Clock, description: 'Cuándo atiendes' },
+  { id: 4, title: 'Pagos', icon: CreditCard, description: 'Cómo te pagan' },
 ]
 
 interface OnboardingData {
   business: BusinessInfoData
   services: ServiceData[]
   hours: HoursData
+  payment: PaymentData
 }
 
 const INITIAL_DATA: OnboardingData = {
@@ -45,6 +48,10 @@ const INITIAL_DATA: OnboardingData = {
       { dayOfWeek: 0, dayName: 'Domingo', isOpen: false, startTime: '10:00', endTime: '14:00' },
     ],
     slotInterval: 30,
+  },
+  payment: {
+    mode: 'none',
+    manualTransfer: { alias: '', cvu: '', accountHolder: '' },
   },
 }
 
@@ -112,7 +119,12 @@ export default function OnboardingWizard() {
         return true // Services are optional
       case 3:
         return data.hours.schedule.some((day: { isOpen: boolean }) => day.isOpen)
-      case 4:
+      case 4: {
+        if (data.payment.mode !== 'manual_transfer') return true
+        const { alias, cvu, accountHolder } = data.payment.manualTransfer
+        return alias.trim().length > 0 && cvu.length === 22 && accountHolder.trim().length > 0
+      }
+      case 5:
         return true // Already validated
       default:
         return false
@@ -131,8 +143,12 @@ export default function OnboardingWizard() {
     setData(prev => ({ ...prev, hours }))
   }, [])
 
+  const updatePayment = useCallback((payment: PaymentData) => {
+    setData(prev => ({ ...prev, payment }))
+  }, [])
+
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setDirection(1)
       setCurrentStep(prev => prev + 1)
     }
@@ -147,7 +163,7 @@ export default function OnboardingWizard() {
 
   const handleStepClick = (stepId: number) => {
     if (loading) return
-    if (currentStep === 4) {
+    if (currentStep === 5) {
       setDirection(stepId < currentStep ? -1 : 1)
       setCurrentStep(stepId)
     } else if (currentStep > stepId) {
@@ -173,6 +189,7 @@ export default function OnboardingWizard() {
         })),
         businessHours: data.hours.schedule,
         slotInterval: data.hours.slotInterval,
+        payment: data.payment,
       })
 
       if (result.success) {
@@ -204,17 +221,17 @@ export default function OnboardingWizard() {
     })
   }
 
-  const isFormStep = currentStep >= 1 && currentStep <= 3
+  const isFormStep = currentStep >= 1 && currentStep <= 4
   const progressLabel = isFormStep
     ? `Paso ${currentStep} de ${FORM_STEPS.length}`
-    : currentStep === 4
+    : currentStep === 5
       ? 'Revisá tu configuración'
       : ''
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header with Progress - visible on form steps and summary */}
-      {(isFormStep || currentStep === 4) && (
+      {(isFormStep || currentStep === 5) && (
         <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between mb-3">
@@ -240,8 +257,8 @@ export default function OnboardingWizard() {
               {FORM_STEPS.map((step, index) => {
                 const Icon = step.icon
                 const isActive = currentStep === step.id
-                const isCompleted = currentStep > step.id || currentStep === 4
-                const isClickable = !loading && (isCompleted || currentStep === 4)
+                const isCompleted = currentStep > step.id || currentStep === 5
+                const isClickable = !loading && (isCompleted || currentStep === 5)
 
                 return (
                   <Fragment key={step.id}>
@@ -304,6 +321,7 @@ export default function OnboardingWizard() {
                   {currentStep === 1 && 'Cuéntanos sobre tu negocio para personalizar tu página'}
                   {currentStep === 2 && 'Agrega los servicios que ofreces (puedes hacerlo después)'}
                   {currentStep === 3 && 'Define tus horarios de atención'}
+                  {currentStep === 4 && 'Elegí cómo querés recibir pagos de tus clientes'}
                 </p>
               </div>
             </div>
@@ -350,6 +368,12 @@ export default function OnboardingWizard() {
                 />
               )}
               {currentStep === 4 && (
+                <StepPayments
+                  data={data.payment}
+                  onChange={updatePayment}
+                />
+              )}
+              {currentStep === 5 && (
                 <StepSummary
                   business={data.business}
                   services={data.services}
@@ -375,7 +399,7 @@ export default function OnboardingWizard() {
               Atrás
             </Button>
 
-            {currentStep < 3 ? (
+            {currentStep < 4 ? (
               <Button
                 onClick={handleNext}
                 disabled={!canProceed || loading}

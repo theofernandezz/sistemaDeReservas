@@ -26,6 +26,7 @@ export const createAppointmentSchema = z.object({
   client_phone: z.string().max(20, 'Teléfono demasiado largo').optional().nullable(),
   client_email: z.string().email('Email inválido').max(100, 'Email demasiado largo').optional().nullable(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'completed']).optional(),
+  payment_status: z.enum(['pending', 'pending_confirmation', 'paid', 'rejected']).optional().nullable(),
   addons: z.array(z.object({
     id: z.string().uuid(),
     name: z.string(),
@@ -177,6 +178,14 @@ export const completeOnboardingSchema = z.object({
     }
   ),
   slotInterval: z.number().int().min(5).max(120),
+  payment: z.object({
+    mode: z.enum(['none', 'mercadopago', 'manual_transfer']),
+    manualTransfer: z.object({
+      alias: z.string(),
+      cvu: z.string(),
+      accountHolder: z.string(),
+    }),
+  }).optional(),
 })
 
 // ============================================================================

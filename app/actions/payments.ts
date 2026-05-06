@@ -205,7 +205,7 @@ export async function updateBusinessManualTransferConfig(
 
     const newSettings = {
       ...currentSettings,
-      paymentFlowMode: validation.data.enabled ? validation.data.paymentFlowMode : 'mercadopago',
+      paymentFlowMode: validation.data.paymentFlowMode,
       manualTransfer: {
         enabled: validation.data.enabled,
         alias: validation.data.alias || '',

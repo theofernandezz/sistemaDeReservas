@@ -161,11 +161,6 @@ export default function CompactConfirmPage() {
     }
   }, [serviceId])
 
-  useEffect(() => {
-    const newValidation = validateBookingForm(name.trim(), email.trim(), phone.trim())
-    setValidation(newValidation)
-  }, [name, email, phone])
-
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0)
   const addonsDuration = selectedAddons.reduce((sum, a) => sum + a.duration_minutes, 0)
   const totalPrice = (service?.price || 0) + addonsTotal
@@ -284,6 +279,7 @@ export default function CompactConfirmPage() {
         client_phone: phone.trim(),
         client_email: email.trim(),
         status: 'pending',
+        payment_status: 'pending',
         addons: selectedAddons,
         team_member_id: resolvedTeamMemberId,
       })

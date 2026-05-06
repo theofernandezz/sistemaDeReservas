@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { format, addMonths, subMonths, addDays, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ArrowLeft, Clock, Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, Clock, ChevronRight, ChevronLeft } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
 import { TimeSlot } from '@/types/database.types'
 import { getAvailableSlots } from '@/app/actions'
@@ -22,12 +23,12 @@ interface BookingCalendarProps {
 }
 
 // Extracted outside to avoid remounting (which caused animations to replay on every select)
-const TimeSlotBtn = ({ 
-  slot, 
-  index = 0, 
-  selectedTime, 
-  onSelect 
-}: { 
+const TimeSlotBtn = ({
+  slot,
+  index = 0,
+  selectedTime,
+  onSelect,
+}: {
   slot: TimeSlot
   index?: number
   selectedTime: string | null
@@ -38,17 +39,42 @@ const TimeSlotBtn = ({
     disabled={!slot.available}
     style={{ animationDelay: `${index * 30}ms` }}
     className={cn(
-      "h-12 px-5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden",
-      "animate-in fade-in slide-in-from-bottom-2 fill-mode-both",
+      'h-12 px-5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden',
+      'animate-in fade-in slide-in-from-bottom-2 fill-mode-both',
       selectedTime === slot.time
-        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02] ring-1 ring-primary/30"
+        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02] ring-1 ring-primary/30'
         : slot.available
-          ? "bg-secondary/30 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5 active:scale-[0.98] border border-transparent hover:border-border/50"
-          : "opacity-40 cursor-not-allowed bg-muted/20 text-muted-foreground line-through"
+          ? 'bg-secondary/30 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5 active:scale-[0.98] border border-transparent hover:border-border/50'
+          : 'opacity-40 cursor-not-allowed bg-muted/20 text-muted-foreground line-through'
     )}
   >
     <span className="relative z-10 w-full text-center">{slot.time}</span>
   </button>
+)
+
+const SlotSkeleton = ({ cols }: { cols: 2 | 4 }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.15 }}
+    className="space-y-6"
+  >
+    {[0, 1].map((group) => (
+      <div key={group}>
+        <div className="h-3 w-16 rounded bg-muted/40 animate-pulse mb-3" />
+        <div className={cn('grid gap-3', cols === 4 ? 'grid-cols-4' : 'grid-cols-2')}>
+          {Array.from({ length: cols === 4 ? 8 : 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-12 rounded-xl bg-muted/30 animate-pulse"
+              style={{ animationDelay: `${i * 40}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    ))}
+  </motion.div>
 )
 
 export default function BookingCalendar({
@@ -212,48 +238,57 @@ export default function BookingCalendar({
             <span className="text-xs text-muted-foreground">Elegí un horario</span>
           </div>
 
-          <div className="min-h-[200px] relative">
-            {loading ? (
-              <div className="absolute inset-0 flex items-center justify-center animate-in fade-in duration-300">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
-              </div>
-            ) : slots.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground animate-in fade-in duration-500">
-                Sin horarios disponibles
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Mañana</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {morningSlots.length > 0 ? (
-                      morningSlots.map((slot, i) => (
-                        <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
-                      ))
-                    ) : (
-                      <div className="col-span-3 text-center py-6 text-sm text-muted-foreground animate-in fade-in duration-300">
-                        <p>No hay turnos mañana</p>
-                      </div>
-                    )}
+          <div className="min-h-[200px]">
+            <AnimatePresence mode="wait">
+              {loading ? (
+                <SlotSkeleton key="skeleton-mobile" cols={2} />
+              ) : slots.length === 0 ? (
+                <motion.div
+                  key="empty-mobile"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center justify-center py-16 text-muted-foreground text-sm"
+                >
+                  Sin horarios disponibles
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={date?.toISOString()}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Mañana</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {morningSlots.length > 0 ? (
+                        morningSlots.map((slot, i) => (
+                          <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                        ))
+                      ) : (
+                        <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No hay turnos mañana</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both" style={{ animationDelay: '100ms' }}>
-                  <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Tarde</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {afternoonSlots.length > 0 ? (
-                      afternoonSlots.map((slot, i) => (
-                        <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
-                      ))
-                    ) : (
-                      <div className="col-span-3 text-center py-6 text-sm text-muted-foreground animate-in fade-in duration-300">
-                        <p>No hay turnos tarde</p>
-                      </div>
-                    )}
+                  <div>
+                    <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Tarde</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {afternoonSlots.length > 0 ? (
+                        afternoonSlots.map((slot, i) => (
+                          <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                        ))
+                      ) : (
+                        <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No hay turnos tarde</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -389,45 +424,60 @@ export default function BookingCalendar({
                 )}
               </div>
 
-              {loading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="flex flex-col items-center animate-in fade-in duration-500">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/30 mb-4" />
-                    <p className="text-sm text-muted-foreground">Buscando horarios...</p>
-                  </div>
-                </div>
-              ) : slots.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center animate-in fade-in zoom-in-95 duration-500">
-                    <Clock className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                    <p className="font-medium">Sin horarios disponibles</p>
-                    <p className="text-sm mt-1 opacity-70">Probá seleccionando otra fecha</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 space-y-8 overflow-y-auto pr-2 pb-4 scrollbar-thin">
-                  {morningSlots.length > 0 && (
-                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-                      <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
-                        Turno Mañana
-                      </div>
-                      <div className="grid grid-cols-4 gap-3">
-                        {morningSlots.map((slot, i) => <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />)}
-                      </div>
+              <AnimatePresence mode="wait">
+                {loading ? (
+                  <SlotSkeleton key="skeleton-desktop" cols={4} />
+                ) : slots.length === 0 ? (
+                  <motion.div
+                    key="empty-desktop"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex-1 flex items-center justify-center text-muted-foreground"
+                  >
+                    <div className="text-center">
+                      <Clock className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                      <p className="font-medium">Sin horarios disponibles</p>
+                      <p className="text-sm mt-1 opacity-70">Probá seleccionando otra fecha</p>
                     </div>
-                  )}
-                  {afternoonSlots.length > 0 && (
-                    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both" style={{ animationDelay: '150ms' }}>
-                      <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
-                        Turno Tarde
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={date?.toISOString()}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex-1 space-y-8 overflow-y-auto pr-2 pb-4 scrollbar-thin"
+                  >
+                    {morningSlots.length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
+                          Turno Mañana
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          {morningSlots.map((slot, i) => (
+                            <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                          ))}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 gap-3">
-                        {afternoonSlots.map((slot, i) => <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />)}
+                    )}
+                    {afternoonSlots.length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
+                          Turno Tarde
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          {afternoonSlots.map((slot, i) => (
+                            <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Continue Button */}
               <Button

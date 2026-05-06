@@ -42,7 +42,6 @@ export interface BusinessSettings {
   rescheduleHours?: number;
   // Notificaciones
   notificationEmail?: string;
-  googleRefreshToken?: string;
   // Branding
   primaryColor?: string;
   accentColor?: string;
@@ -111,6 +110,14 @@ export interface Appointment {
   last_rescheduled_at: string | null;
   google_event_id: string | null;
   team_member_id: string | null;
+  // Payment proof fields
+  proof_url: string | null;
+  proof_uploaded_at: string | null;
+  proof_expires_at: string | null;
+  proof_auto_approve_at: string | null;
+  proof_rejection_reason: string | null;
+  payment_status: string | null;
+  payment_amount: number | null;
 }
 
 export interface BlockedSlot {
@@ -174,6 +181,7 @@ export interface CreateAppointmentInput {
   client_phone?: string | null;
   client_email?: string | null;
   status?: string;
+  payment_status?: 'pending' | 'pending_confirmation' | 'paid' | 'rejected' | null;
   service_id: string;
   addons?: SelectedAddon[];
   team_member_id?: string | null;

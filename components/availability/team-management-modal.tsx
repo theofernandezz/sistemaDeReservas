@@ -92,32 +92,32 @@ export default function TeamManagementModal({
       />
       
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col shadow-xl">
+      <div className="relative bg-card border border-border rounded-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border shrink-0">
-          <h2 className="text-xl font-bold text-foreground">Gestionar equipo</h2>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
+          <h2 className="text-lg font-semibold text-foreground">Gestionar equipo</h2>
           <button
             onClick={onClose}
-            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {members.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p>No hay miembros en el equipo</p>
               <p className="text-sm mt-2">Agrega miembros desde la pantalla principal</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {members.map((member, index) => (
                 <div
                   key={member.id}
                   className={cn(
-                    'bg-secondary/30 border border-border rounded-xl p-5 transition-opacity',
+                    'bg-muted/50 border border-border rounded-lg p-4 transition-opacity',
                     !member.is_active && 'opacity-60'
                   )}
                 >
@@ -126,7 +126,7 @@ export default function TeamManagementModal({
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          'h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0',
+                          'h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0',
                           member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
                         )}>
                           {editName ? getInitials(editName) : '??'}
@@ -173,25 +173,25 @@ export default function TeamManagementModal({
                     // View mode
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        'h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0',
+                        'h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0',
                         member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
                       )}>
                         {getInitials(member.name)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{member.name}</p>
+                        <p className="font-medium text-foreground text-sm truncate">{member.name}</p>
                         {member.role && (
                           <p className="text-xs text-muted-foreground truncate">{member.role}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         {/* Status toggle */}
                         <button
                           onClick={() => handleToggleActive(member)}
                           className={cn(
-                            'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                            'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
                             member.is_active
-                              ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900'
                               : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                           )}
                         >
@@ -200,20 +200,20 @@ export default function TeamManagementModal({
                         {/* Edit button */}
                         <button
                           onClick={() => handleStartEdit(member)}
-                          className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                          className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={14} />
                         </button>
                         {/* Delete button */}
                         <button
                           onClick={() => handleDelete(member.id)}
                           disabled={deletingId === member.id}
-                          className="h-9 w-9 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                          className="h-8 w-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                         >
                           {deletingId === member.id ? (
-                            <Loader2 size={16} className="animate-spin" />
+                            <Loader2 size={14} className="animate-spin" />
                           ) : (
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           )}
                         </button>
                       </div>
@@ -226,8 +226,8 @@ export default function TeamManagementModal({
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 border-t border-border shrink-0">
-          <Button onClick={onClose} className="w-full h-11">
+        <div className="px-6 py-4 border-t border-border shrink-0">
+          <Button onClick={onClose} className="w-full h-10">
             Cerrar
           </Button>
         </div>

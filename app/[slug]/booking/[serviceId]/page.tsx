@@ -31,9 +31,12 @@ export default async function SpecialistSelectionPage({ params }: PageProps) {
   const membersResult = await getActiveTeamMembersForBusiness(business.id)
   const members = (membersResult.success && membersResult.data) ? membersResult.data : []
 
-  // If no team members → skip specialist step, go straight to calendar with "any"
+  // If no members → any; if exactly one → auto-select them
   if (members.length === 0) {
     redirect(`/${slug}/booking/${serviceId}/calendar?member=any`)
+  }
+  if (members.length === 1) {
+    redirect(`/${slug}/booking/${serviceId}/calendar?member=${members[0].id}`)
   }
 
   const accentColor = business.settings?.accentColor || '#f97316'

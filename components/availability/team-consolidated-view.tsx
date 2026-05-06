@@ -84,25 +84,25 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-foreground">Vista consolidada del equipo</h2>
+        <h2 className="text-lg font-semibold text-foreground">Vista consolidada del equipo</h2>
         <p className="text-sm text-muted-foreground mt-1">Resumen de disponibilidad de todos los miembros</p>
       </div>
 
       {/* Schedule Table */}
-      <div className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-3xl shadow-sm overflow-hidden mb-8">
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-5 py-4 text-sm font-medium text-muted-foreground w-48">
+              <tr className="border-b border-border bg-muted/50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-44">
                   Miembro
                 </th>
                 {DAY_ORDER.map(day => (
-                  <th key={day} className="text-center px-4 py-4 text-sm font-medium text-muted-foreground">
+                  <th key={day} className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {DAY_NAMES_SHORT[day]}
                   </th>
                 ))}
-                <th className="text-center px-5 py-4 text-sm font-medium text-muted-foreground">
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Hrs/sem
                 </th>
               </tr>
@@ -110,21 +110,21 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
             <tbody>
               {activeMembers.map((member, index) => {
                 const weeklyHours = calculateMemberWeeklyHours(member.weekly_schedule)
-                
+
                 return (
-                  <tr key={member.id} className="border-b border-border last:border-b-0 hover:bg-secondary/20 transition-colors">
-                    <td className="px-5 py-4">
+                  <tr key={member.id} className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          'h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 shadow-sm border border-white/10',
+                          'h-8 w-8 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0',
                           member.avatar_color || AVATAR_COLORS[index % AVATAR_COLORS.length]
                         )}>
                           {getInitials(member.name)}
                         </div>
-                        <div>
-                          <p className="font-medium text-foreground">{member.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">{member.name}</p>
                           {member.role && (
-                            <p className="text-xs text-muted-foreground">{member.role}</p>
+                            <p className="text-xs text-muted-foreground truncate">{member.role}</p>
                           )}
                         </div>
                       </div>
@@ -132,9 +132,9 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
                     {DAY_ORDER.map(day => {
                       const daySchedule = member.weekly_schedule[day]
                       const isOpen = daySchedule?.isOpen ?? false
-                      
+
                       return (
-                        <td key={day} className="text-center px-4 py-4">
+                        <td key={day} className="text-center px-3 py-3">
                           {isOpen ? (
                             <div className="text-xs">
                               <p className="font-medium text-foreground">{daySchedule.startTime}</p>
@@ -146,11 +146,8 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
                         </td>
                       )
                     })}
-                    <td className="text-center px-5 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-                        <span className="font-bold text-foreground">{weeklyHours}h</span>
-                      </div>
+                    <td className="text-center px-4 py-3">
+                      <span className="font-semibold text-foreground text-sm">{weeklyHours}h</span>
                     </td>
                   </tr>
                 )
@@ -161,22 +158,22 @@ export default function TeamConsolidatedView({ members }: TeamConsolidatedViewPr
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
-          <p className="text-3xl font-bold tracking-tight text-foreground">{stats.memberCount}</p>
-          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Miembros del<br/>equipo</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-xl p-5 text-center flex flex-col items-center justify-center">
+          <p className="text-2xl font-bold tracking-tight text-foreground">{stats.memberCount}</p>
+          <p className="text-xs font-medium text-muted-foreground mt-1.5">Miembros del equipo</p>
         </div>
-        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
-          <p className="text-3xl font-bold tracking-tight text-pink-500">{stats.totalHours}h</p>
-          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Total horas/semana</p>
+        <div className="bg-card border border-border rounded-xl p-5 text-center flex flex-col items-center justify-center">
+          <p className="text-2xl font-bold tracking-tight text-foreground">{stats.totalHours}h</p>
+          <p className="text-xs font-medium text-muted-foreground mt-1.5">Total horas/semana</p>
         </div>
-        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
-          <p className="text-3xl font-bold tracking-tight text-cyan-500">~{stats.totalSlots}</p>
-          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Turnos semanales</p>
+        <div className="bg-card border border-border rounded-xl p-5 text-center flex flex-col items-center justify-center">
+          <p className="text-2xl font-bold tracking-tight text-foreground">~{stats.totalSlots}</p>
+          <p className="text-xs font-medium text-muted-foreground mt-1.5">Turnos semanales</p>
         </div>
-        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-6 shadow-sm text-center flex flex-col items-center justify-center transition-shadow hover:shadow-md">
-          <p className="text-3xl font-bold tracking-tight text-emerald-500">{stats.coveragePercent}%</p>
-          <p className="text-xs font-medium text-muted-foreground/80 mt-2">Cobertura<br/>promedio</p>
+        <div className="bg-card border border-border rounded-xl p-5 text-center flex flex-col items-center justify-center">
+          <p className="text-2xl font-bold tracking-tight text-foreground">{stats.coveragePercent}%</p>
+          <p className="text-xs font-medium text-muted-foreground mt-1.5">Cobertura promedio</p>
         </div>
       </div>
 

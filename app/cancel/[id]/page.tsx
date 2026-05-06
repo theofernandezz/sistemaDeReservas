@@ -111,14 +111,6 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
   const canReschedule = eligibilityCheck.success && eligibilityCheck.data?.canReschedule || false
   const rescheduleMessage = eligibilityCheck.data?.reason
 
-  // Get business settings from the appointment's business (no auth required)
-  const businessHours = business?.settings?.businessHours
-    ? JSON.stringify({
-        schedule: business.settings.businessHours,
-        slotInterval: business.settings.slotInterval || 30
-      })
-    : undefined
-
   // Format date and time
   const date = new Date(appointment.start_time)
   const dateStr = date.toLocaleDateString('es-AR', { dateStyle: 'full', timeZone: 'America/Argentina/Buenos_Aires' })
@@ -176,7 +168,7 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
               appointmentId={appointment.id}
               serviceId={appointment.service_id}
               serviceDuration={appointment.service?.duration_minutes || 60}
-              businessHours={businessHours}
+              teamMemberId={appointment.team_member_id ?? undefined}
               canReschedule={canReschedule}
               rescheduleMessage={rescheduleMessage}
             />
