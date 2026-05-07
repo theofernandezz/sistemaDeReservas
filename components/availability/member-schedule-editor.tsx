@@ -239,7 +239,7 @@ export default function MemberScheduleEditor({
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="mb-5">
           <h3 className="font-semibold text-foreground text-base">Horarios de atención</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">Configura los horarios de {member.name}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Configura los horarios de {member.name}. El horario de fin es el <strong className="text-foreground">último turno disponible</strong> del día, no el cierre del local.</p>
         </div>
 
         <div className="space-y-2">

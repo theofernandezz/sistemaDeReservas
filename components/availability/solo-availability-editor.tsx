@@ -418,6 +418,7 @@ export default function SoloAvailabilityEditor({
         <p>
           <strong className="text-foreground">Tip:</strong> Usa el botón de copiar para aplicar el mismo horario a todos los días.
           Agrega descansos para bloquear rápidamente la hora de la comida u otras pausas diarias.
+          El horario de fin representa el <strong className="text-foreground">último turno disponible</strong> del día — no el cierre del local. Un cliente puede reservar a esa hora aunque el servicio termine después.
         </p>
       </div>
     </div>
