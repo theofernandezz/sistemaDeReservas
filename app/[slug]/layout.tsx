@@ -1,9 +1,23 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getBusinessBySlug } from '@/app/actions/auth'
 import { BusinessProvider } from '@/lib/business-context'
 import { ConditionalFooter } from '@/components/conditional-footer'
 import { LocalBusinessSchema } from '@/components/seo/structured-data'
 import { cn } from '@/lib/utils'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const result = await getBusinessBySlug(slug)
+
+  if (!result.success || !result.data) return {}
+
+  return { title: result.data.name }
+}
 
 export default async function PublicBookingLayout({
   children,
@@ -28,7 +42,7 @@ export default async function PublicBookingLayout({
     <BusinessProvider business={business}>
       <>
         <LocalBusinessSchema business={business} />
-        <div className="min-h-dvh flex flex-col bg-background">
+<div className="min-h-dvh flex flex-col bg-background">
         {/* Premium minimal header */}
         <header 
           className={cn(

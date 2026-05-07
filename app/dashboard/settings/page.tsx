@@ -73,6 +73,7 @@ export default async function SettingsServerPage() {
         id: business.id,
         name: business.name || '',
         slug: business.slug || '',
+        logo: business.logo || null,
         description: business.description || '',
         phone: business.phone || '',
         email: business.email || '',

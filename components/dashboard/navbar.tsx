@@ -45,6 +45,7 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
 
   const initial = business.name.charAt(0).toUpperCase()
   const accentColor = business.settings?.accentColor || '#f97316' // Default orange if not set
+  const logoUrl = business.logo || null
 
   // Generate a dynamic gradient style based on the accent color
   const avatarStyle = {
@@ -71,12 +72,20 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
           {/* Left: Logo/Business Name */}
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3.5 group">
-              <div
-                className="flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-xl text-white font-bold text-[15px] md:text-base transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
-                style={avatarStyle}
-              >
-                <span className="drop-shadow-md">{initial}</span>
-              </div>
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={business.name}
+                  className="h-10 w-10 md:h-11 md:w-11 rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:brightness-110 shadow-sm"
+                />
+              ) : (
+                <div
+                  className="flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-xl text-white font-bold text-[15px] md:text-base transition-all duration-300 group-hover:scale-105 group-hover:brightness-110"
+                  style={avatarStyle}
+                >
+                  <span className="drop-shadow-md">{initial}</span>
+                </div>
+              )}
               <div className="hidden sm:block">
                 <h1 className="text-[15px] font-bold tracking-tight text-foreground/90 group-hover:text-foreground transition-colors leading-none mb-1">{business.name}</h1>
                 <p className="text-[10px] uppercase font-medium tracking-wider text-muted-foreground/60">Dashboard</p>
@@ -132,12 +141,20 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className={`flex items-center gap-1.5 p-1 pr-2 rounded-full transition-all border outline-none ${isUserMenuOpen ? 'bg-secondary/80 border-border/40 shadow-sm' : 'hover:bg-secondary/50 border-transparent'}`}
                 >
-                  <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-[13px] font-bold text-white transition-all shadow-sm"
-                    style={avatarStyle}
-                  >
-                    <span className="drop-shadow-sm">{initial}</span>
-                  </div>
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt={business.name}
+                      className="h-8 w-8 rounded-full object-cover shadow-sm"
+                    />
+                  ) : (
+                    <div
+                      className="h-8 w-8 rounded-full flex items-center justify-center text-[13px] font-bold text-white transition-all shadow-sm"
+                      style={avatarStyle}
+                    >
+                      <span className="drop-shadow-sm">{initial}</span>
+                    </div>
+                  )}
                   <ChevronDown size={14} className={`text-muted-foreground/70 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180 text-foreground' : ''}`} />
                 </button>
 
@@ -146,12 +163,20 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
                 <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-border bg-card shadow-lg p-1.5 animate-in fade-in zoom-in-95 slide-in-from-top-2 z-50 origin-top-right">
                   {/* Header */}
                   <div className="flex items-center gap-3 px-3 py-2.5">
-                    <div
-                      className="h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0"
-                      style={avatarStyle}
-                    >
-                      {initial}
-                    </div>
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={business.name}
+                        className="h-9 w-9 rounded-lg object-cover shrink-0 shadow-sm"
+                      />
+                    ) : (
+                      <div
+                        className="h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0"
+                        style={avatarStyle}
+                      >
+                        {initial}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{business.name}</p>
                       <p className="text-xs text-muted-foreground truncate">Dashboard</p>
@@ -205,12 +230,20 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-white/10 bg-background/50">
               <div className="flex items-center gap-3">
-                <div 
-                  className="h-11 w-11 rounded-2xl text-white font-bold text-lg flex items-center justify-center shadow-lg"
-                  style={avatarStyle}
-                >
-                  <span className="drop-shadow-md">{initial}</span>
-                </div>
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={business.name}
+                    className="h-11 w-11 rounded-2xl object-cover shadow-lg"
+                  />
+                ) : (
+                  <div
+                    className="h-11 w-11 rounded-2xl text-white font-bold text-lg flex items-center justify-center shadow-lg"
+                    style={avatarStyle}
+                  >
+                    <span className="drop-shadow-md">{initial}</span>
+                  </div>
+                )}
                 <div>
                   <h2 className="text-sm font-semibold tracking-tight">{business.name}</h2>
                   <p className="text-xs text-muted-foreground/80 font-medium">Dashboard</p>

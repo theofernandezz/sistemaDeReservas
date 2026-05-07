@@ -18,6 +18,7 @@ export interface SettingsProps {
     id: string
     name: string
     slug: string
+    logo?: string | null
     description?: string
     phone?: string
     email?: string

@@ -163,6 +163,59 @@ export async function updateBusiness(input: UpdateBusinessInput): Promise<Server
 }
 
 /**
+ * Upload a base64 logo to storage and update business.logo
+ */
+export async function updateBusinessLogo(base64Image: string | null): Promise<ServerActionResponse<{ logoUrl: string | null }>> {
+  try {
+    const supabase = await createClient()
+    const businessId = await requireBusinessId()
+
+    let logoUrl: string | null = null
+
+    if (base64Image && base64Image.startsWith('data:image')) {
+      const base64Data = base64Image.split(',')[1]
+      if (base64Data.length > 6700000) {
+        return { success: false, error: 'La imagen es demasiado grande. Máximo 5MB.' }
+      }
+
+      const mimeType = base64Image.match(/data:(.*);base64/)?.[1] || 'image/png'
+      const extension = mimeType.split('/')[1]
+      const fileName = `${businessId}/logo.${extension}`
+
+      const binaryString = atob(base64Data)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('business-logos')
+        .upload(fileName, bytes, { contentType: mimeType, upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: publicUrl } = supabase.storage
+        .from('business-logos')
+        .getPublicUrl(fileName)
+      logoUrl = publicUrl.publicUrl
+    }
+
+    const { error } = await supabase
+      .from('businesses')
+      .update({ logo: logoUrl, updated_at: new Date().toISOString() })
+      .eq('id', businessId)
+
+    if (error) throw error
+
+    revalidatePath('/dashboard', 'layout')
+    return { success: true, data: { logoUrl } }
+  } catch (error: unknown) {
+    console.error('Error updating business logo:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error actualizando logo' }
+  }
+}
+
+/**
  * Update business settings (reservation config, etc.)
  */
 export async function updateBusinessSettings(settings: Partial<BusinessSettings>): Promise<ServerActionResponse<Business>> {
