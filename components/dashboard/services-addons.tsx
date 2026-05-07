@@ -302,12 +302,14 @@ export default function ServicesAndAddons({
       }
 
       const data = await response.json()
-      setFormData({ ...formData, image: data.url })
+      setFormData(prev => ({ ...prev, image: data.url }))
       toast({ type: 'success', title: 'Imagen subida correctamente' })
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al subir imagen'
       toast({
         type: 'error',
         title: 'Error al subir imagen',
+        description: message,
       })
     } finally {
       setIsUploading(false)

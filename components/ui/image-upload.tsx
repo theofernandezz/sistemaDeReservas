@@ -131,7 +131,7 @@ export function ImageUpload({
                 <Camera className="h-6 w-6 text-primary" />
                 <span className="text-sm font-medium">Subir foto</span>
                 <span className="text-xs text-muted-foreground">
-                  Tocá para seleccionar una imagen
+                  JPG, PNG o WebP · máx {maxSizeMB}MB
                 </span>
               </>
             )}
@@ -142,7 +142,7 @@ export function ImageUpload({
           ref={fileInputRef}
           id={id}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="sr-only"
           onChange={handleFileChange}
           aria-label="Seleccionar archivo de imagen"

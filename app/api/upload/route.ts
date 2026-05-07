@@ -1,59 +1,67 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify auth before doing anything
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+    if (!ALLOWED_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: 'Tipo de archivo no permitido. Usá JPG, PNG o WebP.' },
+        { status: 400 }
+      )
     }
 
-    // Validate file size (5MB max for uploaded file)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Image must be less than 5MB' }, { status: 400 })
+    if (file.size > MAX_SIZE_BYTES) {
+      return NextResponse.json({ error: 'La imagen debe ser menor a 5MB' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    // Use service client for storage — auth is already verified above
+    const supabase = createServiceClient()
 
-    // Generate unique filename - must be in public/ folder per storage policy
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 8)
     const filename = `public/service-${timestamp}-${randomString}.jpg`
 
-    // Convert file to buffer
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Upload to Supabase Storage - bucket name is service-image (singular)
     const { data, error } = await supabase.storage
       .from('service-image')
       .upload(filename, buffer, {
-        contentType: 'image/jpeg',
+        contentType: file.type,
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
       })
 
     if (error) {
       console.error('Supabase upload error:', error)
 
-      // If bucket doesn't exist, return helpful error
       if (error.message.includes('Bucket not found')) {
-        return NextResponse.json({
-          error: 'Storage not configured. Please create a bucket named "service-image" in Supabase Storage.'
-        }, { status: 500 })
+        return NextResponse.json(
+          { error: 'Storage no configurado. Creá un bucket "service-image" en Supabase Storage.' },
+          { status: 500 }
+        )
       }
 
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('service-image')
       .getPublicUrl(data.path)
@@ -61,6 +69,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: publicUrl })
   } catch (error: unknown) {
     console.error('Upload error:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Upload error' }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Error al subir imagen' },
+      { status: 500 }
+    )
   }
 }
