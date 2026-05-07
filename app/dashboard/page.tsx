@@ -1,5 +1,6 @@
 import { getAppointments } from '@/app/actions'
 import { getCachedCurrentBusiness } from '@/app/actions/cached'
+import { AppointmentsRealtime } from '@/components/dashboard/appointments-realtime'
 import Link from 'next/link'
 import { CalendarCheck, Clock, Ban, ExternalLink, ChevronRight, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -64,6 +65,7 @@ export default async function DashboardHomePage() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+      {business?.id && <AppointmentsRealtime businessId={business.id} />}
       {/* UI_DIRECTION
         - Intent: Transform the dashboard home into a professional command center with a Linear-style aesthetic.
         - Pillars: Typography (High contrast headings), Surface (Glassmorphism and subtle borders), Motion (Hover lift on cards).
