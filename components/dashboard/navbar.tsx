@@ -13,7 +13,8 @@ import {
   ExternalLink,
   LogOut,
   ChevronDown,
-  Bell
+  Bell,
+  ListChecks
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ import { Business } from '@/types/database.types'
 const navItems = [
   { id: 'home', label: 'Inicio', icon: Home, href: '/dashboard' },
   { id: 'calendar', label: 'Calendario', icon: CalendarDays, href: '/dashboard/calendar' },
+  { id: 'appointments', label: 'Turnos', icon: ListChecks, href: '/dashboard/appointments' },
   { id: 'services', label: 'Servicios', icon: LayoutGrid, href: '/dashboard/services' },
   { id: 'reminders', label: 'Recordatorios', icon: Bell, href: '/dashboard/reminders' },
   { id: 'availability', label: 'Disponibilidad', icon: Clock, href: '/dashboard/availability' },
