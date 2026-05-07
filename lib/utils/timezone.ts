@@ -1,10 +1,18 @@
 /**
  * Timezone utilities for consistent UTC handling
- * 
+ *
  * Pattern: Store all dates in UTC in the database (TIMESTAMPTZ)
  * Convert to local time only when displaying to users
  * Use ISO strings for database operations
+ *
+ * Argentina (ART) is always UTC-3 with no DST.
+ * All server-side date construction uses Date.UTC() + explicit offset so that
+ * these functions produce the same result regardless of which timezone the
+ * server/Node process is running in (Vercel runs in UTC).
  */
+
+// Argentina is UTC-3, no DST — offset is constant.
+const ART_OFFSET_HOURS = 3
 
 /**
  * Convert a local Date or date string to UTC ISO string
@@ -31,33 +39,24 @@ export function fromUTC(date: string): Date {
 }
 
 /**
- * Get the start of a day in UTC for database queries
- * Accepts a date string in YYYY-MM-DD format (assumed to be in local timezone)
- * Returns an ISO string representing the start of that day in UTC
+ * Get the start of a day in UTC for database queries.
+ * Accepts a date string in YYYY-MM-DD format (Argentina local date).
+ * 00:00 ART = 03:00 UTC
  */
 export function startOfDayUTC(dateString: string): string {
-  // Parse the date string (YYYY-MM-DD) and treat it as local time
   const [year, month, day] = dateString.split('-').map(Number)
-  
-  // Create date at start of day in local timezone, then convert to UTC
-  const localStartOfDay = new Date(year, month - 1, day, 0, 0, 0, 0)
-  
-  return localStartOfDay.toISOString()
+  return new Date(Date.UTC(year, month - 1, day, ART_OFFSET_HOURS, 0, 0, 0)).toISOString()
 }
 
 /**
- * Get the end of a day in UTC for database queries
- * Accepts a date string in YYYY-MM-DD format (assumed to be in local timezone)
- * Returns an ISO string representing the end of that day in UTC
+ * Get the end of a day in UTC for database queries.
+ * Accepts a date string in YYYY-MM-DD format (Argentina local date).
+ * 23:59:59.999 ART = next calendar day 02:59:59.999 UTC
  */
 export function endOfDayUTC(dateString: string): string {
-  // Parse the date string (YYYY-MM-DD) and treat it as local time
   const [year, month, day] = dateString.split('-').map(Number)
-  
-  // Create date at end of day in local timezone (23:59:59.999), then convert to UTC
-  const localEndOfDay = new Date(year, month - 1, day, 23, 59, 59, 999)
-  
-  return localEndOfDay.toISOString()
+  // day+1 at ART_OFFSET_HOURS-1 = next day at 02:59 UTC = 23:59 ART same day
+  return new Date(Date.UTC(year, month - 1, day + 1, ART_OFFSET_HOURS - 1, 59, 59, 999)).toISOString()
 }
 
 /**
@@ -71,18 +70,14 @@ export function getDayOfWeekFromUTC(utcDateString: string): number {
 }
 
 /**
- * Create a slot time in UTC for database queries
- * Accepts a date string (YYYY-MM-DD) and time string (HH:mm)
- * Both assumed to be in local timezone
- * Returns an ISO string in UTC
+ * Create a slot time in UTC for database queries.
+ * Accepts a date string (YYYY-MM-DD) and time string (HH:mm) in Argentina local time.
+ * 09:00 ART = 12:00 UTC
  */
 export function createSlotTimeUTC(dateString: string, timeString: string): string {
   const [year, month, day] = dateString.split('-').map(Number)
   const [hours, minutes] = timeString.split(':').map(Number)
-  
-  const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0)
-  
-  return localDate.toISOString()
+  return new Date(Date.UTC(year, month - 1, day, hours + ART_OFFSET_HOURS, minutes, 0, 0)).toISOString()
 }
 
 /**

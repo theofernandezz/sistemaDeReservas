@@ -1007,7 +1007,7 @@ export async function getAvailableSlots(
           })
 
       let cur = range.startMin
-      while (cur < range.endMin) {
+      while (cur + service.duration_minutes <= range.endMin) {
         const hour   = Math.floor(cur / 60)
         const minute = cur % 60
         const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
