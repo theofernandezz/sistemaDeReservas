@@ -321,43 +321,89 @@ export async function sendAppointmentCancellationEmails(
   data: AppointmentCancellationEmailData
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const config = await getBusinessEmailConfig(data.businessId)
+    const supabase = await createClient()
+    const [config, { data: businessSlugData }] = await Promise.all([
+      getBusinessEmailConfig(data.businessId),
+      supabase.from('businesses').select('slug').eq('id', data.businessId).single(),
+    ])
 
     if (!config.adminNotificationEmail) {
       return { success: false, error: 'Admin email not configured' }
     }
 
-    const rows =
+    const appUrl = getAppUrl()
+    const rebookUrl = businessSlugData?.slug ? `${appUrl}/${businessSlugData.slug}` : appUrl
+
+    // Admin email
+    const adminRows =
       infoRow('Servicio', data.serviceName ?? 'Sin servicio') +
       infoRow('Cliente', data.clientName) +
       infoRow('Fecha original', `${formatDate(data.startTime)} a las ${formatTime(data.startTime)}hs`) +
       infoRow('Motivo de cancelacion', data.reason)
 
-    const body = `
+    const adminBody = `
       <div style="display: inline-block; padding: 6px 14px; background-color: #fee2e2; border-radius: 20px; margin-bottom: 20px;">
         <p style="margin: 0; font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 1px;">Turno Cancelado</p>
       </div>
       <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
         Un cliente ha cancelado su turno. A continuacion se detallan los datos:
       </p>
-      ${infoCard(rows, '#ef4444')}
+      ${infoCard(adminRows, '#ef4444')}
     `
 
-    const html = baseEmailTemplate({
-      brandName: config.brandName,
-      brandColor: config.brandColor,
-      title: 'Cancelacion de turno',
-      body,
-    })
+    let errorMessage: string | undefined
 
-    const { error } = await resend.emails.send({
+    const adminResult = await resend.emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: config.adminNotificationEmail,
       subject: `Cancelacion: ${data.clientName} — ${data.serviceName ?? 'Turno'}`,
-      html,
+      html: baseEmailTemplate({
+        brandName: config.brandName,
+        brandColor: config.brandColor,
+        title: 'Cancelacion de turno',
+        body: adminBody,
+      }),
     })
 
-    if (error) return { success: false, error: error.message }
+    if (adminResult.error) errorMessage = adminResult.error.message
+
+    // Client email
+    if (data.clientEmail) {
+      const clientRows =
+        infoRow('Servicio', data.serviceName ?? 'Sin servicio') +
+        infoRow('Fecha', formatDate(data.startTime)) +
+        infoRow('Hora', `${formatTime(data.startTime)}hs`)
+
+      const clientBody = `
+        <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+          Hola ${data.clientName}, te confirmamos que tu turno fue cancelado exitosamente.
+        </p>
+        ${infoCard(clientRows, '#ef4444')}
+        <div style="margin-bottom: 24px;">
+          ${primaryButton('Reservar nuevo turno', rebookUrl, config.brandColor)}
+        </div>
+        <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+          Si cancelaste por error o queres elegir otro horario, podés reservar nuevamente desde el boton de arriba.
+        </p>
+      `
+
+      const clientResult = await resend.emails.send({
+        from: `${config.emailFromName} <${config.emailFrom}>`,
+        to: data.clientEmail,
+        subject: `Tu turno fue cancelado — ${data.serviceName ?? config.brandName}`,
+        html: baseEmailTemplate({
+          brandName: config.brandName,
+          brandColor: config.brandColor,
+          title: 'Turno cancelado',
+          subtitle: 'Tu reserva fue cancelada correctamente.',
+          body: clientBody,
+        }),
+      })
+
+      if (clientResult.error && !errorMessage) errorMessage = clientResult.error.message
+    }
+
+    if (errorMessage) return { success: false, error: errorMessage }
     return { success: true }
   } catch (error: unknown) {
     return {
