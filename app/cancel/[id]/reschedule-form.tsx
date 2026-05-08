@@ -51,7 +51,7 @@ export default function RescheduleForm({
   })
 
   const handleDateSelect = async (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     setSelectedDate(dateStr)
     setSelectedTime('')
     setError('')

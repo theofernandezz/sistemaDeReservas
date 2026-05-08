@@ -1566,6 +1566,25 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
       return { success: true } // Already cancelled
     }
 
+    if (appointment.status === 'completed') {
+      return { success: false, error: 'No se puede cancelar un turno que ya fue completado' }
+    }
+
+    // Check cancellation window using business settings
+    const { data: businessForCancel } = await supabase
+      .from('businesses')
+      .select('settings')
+      .eq('id', appointment.business_id)
+      .single()
+
+    const cancelSettings = (businessForCancel?.settings as { rescheduleHours?: number } | null) || {}
+    const cancelHours = cancelSettings.rescheduleHours || 24
+    const hoursUntil = (new Date(appointment.start_time).getTime() - Date.now()) / (1000 * 60 * 60)
+
+    if (hoursUntil >= 0 && hoursUntil < cancelHours) {
+      return { success: false, error: `Solo podés cancelar con al menos ${cancelHours} horas de anticipación` }
+    }
+
     // 2. Update status in DB
     const { error: updateError } = await supabase
       .from('appointments')

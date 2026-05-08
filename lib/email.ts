@@ -575,6 +575,8 @@ export async function sendManualTransferPendingEmail(
       infoRow('Hora', data.time) +
       infoRow('Total', `$${data.servicePrice}`)
 
+    const cancelUrl = `${appUrl}/cancel/${data.id}`
+
     const body = `
       <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
         Hola ${data.clientName}, tu turno fue pre-confirmado. Para completar la reserva, realizá la transferencia y subí el comprobante.
@@ -583,8 +585,11 @@ export async function sendManualTransferPendingEmail(
       <div style="margin-bottom: 12px;">
         ${primaryButton('Subir comprobante de pago', uploadUrl, config.brandColor)}
       </div>
-      <p style="margin: 16px 0 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
-        Si cerraste esta página, usá el botón de arriba para acceder a tu reserva y adjuntar el comprobante cuando quieras.
+      <div style="margin-bottom: 24px;">
+        ${ghostButton('Gestionar mi turno', cancelUrl)}
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+        Si cerraste esta página, usá el botón de arriba para acceder a tu reserva y adjuntar el comprobante cuando quieras. También podés usar "Gestionar mi turno" si necesitás reprogramar o cancelar.
       </p>
     `
 

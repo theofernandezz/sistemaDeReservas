@@ -22,6 +22,8 @@ interface AppointmentActionsProps {
   teamMemberId?: string
   canReschedule: boolean
   rescheduleMessage?: string
+  canCancel: boolean
+  cancelMessage?: string
 }
 
 export default function AppointmentActions({
@@ -30,7 +32,9 @@ export default function AppointmentActions({
   serviceDuration,
   teamMemberId,
   canReschedule,
-  rescheduleMessage
+  rescheduleMessage,
+  canCancel,
+  cancelMessage,
 }: AppointmentActionsProps) {
   const [mode, setMode] = useState<Mode>(MODES.Choose)
 
@@ -44,7 +48,13 @@ export default function AppointmentActions({
         >
           ← Volver atrás
         </Button>
-        <CancelForm appointmentId={appointmentId} />
+        {!canCancel ? (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            {cancelMessage}
+          </div>
+        ) : (
+          <CancelForm appointmentId={appointmentId} />
+        )}
       </div>
     )
   }
@@ -125,8 +135,10 @@ export default function AppointmentActions({
       </div>
 
       <p className="text-xs text-center text-muted-foreground/80">
-        {canReschedule
+        {canReschedule && canCancel
           ? 'Podés reprogramar tu turno sin cargo o cancelarlo definitivamente'
+          : !canCancel
+          ? 'Ya no es posible modificar este turno con tan poca anticipación'
           : 'Solo podés cancelar este turno'
         }
       </p>

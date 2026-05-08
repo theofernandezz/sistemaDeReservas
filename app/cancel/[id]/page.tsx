@@ -106,10 +106,13 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
     )
   }
 
-  // Check if appointment can be rescheduled
+  // Check if appointment can be rescheduled / cancelled (same 24h threshold)
   const eligibilityCheck = await canRescheduleAppointment(id)
   const canReschedule = eligibilityCheck.success && eligibilityCheck.data?.canReschedule || false
   const rescheduleMessage = eligibilityCheck.data?.reason
+  // Can cancel if there's enough advance time (same threshold as reschedule)
+  const canCancel = canReschedule
+  const cancelMessage = eligibilityCheck.data?.reason
 
   // Format date and time
   const date = new Date(appointment.start_time)
@@ -171,6 +174,8 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
               teamMemberId={appointment.team_member_id ?? undefined}
               canReschedule={canReschedule}
               rescheduleMessage={rescheduleMessage}
+              canCancel={canCancel}
+              cancelMessage={cancelMessage}
             />
           </div>
         </Card>
