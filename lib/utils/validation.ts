@@ -45,50 +45,16 @@ export function validateArgentinePhone(phone: string): ValidationResult {
     return validateInternationalPhone(trimmed)
   }
 
-  // Remove all non-digit characters for validation
   const digitsOnly = phone.replace(/\D/g, '')
-  
-  // Argentine phone numbers should have 10-13 digits
-  // Formats: 
-  // - 10 digits: 11 1234-5678 (local)
-  // - 11 digits: 011 1234-5678 (with 0 prefix)
-  // - 12-13 digits: +54 9 11 1234-5678 (international)
-  
-  if (digitsOnly.length < 10) {
-    return { isValid: false, error: 'El teléfono debe tener al menos 10 dígitos' }
-  }
-  
-  if (digitsOnly.length > 13) {
-    return { isValid: false, error: 'El teléfono tiene demasiados dígitos' }
-  }
 
-  // Check for valid area codes in Argentina
-  // Common area codes: 11 (Buenos Aires), 261, 264, 266, 280, 291, 297, 341, 342, 343, 351, 358, etc.
-  const validAreaCodes = [
-    '11', '261', '264', '266', '280', '291', '297', '299', '336', '341', 
-    '342', '343', '351', '353', '358', '362', '364', '370', '376', '379', 
-    '380', '381', '383', '385', '387', '388'
-  ]
-  
-  // Extract area code (handle different formats)
-  let areaCode: string
-  
-  if (digitsOnly.length === 10) {
-    // Format: 11 1234-5678
-    areaCode = digitsOnly.substring(0, 2)
-  } else if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
-    // Format: 011 1234-5678
-    areaCode = digitsOnly.substring(1, 3)
-  } else if (digitsOnly.length >= 12 && (digitsOnly.startsWith('54') || digitsOnly.startsWith('549'))) {
-    // Format: +54 9 11 1234-5678 or +54 11 1234-5678
-    const hasNine = digitsOnly.startsWith('549')
-    areaCode = digitsOnly.substring(hasNine ? 3 : 2, hasNine ? 5 : 4)
-  } else {
-    areaCode = digitsOnly.substring(0, 2)
-  }
-  
-  if (!validAreaCodes.includes(areaCode)) {
-    return { isValid: false, error: 'Ingresá un teléfono válido (ej: +54 11 1234-5678)' }
+  // Argentina: 10 digits local, 11 with leading 0, 12-13 with country code 54
+  const isLocal = digitsOnly.length === 10
+  const isLocalWithZero = digitsOnly.length === 11 && digitsOnly.startsWith('0')
+  const isInternational = digitsOnly.length >= 12 && digitsOnly.length <= 13 &&
+    (digitsOnly.startsWith('54') || digitsOnly.startsWith('549'))
+
+  if (!isLocal && !isLocalWithZero && !isInternational) {
+    return { isValid: false, error: 'Ingresá un teléfono válido (ej: 11 1234-5678 o +54 11 1234-5678)' }
   }
 
   return { isValid: true }
