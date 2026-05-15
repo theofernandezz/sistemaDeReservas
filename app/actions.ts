@@ -940,9 +940,13 @@ export async function getAvailableSlots(
       slotInterval?: number
       bufferTime?: number
       maxAdvanceDays?: number
+      minAdvanceHours?: number
     } | undefined) || {}
 
     const maxAdvanceDays = Math.max(1, Number(businessSettings.maxAdvanceDays ?? 21))
+    const minAdvanceMinutes = businessSettings.minAdvanceHours !== undefined
+      ? Math.max(0, Number(businessSettings.minAdvanceHours)) * 60
+      : 30
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE }) // YYYY-MM-DD
     const todayLocal = new Date(`${todayStr}T00:00:00`)
     const maxDateLocal = new Date(todayLocal)
@@ -1068,7 +1072,7 @@ export async function getAvailableSlots(
         const slotStartUTC = createSlotTimeUTC(date, slotTime)
         const slotEndUTC   = addMinutesToUTC(slotStartUTC, service.duration_minutes)
 
-        const isPast    = isPastDate(slotStartUTC, 30)
+        const isPast    = isPastDate(slotStartUTC, minAdvanceMinutes)
         const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
         const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
         const isBreak = range.breaks.some(rest => cur < rest.endMin && (cur + service.duration_minutes) > rest.startMin)
@@ -1577,8 +1581,8 @@ export async function cancelAppointment(id: string, reason: string = 'Cancelado 
       .eq('id', appointment.business_id)
       .single()
 
-    const cancelSettings = (businessForCancel?.settings as { rescheduleHours?: number } | null) || {}
-    const cancelHours = cancelSettings.rescheduleHours || 24
+    const cancelSettings = (businessForCancel?.settings as { cancellationHours?: number } | null) || {}
+    const cancelHours = cancelSettings.cancellationHours ?? 24
     const hoursUntil = (new Date(appointment.start_time).getTime() - Date.now()) / (1000 * 60 * 60)
 
     if (hoursUntil >= 0 && hoursUntil < cancelHours) {
