@@ -192,17 +192,10 @@ async function sendPostPaymentNotifications(
   }
 
   // Send admin notification (non-blocking)
+  // Uses getBusinessEmailConfig internally: uses admin_notification_email from the businesses table
   try {
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('owner_email')
-      .eq('id', businessId)
-      .single()
-
-    if (business?.owner_email) {
-      await sendNewAppointmentNotification(emailData, businessId, business.owner_email)
-      console.log(`Admin notification sent for appointment ${appointmentId}`)
-    }
+    await sendNewAppointmentNotification(emailData, businessId)
+    console.log(`Admin notification sent for appointment ${appointmentId}`)
   } catch (error) {
     console.error('Failed to send admin notification (non-critical):', error)
   }
@@ -328,6 +321,7 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
           end_time: pending.end_time,
           client_name: pending.client_name,
           client_phone: pending.client_phone,
+          client_email: pending.client_email,
           addons: pending.addons,
           status: 'confirmed',
           payment_status: 'paid',

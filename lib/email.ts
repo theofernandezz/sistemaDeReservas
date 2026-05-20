@@ -68,7 +68,7 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
 
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color, owner_email')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
     .eq('id', businessId)
     .single()
 
@@ -85,7 +85,7 @@ export async function getBusinessEmailConfig(businessId: string): Promise<Busine
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || business.owner_email || DEFAULT_ADMIN_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || DEFAULT_ADMIN_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }
@@ -99,7 +99,7 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
 
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color, owner_email')
+    .select('name, email_from, email_from_name, admin_notification_email, email_brand_color')
     .eq('slug', slug)
     .single()
 
@@ -116,7 +116,7 @@ export async function getBusinessEmailConfigBySlug(slug: string): Promise<Busine
   return {
     emailFrom: business.email_from || DEFAULT_FROM_EMAIL,
     emailFromName: business.email_from_name || business.name,
-    adminNotificationEmail: business.admin_notification_email || business.owner_email || DEFAULT_ADMIN_EMAIL,
+    adminNotificationEmail: business.admin_notification_email || DEFAULT_ADMIN_EMAIL,
     brandColor: business.email_brand_color || DEFAULT_BRAND_COLOR,
     brandName: business.name,
   }
