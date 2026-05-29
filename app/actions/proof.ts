@@ -11,6 +11,7 @@ interface AppointmentProofData {
   end_time: string
   client_name: string
   service_id: string
+  status: string
   payment_status: string | null
   proof_url: string | null
   proof_uploaded_at: string | null
@@ -168,6 +169,7 @@ export async function getPublicAppointmentWithProof(
         end_time,
         client_name,
         service_id,
+        status,
         payment_status,
         proof_url,
         proof_uploaded_at,

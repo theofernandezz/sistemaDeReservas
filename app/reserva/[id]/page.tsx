@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertCircle, Ban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { format } from 'date-fns'
@@ -27,6 +27,7 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
   const startDate = new Date(appointment.start_time)
   const endDate = new Date(appointment.end_time)
   const paymentStatus = appointment.payment_status
+  const isCancelled = appointment.status === 'cancelled'
 
   const settings = appointment.business?.settings as BusinessSettings | undefined
   const isManualTransfer =
@@ -35,6 +36,29 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
   const depositPercentage = appointment.business?.deposit_percentage ?? 100
   const totalAmount = appointment.service?.price ?? 0
   const depositAmount = Math.round(totalAmount * (depositPercentage / 100))
+
+  if (isCancelled) {
+    return (
+      <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-br from-background via-background to-secondary/20 flex flex-col items-center justify-center p-4">
+        <Card className="max-w-xl w-full border border-border/40 shadow-2xl shadow-black/5 bg-card/60 backdrop-blur-xl rounded-3xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <CardContent className="pt-8 pb-8 px-6 sm:px-10 space-y-5 text-center">
+            <div className="relative mx-auto w-20 h-20">
+              <div className="relative flex items-center justify-center w-full h-full rounded-full shadow-inner bg-red-100 dark:bg-red-900/30">
+                <Ban className="w-10 h-10 text-red-600 dark:text-red-400" strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tighter">Turno cancelado</h1>
+              <p className="text-muted-foreground text-sm">
+                Este turno fue cancelado y ya no acepta comprobantes de pago.
+                Si querés reservar nuevamente podés hacerlo desde el sitio del negocio.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const statusConfig = {
     pending: {

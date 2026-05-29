@@ -108,6 +108,12 @@ export default function BlockedDatesManager() {
               selected={selectedDate}
               onSelect={setSelectedDate}
               className="rounded-md border"
+              classNames={{
+                months: 'relative flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
+                month_caption: 'flex items-center justify-center h-9',
+                caption_label: 'text-sm font-medium capitalize',
+                nav: 'absolute inset-x-0 top-0 flex items-center justify-between px-1 h-9 z-10',
+              }}
               disabled={(date) =>
                 date < new Date(new Date().setHours(0, 0, 0, 0)) ||
                 blockedDateStrings.has(format(date, 'yyyy-MM-dd'))

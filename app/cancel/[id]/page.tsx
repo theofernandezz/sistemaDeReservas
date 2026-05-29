@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { getAppointmentById, canRescheduleAppointment } from '@/app/actions'
 import { createClient } from '@/utils/supabase/server'
 import AppointmentActions from './appointment-actions'
-import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, ArrowLeft } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, MapPin, ArrowLeft, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -166,7 +166,29 @@ export default async function CancelPage({ params }: { params: Promise<{ id: str
             <div className="absolute -bottom-3 -right-3 w-6 h-6 bg-background rounded-full border border-border/50" />
           </div>
 
-          <div className="p-6 pt-8">
+          <div className="p-6 pt-8 space-y-4">
+            {appointment.payment_status === 'pending' && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Upload className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                      Tu comprobante de pago está pendiente
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Para confirmar el turno tenés que subir el comprobante de transferencia.
+                      Cancelar o reprogramar son acciones distintas.
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+                  <Link href={`/reserva/${appointment.id}`}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir comprobante de pago
+                  </Link>
+                </Button>
+              </div>
+            )}
             <AppointmentActions
               appointmentId={appointment.id}
               serviceId={appointment.service_id}

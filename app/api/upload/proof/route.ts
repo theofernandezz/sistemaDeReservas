@@ -69,12 +69,19 @@ export async function POST(request: NextRequest) {
     // Validate appointment exists and is awaiting proof
     const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
-      .select('id, business_id, payment_status')
+      .select('id, business_id, status, payment_status')
       .eq('id', appointmentId.trim())
       .single()
 
     if (fetchError || !appointment) {
       return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
+    }
+
+    if (appointment.status === 'cancelled') {
+      return NextResponse.json(
+        { error: 'Esta reserva fue cancelada y ya no acepta comprobantes' },
+        { status: 409 }
+      )
     }
 
     if (appointment.payment_status !== 'pending') {

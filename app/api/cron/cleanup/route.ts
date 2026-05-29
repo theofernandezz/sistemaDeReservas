@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/utils/supabase/server'
+import { sendAppointmentCancellationEmails } from '@/lib/email'
 
 const CRON_SECRET = process.env.CRON_SECRET
 
@@ -32,6 +33,14 @@ export async function GET(request: NextRequest) {
 
     const cancelledCutoff = new Date(now.getTime() - CANCELLED_DAYS * 24 * 60 * 60 * 1000)
     const completedCutoff = new Date(now.getTime() - COMPLETED_DAYS * 24 * 60 * 60 * 1000)
+
+    // 1. Find appointments with expired proof deadline BEFORE cancelling, to send notifications
+    const { data: expiredProofAppointments } = await supabase
+      .from('appointments')
+      .select('id, business_id, client_name, client_email, start_time, service:services(name)')
+      .eq('payment_status', 'pending')
+      .is('proof_url', null)
+      .lt('proof_expires_at', now.toISOString())
 
     const [cancelledResult, completedResult, autoApproveResult, expiredProofResult] = await Promise.all([
       supabase
@@ -74,6 +83,24 @@ export async function GET(request: NextRequest) {
 
     if (cancelledResult.error || completedResult.error || autoApproveResult.error || expiredProofResult.error) {
       return NextResponse.json({ error: 'Partial cleanup failure' }, { status: 500 })
+    }
+
+    // 2. Send cancellation notifications AFTER successful cancel
+    if (expiredProofAppointments && expiredProofAppointments.length > 0) {
+      await Promise.allSettled(
+        expiredProofAppointments.map((apt) => {
+          const rawService = apt.service
+          const serviceName = Array.isArray(rawService) ? rawService[0]?.name : (rawService as { name?: string } | null)?.name
+          return sendAppointmentCancellationEmails({
+            businessId: apt.business_id,
+            serviceName: serviceName,
+            clientName: apt.client_name,
+            clientEmail: apt.client_email,
+            startTime: apt.start_time,
+            reason: 'Comprobante de pago no recibido en el plazo de 48 horas',
+          })
+        })
+      )
     }
 
     console.log(`Cleanup cron: cancelled cutoff=${cancelledCutoff.toISOString()}, completed cutoff=${completedCutoff.toISOString()}`)
