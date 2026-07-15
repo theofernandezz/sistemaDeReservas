@@ -2,8 +2,6 @@ import { notFound } from 'next/navigation'
 import { Clock, CheckCircle2, XCircle, AlertCircle, Ban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { getPublicAppointmentWithProof } from '@/app/actions/proof'
 import { TransferDetailsCard } from '@/components/booking/transfer-details-card'
 import { ProofUploadCard } from '@/components/booking/proof-upload-card'
@@ -129,13 +127,13 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Fecha</span>
                 <span className="font-medium text-foreground">
-                  {format(startDate, "EEEE d 'de' MMMM", { locale: es })}
+                  {startDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires' })}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Hora</span>
                 <span className="font-medium text-foreground">
-                  {format(startDate, 'HH:mm')} – {format(endDate, 'HH:mm')} hs
+                  {startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })} – {endDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })} hs
                 </span>
               </div>
               <div className="flex justify-between">

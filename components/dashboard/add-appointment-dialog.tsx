@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
 import { Loader2, Plus, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,48 +22,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
-import { getServices, createAppointment, getBusinessSettings } from '@/app/actions'
-import type { Service, CreateAppointmentInput, AppointmentWithService, BusinessSettings } from '@/types/database.types'
+import { getServices, createAppointment, getAvailableSlots } from '@/app/actions'
+import type { Service, CreateAppointmentInput, AppointmentWithService, TimeSlot } from '@/types/database.types'
 
 interface AddAppointmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAppointmentCreated?: (appointment: AppointmentWithService) => void
   selectedDate?: Date
-}
-
-function generateTimeSlotsForDay(date: Date, settings: BusinessSettings): string[] {
-  const dayOfWeek = date.getDay()
-  const dayHours = settings.businessHours?.find(h => h.dayOfWeek === dayOfWeek)
-
-  let startMinutes = 8 * 60
-  let endMinutes = 20 * 60
-  const interval = settings.slotInterval ?? 30
-
-  if (dayHours) {
-    if (!dayHours.isOpen) return []
-    const [startH, startM = 0] = dayHours.startTime.split(':').map(Number)
-    const [endH, endM = 0] = dayHours.endTime.split(':').map(Number)
-    startMinutes = startH * 60 + startM
-    endMinutes = endH * 60 + endM
-  }
-
-  const breaks = (dayHours?.breaks ?? []).map(b => {
-    const [bsh, bsm = 0] = b.start.split(':').map(Number)
-    const [beh, bem = 0] = b.end.split(':').map(Number)
-    return { start: bsh * 60 + bsm, end: beh * 60 + bem }
-  })
-
-  const slots: string[] = []
-  for (let min = startMinutes; min <= endMinutes; min += interval) {
-    const inBreak = breaks.some(b => min >= b.start && min < b.end)
-    if (!inBreak) {
-      const h = Math.floor(min / 60)
-      const m = min % 60
-      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-    }
-  }
-  return slots
 }
 
 export function AddAppointmentDialog({
@@ -72,10 +39,11 @@ export function AddAppointmentDialog({
   selectedDate: initialDate,
 }: AddAppointmentDialogProps) {
   const [services, setServices] = useState<Service[]>([])
-  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({})
   const [loadingServices, setLoadingServices] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
 
   // Form state
   const [selectedServiceId, setSelectedServiceId] = useState<string>('')
@@ -89,14 +57,9 @@ export function AddAppointmentDialog({
   const [clientEmail, setClientEmail] = useState('')
 
   // Time slots derived from business hours for the selected day
-  const timeSlots = useMemo(
-    () => generateTimeSlotsForDay(selectedDate ?? new Date(), businessSettings),
-    [selectedDate, businessSettings]
-  )
-
   // Clear selected time if it's no longer in the available slots
   useEffect(() => {
-    if (selectedTime && !timeSlots.includes(selectedTime)) {
+    if (selectedTime && !timeSlots.some(slot => slot.time === selectedTime && slot.available)) {
       setSelectedTime('')
     }
   }, [timeSlots, selectedTime])
@@ -109,22 +72,16 @@ export function AddAppointmentDialog({
     }
   }, [initialDate])
 
-  // Load services and business settings
+  // Load services
   useEffect(() => {
     async function loadData() {
       setLoadingServices(true)
-      const [servicesResult, settingsResult] = await Promise.all([
-        getServices(),
-        getBusinessSettings(),
-      ])
+      const servicesResult = await getServices()
       if (servicesResult.success && servicesResult.data) {
         setServices(servicesResult.data)
         if (servicesResult.data.length > 0) {
           setSelectedServiceId(servicesResult.data[0].id)
         }
-      }
-      if (settingsResult.success && settingsResult.data) {
-        setBusinessSettings(settingsResult.data)
       }
       setLoadingServices(false)
     }
@@ -133,6 +90,31 @@ export function AddAppointmentDialog({
       loadData()
     }
   }, [open])
+
+  // Load available slots for the selected service/date, using the same
+  // source of truth (team member schedules) as the public booking flow
+  useEffect(() => {
+    if (!open || !selectedServiceId || !selectedDate) {
+      setTimeSlots([])
+      return
+    }
+
+    let cancelled = false
+    async function loadSlots() {
+      setLoadingSlots(true)
+      const dateStr = format(selectedDate as Date, 'yyyy-MM-dd')
+      const result = await getAvailableSlots(selectedServiceId, dateStr)
+      if (!cancelled) {
+        setTimeSlots(result.success && result.data ? result.data : [])
+        setLoadingSlots(false)
+      }
+    }
+
+    loadSlots()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selectedServiceId, selectedDate])
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -331,7 +313,11 @@ export function AddAppointmentDialog({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="time" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Hora De Inicio *</Label>
-                  {timeSlots.length === 0 ? (
+                  {loadingSlots ? (
+                    <div className="h-12 flex items-center justify-center rounded-md border border-border bg-secondary/30">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : timeSlots.length === 0 ? (
                     <div className="h-12 flex items-center px-3 rounded-md border border-border bg-secondary/30 text-sm text-muted-foreground">
                       Este día no tiene horario de atención configurado
                     </div>
@@ -341,11 +327,14 @@ export function AddAppointmentDialog({
                         <SelectValue placeholder="Seleccioná una hora" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
-                        {timeSlots.map(time => (
-                          <SelectItem key={time} value={time}>
+                        {timeSlots.map(slot => (
+                          <SelectItem key={slot.time} value={slot.time} disabled={!slot.available}>
                             <div className="flex items-center gap-2">
                               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                              {time}
+                              {slot.time}
+                              {!slot.available && (
+                                <span className="text-xs text-muted-foreground">(ocupado)</span>
+                              )}
                             </div>
                           </SelectItem>
                         ))}

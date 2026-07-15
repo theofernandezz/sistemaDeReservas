@@ -5,8 +5,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { getAppointmentById } from '@/app/actions'
 import { createClient } from '@/utils/supabase/server'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { getAppUrl } from '@/lib/config'
 import CopyLinkButton from './copy-link-button'
 import { TransferDetailsCard } from '@/components/booking/transfer-details-card'
@@ -54,6 +52,12 @@ DESCRIPTION:${description}
 END:VEVENT
 END:VCALENDAR`
 }
+
+const AR_TZ = 'America/Argentina/Buenos_Aires'
+const formatArDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+  date.toLocaleDateString('es-AR', { ...options, timeZone: AR_TZ })
+const formatArTime = (date: Date) =>
+  date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: AR_TZ })
 
 export default async function SuccessPage({ searchParams, params }: SuccessPageProps) {
   const { id, appointment: appointmentId, pending: pendingId, status: urlStatus } = await searchParams
@@ -154,8 +158,8 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
       const totalAmount = servicePrice || 0
       const depositAmount = Math.round(totalAmount * (depositPercentage / 100))
       
-      const formattedDate = startDate ? format(startDate, 'dd/MM/yyyy') : ''
-      const formattedTime = startDate ? format(startDate, 'HH:mm') : ''
+      const formattedDate = startDate ? formatArDate(startDate, { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
+      const formattedTime = startDate ? formatArTime(startDate) : ''
       const waMessage = `Hola! Acá te envío el comprobante de mi turno para el ${formattedDate} a las ${formattedTime} hs - ${serviceName}.`
       const cleanPhone = business?.phone?.replace(/[^0-9]/g, '') || ''
       const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessage)}`
@@ -176,7 +180,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                   <p className="text-xs font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-500">Paso Final</p>
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tighter text-foreground text-balance leading-tight">Reserva <br/> Pre-confirmada</h1>
                   <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                    Tu lugar {startDate ? `para el ${format(startDate, "EEEE d", { locale: es })}` : 'está guardado'}, pero falta tu pago para confirmarlo definitivamente.
+                    Tu lugar {startDate ? `para el ${formatArDate(startDate, { weekday: 'long', day: 'numeric' })}` : 'está guardado'}, pero falta tu pago para confirmarlo definitivamente.
                   </p>
                 </div>
               </div>
@@ -252,12 +256,12 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Fecha</span>
                     <span className="font-medium text-foreground">
-                      {format(startDate, "EEEE d 'de' MMMM", { locale: es })}
+                      {formatArDate(startDate, { weekday: 'long', day: 'numeric', month: 'long' })}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Hora</span>
-                    <span className="font-medium text-foreground">{format(startDate, 'HH:mm')} hs</span>
+                    <span className="font-medium text-foreground">{formatArTime(startDate)} hs</span>
                   </div>
                 </div>
               </div>
@@ -342,12 +346,12 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Fecha</span>
                   <span className="font-medium text-foreground">
-                    {format(startDate, "EEEE d 'de' MMMM", { locale: es })}
+                    {formatArDate(startDate, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Hora</span>
-                  <span className="font-medium text-foreground">{format(startDate, 'HH:mm')} hs</span>
+                  <span className="font-medium text-foreground">{formatArTime(startDate)} hs</span>
                 </div>
                 {clientName && (
                   <div className="flex justify-between">
