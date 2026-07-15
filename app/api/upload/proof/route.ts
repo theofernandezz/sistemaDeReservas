@@ -129,7 +129,6 @@ export async function POST(request: NextRequest) {
     } = supabase.storage.from('payment-proofs').getPublicUrl(uploadData.path)
 
     const now = new Date()
-    const autoApproveAt = new Date(now.getTime() + 24 * 60 * 60 * 1000) // +24h
 
     // Update appointment status
     const { error: updateError } = await supabase
@@ -138,7 +137,6 @@ export async function POST(request: NextRequest) {
         payment_status: 'pending_confirmation',
         proof_url: publicUrl,
         proof_uploaded_at: now.toISOString(),
-        proof_auto_approve_at: autoApproveAt.toISOString(),
       })
       .eq('id', appointmentId)
 

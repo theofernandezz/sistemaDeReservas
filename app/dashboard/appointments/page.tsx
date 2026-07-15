@@ -18,7 +18,6 @@ export default async function AppointmentsPage() {
     client_name: string
     start_time: string
     proof_url: string
-    proof_auto_approve_at: string | null
     service: { name: string } | null
   }[] = []
 
@@ -26,7 +25,7 @@ export default async function AppointmentsPage() {
     const supabase = await createClient()
     const { data } = await supabase
       .from('appointments')
-      .select('id, client_name, start_time, proof_url, proof_auto_approve_at, service:services(name)')
+      .select('id, client_name, start_time, proof_url, service:services(name)')
       .eq('business_id', business.id)
       .eq('payment_status', 'pending_confirmation')
       .order('proof_uploaded_at', { ascending: true })

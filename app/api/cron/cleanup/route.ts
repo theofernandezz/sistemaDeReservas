@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/utils/supabase/server'
-import { sendAppointmentCancellationEmails } from '@/lib/email'
 
 const CRON_SECRET = process.env.CRON_SECRET
 
@@ -34,15 +33,7 @@ export async function GET(request: NextRequest) {
     const cancelledCutoff = new Date(now.getTime() - CANCELLED_DAYS * 24 * 60 * 60 * 1000)
     const completedCutoff = new Date(now.getTime() - COMPLETED_DAYS * 24 * 60 * 60 * 1000)
 
-    // 1. Find appointments with expired proof deadline BEFORE cancelling, to send notifications
-    const { data: expiredProofAppointments } = await supabase
-      .from('appointments')
-      .select('id, business_id, client_name, client_email, start_time, service:services(name)')
-      .eq('payment_status', 'pending')
-      .is('proof_url', null)
-      .lt('proof_expires_at', now.toISOString())
-
-    const [cancelledResult, completedResult, autoApproveResult, expiredProofResult] = await Promise.all([
+    const [cancelledResult, completedResult] = await Promise.all([
       supabase
         .from('appointments')
         .delete()
@@ -53,19 +44,6 @@ export async function GET(request: NextRequest) {
         .delete()
         .eq('status', 'completed')
         .lt('end_time', completedCutoff.toISOString()),
-      // Auto-approve proofs where the business hasn't acted within the deadline
-      supabase
-        .from('appointments')
-        .update({ payment_status: 'paid' })
-        .eq('payment_status', 'pending_confirmation')
-        .lt('proof_auto_approve_at', now.toISOString()),
-      // Cancel appointments where the client never uploaded a proof in time
-      supabase
-        .from('appointments')
-        .update({ status: 'cancelled' })
-        .eq('payment_status', 'pending')
-        .is('proof_url', null)
-        .lt('proof_expires_at', now.toISOString()),
     ])
 
     if (cancelledResult.error) {
@@ -74,33 +52,9 @@ export async function GET(request: NextRequest) {
     if (completedResult.error) {
       console.error('Error deleting completed appointments:', completedResult.error)
     }
-    if (autoApproveResult.error) {
-      console.error('Error auto-approving payment proofs:', autoApproveResult.error)
-    }
-    if (expiredProofResult.error) {
-      console.error('Error cancelling appointments with expired proof deadline:', expiredProofResult.error)
-    }
 
-    if (cancelledResult.error || completedResult.error || autoApproveResult.error || expiredProofResult.error) {
+    if (cancelledResult.error || completedResult.error) {
       return NextResponse.json({ error: 'Partial cleanup failure' }, { status: 500 })
-    }
-
-    // 2. Send cancellation notifications AFTER successful cancel
-    if (expiredProofAppointments && expiredProofAppointments.length > 0) {
-      await Promise.allSettled(
-        expiredProofAppointments.map((apt) => {
-          const rawService = apt.service
-          const serviceName = Array.isArray(rawService) ? rawService[0]?.name : (rawService as { name?: string } | null)?.name
-          return sendAppointmentCancellationEmails({
-            businessId: apt.business_id,
-            serviceName: serviceName,
-            clientName: apt.client_name,
-            clientEmail: apt.client_email,
-            startTime: apt.start_time,
-            reason: 'Comprobante de pago no recibido en el plazo de 48 horas',
-          })
-        })
-      )
     }
 
     console.log(`Cleanup cron: cancelled cutoff=${cancelledCutoff.toISOString()}, completed cutoff=${completedCutoff.toISOString()}`)

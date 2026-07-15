@@ -625,7 +625,7 @@ export async function sendManualTransferPendingEmail(
 
     const body = `
       <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-        Hola ${data.clientName}, tu turno fue pre-confirmado. Para completar la reserva, realizá la transferencia y subí el comprobante.
+        Hola ${data.clientName}, tu turno está confirmado. Para evitar inconvenientes, te pedimos que realices la transferencia y subas el comprobante.
       </p>
       ${infoCard(rows, config.brandColor)}
       <div style="margin-bottom: 12px;">
@@ -642,8 +642,8 @@ export async function sendManualTransferPendingEmail(
     const html = baseEmailTemplate({
       brandName: config.brandName,
       brandColor: config.brandColor,
-      title: 'Reserva pre-confirmada',
-      subtitle: 'Falta tu comprobante de transferencia para confirmar.',
+      title: 'Reserva confirmada',
+      subtitle: 'Falta subir tu comprobante de transferencia.',
       body,
     })
 

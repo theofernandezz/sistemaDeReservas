@@ -17,7 +17,7 @@ export default async function RemindersPage() {
             Centro de Gestión
           </h1>
           <p className="text-sm text-muted-foreground">
-            Aprueba reservas y envía recordatorios por WhatsApp
+            Revisá pagos pendientes y envía recordatorios por WhatsApp
           </p>
         </div>
 
@@ -25,7 +25,7 @@ export default async function RemindersPage() {
         {pendingAppointments.length > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-600 dark:text-amber-400">
             <Clock size={16} />
-            {pendingAppointments.length} {pendingAppointments.length === 1 ? 'reserva pendiente' : 'reservas pendientes'}
+            {pendingAppointments.length} {pendingAppointments.length === 1 ? 'pago pendiente' : 'pagos pendientes'}
           </div>
         )}
       </div>

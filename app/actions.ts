@@ -1746,7 +1746,8 @@ export interface AppointmentWithReminders extends AppointmentWithService {
 }
 
 /**
- * Get all future pending (unconfirmed) appointments for the booking approval section
+ * Get all future confirmed appointments whose manual transfer payment is still
+ * pending (client hasn't uploaded a proof yet), for the follow-up section.
  */
 export async function getPendingAppointments(): Promise<ServerActionResponse<AppointmentWithService[]>> {
   try {
@@ -1764,7 +1765,7 @@ export async function getPendingAppointments(): Promise<ServerActionResponse<App
         service:services(*)
       `)
       .eq('business_id', businessId)
-      .eq('status', 'pending')
+      .eq('payment_status', 'pending')
       .gte('start_time', now)
       .order('start_time', { ascending: true })
 

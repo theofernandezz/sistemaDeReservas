@@ -193,7 +193,7 @@ export default function ConfirmForm({
         client_name: name.trim(),
         client_phone: phone.trim(),
         client_email: email.trim(),
-        status: 'pending',
+        status: 'confirmed',
         payment_status: 'pending',
         addons: selectedAddons,
         team_member_id: resolvedTeamMemberId,

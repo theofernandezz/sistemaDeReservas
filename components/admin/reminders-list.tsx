@@ -60,16 +60,9 @@ export default function RemindersList({
   const emailsSent = tomorrowAppointments.filter(a => a.email_reminder_sent).length
   const whatsappSent = tomorrowAppointments.filter(a => a.whatsapp_reminder_sent).length
 
-  // Handle pending appointment actions
-  const handleConfirm = async (apt: AppointmentWithService) => {
-    setLoadingAction(`confirm-${apt.id}`)
-    await updateAppointmentStatus(apt.id, 'confirmed')
-    router.refresh()
-    setLoadingAction(null)
-  }
-
-  const handleReject = async (apt: AppointmentWithService) => {
-    setLoadingAction(`reject-${apt.id}`)
+  // Handle appointments with a manual transfer still unpaid
+  const handleCancel = async (apt: AppointmentWithService) => {
+    setLoadingAction(`cancel-${apt.id}`)
     await updateAppointmentStatus(apt.id, 'cancelled')
     router.refresh()
     setLoadingAction(null)
@@ -83,13 +76,13 @@ export default function RemindersList({
 
     const message = `Hola ${apt.client_name}! 👋
 
-Recibimos tu solicitud de reserva:
+Tu turno está confirmado:
 
 📅 ${format(startTime, "EEEE d 'de' MMMM", { locale: es })}
 ⏰ ${format(startTime, 'HH:mm')} hs
 💅 ${serviceName}
 
-Te confirmamos en breve! ✨`
+Todavía no recibimos tu transferencia. ¿Nos la podés enviar y mandar el comprobante? ✨`
 
     const whatsappUrl = generateWhatsAppLink(apt.client_phone, message)
     window.open(whatsappUrl, '_blank')
@@ -134,7 +127,7 @@ Si necesitás cancelar, avisame por acá.`
         </div>
         <h3 className="text-xl font-semibold text-foreground tracking-tight mb-2">Todo al día</h3>
         <p className="text-sm text-muted-foreground/80">
-          No hay reservas pendientes ni recordatorios por enviar
+          No hay pagos pendientes ni recordatorios por enviar
         </p>
       </div>
     )
@@ -154,11 +147,11 @@ Si necesitás cancelar, avisame por acá.`
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"></span>
               </div>
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Reservas Pendientes
+                Pagos Pendientes
               </h2>
             </div>
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              {pendingAppointments.length} {pendingAppointments.length === 1 ? 'solicitud' : 'solicitudes'}
+              {pendingAppointments.length} {pendingAppointments.length === 1 ? 'turno sin pagar' : 'turnos sin pagar'}
             </span>
           </div>
 
@@ -225,35 +218,21 @@ Si necesitás cancelar, avisame por acá.`
                         </Button>
                       )}
 
-                      {/* Reject Button */}
+                      {/* Cancel Button */}
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleReject(apt)}
-                        disabled={loadingAction === `reject-${apt.id}`}
-                        className="h-9 w-9 px-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        title="Rechazar"
+                        onClick={() => handleCancel(apt)}
+                        disabled={loadingAction === `cancel-${apt.id}`}
+                        className="h-9 px-3 gap-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        title="Cancelar turno"
                       >
-                        {loadingAction === `reject-${apt.id}` ? (
+                        {loadingAction === `cancel-${apt.id}` ? (
                           <Loader2 size={16} className="animate-spin" />
                         ) : (
                           <X size={18} />
                         )}
-                      </Button>
-
-                      {/* Confirm Button */}
-                      <Button
-                        size="sm"
-                        onClick={() => handleConfirm(apt)}
-                        disabled={loadingAction === `confirm-${apt.id}`}
-                        className="h-9 px-4 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                      >
-                        {loadingAction === `confirm-${apt.id}` ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <Check size={16} strokeWidth={2.5} />
-                        )}
-                        <span className="font-medium">Confirmar</span>
+                        <span className="hidden sm:inline">Cancelar</span>
                       </Button>
                     </div>
                   </div>

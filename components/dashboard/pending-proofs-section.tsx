@@ -9,7 +9,6 @@ interface PendingProof {
   client_name: string
   start_time: string
   proof_url: string
-  proof_auto_approve_at: string | null
   service: { name: string } | null
 }
 
@@ -53,7 +52,6 @@ export function PendingProofsSection({ initialProofs }: PendingProofsSectionProp
             serviceName={proof.service?.name ?? 'Turno'}
             startTime={proof.start_time}
             proofUrl={proof.proof_url}
-            autoApproveAt={proof.proof_auto_approve_at}
             onAction={handleAction}
           />
         ))}

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, Clock, FileText, Loader2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { Check, X, FileText, Loader2 } from 'lucide-react'
 import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { approvePaymentProof, rejectPaymentProof } from '@/app/actions/proof'
@@ -16,7 +15,6 @@ interface ProofReviewCardProps {
   serviceName: string
   startTime: string
   proofUrl: string
-  autoApproveAt: string | null
   onAction: () => void
 }
 
@@ -26,7 +24,6 @@ export function ProofReviewCard({
   serviceName,
   startTime,
   proofUrl,
-  autoApproveAt,
   onAction,
 }: ProofReviewCardProps) {
   const { success: showSuccess, error: showError } = useToast()
@@ -36,9 +33,6 @@ export function ProofReviewCard({
   const [rejectReason, setRejectReason] = useState('')
 
   const isPdf = proofUrl.toLowerCase().endsWith('.pdf') || proofUrl.includes('application%2Fpdf')
-
-  const autoApproveDate = autoApproveAt ? new Date(autoApproveAt) : null
-  const isFutureAutoApprove = autoApproveDate && autoApproveDate > new Date()
 
   const startDate = new Date(startTime)
 
@@ -81,21 +75,12 @@ export function ProofReviewCard({
   return (
     <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border/40 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-semibold text-foreground truncate">{clientName}</p>
-          <p className="text-sm text-muted-foreground truncate">{serviceName}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {format(startDate, "EEEE d 'de' MMMM, HH:mm 'hs'", { locale: es })}
-          </p>
-        </div>
-        {isFutureAutoApprove && autoApproveDate && (
-          <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[11px] font-medium px-2.5 py-1 border border-amber-200 dark:border-amber-500/30">
-            <Clock className="w-3 h-3" />
-            Auto-aprueba en{' '}
-            {formatDistanceToNow(autoApproveDate, { locale: es, addSuffix: false })}
-          </span>
-        )}
+      <div className="px-5 py-4 border-b border-border/40">
+        <p className="font-semibold text-foreground truncate">{clientName}</p>
+        <p className="text-sm text-muted-foreground truncate">{serviceName}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {format(startDate, "EEEE d 'de' MMMM, HH:mm 'hs'", { locale: es })}
+        </p>
       </div>
 
       {/* Proof */}
