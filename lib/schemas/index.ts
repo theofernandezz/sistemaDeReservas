@@ -214,7 +214,7 @@ export const mercadoPagoWebhookSchema = z.object({
   type: z.string().optional(),
   topic: z.string().optional(),
   data: z.object({
-    id: z.string().or(z.number()),
+    id: z.string().or(z.number()).optional(),
   }).optional(),
   id: z.string().or(z.number()).optional(),
 }).refine(data => {
@@ -223,13 +223,11 @@ export const mercadoPagoWebhookSchema = z.object({
 }, {
   message: 'Webhook debe tener type o topic',
   path: ['type'],
-}).refine(data => {
-  // Must have data.id or id
-  return data.data?.id || data.id
-}, {
-  message: 'Webhook debe tener data.id o id',
-  path: ['data'],
 })
+// NOTE: data.id/id is intentionally NOT required here. A missing id is a
+// valid (if unusual) MP notification, and route.ts already handles it by
+// returning 200 without processing (see `if (!dataId)`). Rejecting it here
+// with 400 would make MP retry the same payload forever.
 
 // MercadoPago payment response schema (subset - only what we use)
 export const mercadoPagoPaymentSchema = z.object({
