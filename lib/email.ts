@@ -2,7 +2,17 @@ import { Resend } from 'resend'
 import { createClient } from '@/utils/supabase/server'
 import { getAppUrl } from '@/lib/config'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let resendClient: Resend | null = null
+
+// Lazy singleton: constructing Resend without an API key throws immediately,
+// which would break module import (and next build's page-data collection)
+// in any environment where RESEND_API_KEY isn't set yet.
+function getResendClient(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
 // Default brand settings
 const DEFAULT_BRAND_COLOR = '#6366f1'
@@ -300,7 +310,7 @@ export async function sendPasswordResetEmailViaResend(
       body,
     })
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`,
       to: data.email,
       subject: 'Restablecer contrasena',
@@ -353,7 +363,7 @@ export async function sendAppointmentCancellationEmails(
 
     let errorMessage: string | undefined
 
-    const adminResult = await resend.emails.send({
+    const adminResult = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: config.adminNotificationEmail,
       subject: `Cancelacion: ${data.clientName} — ${data.serviceName ?? 'Turno'}`,
@@ -387,7 +397,7 @@ export async function sendAppointmentCancellationEmails(
         </p>
       `
 
-      const clientResult = await resend.emails.send({
+      const clientResult = await getResendClient().emails.send({
         from: `${config.emailFromName} <${config.emailFrom}>`,
         to: data.clientEmail,
         subject: `Tu turno fue cancelado — ${data.serviceName ?? config.brandName}`,
@@ -451,7 +461,7 @@ export async function sendAppointmentRescheduleEmails(
 
     let errorMessage: string | undefined
 
-    const adminResult = await resend.emails.send({
+    const adminResult = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: config.adminNotificationEmail,
       subject: `Reprogramacion: ${data.clientName} — ${data.serviceName ?? 'Turno'}`,
@@ -482,7 +492,7 @@ export async function sendAppointmentRescheduleEmails(
         </p>
       `
 
-      const clientResult = await resend.emails.send({
+      const clientResult = await getResendClient().emails.send({
         from: `${config.emailFromName} <${config.emailFrom}>`,
         to: data.clientEmail,
         subject: `Tu turno fue reprogramado — ${newDate.toLocaleDateString('es-AR')}`,
@@ -576,7 +586,7 @@ export async function sendNewAppointmentNotification(
       body,
     })
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: emailToUse,
       subject: `Nueva reserva — ${data.serviceName} · ${data.clientName}`,
@@ -647,7 +657,7 @@ export async function sendManualTransferPendingEmail(
       body,
     })
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
       subject: `Completá tu reserva — ${data.serviceName}`,
@@ -716,7 +726,7 @@ export async function sendClientConfirmation(
       body,
     })
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
       subject: `Reserva confirmada — ${data.serviceName}`,
@@ -781,7 +791,7 @@ export async function sendAppointmentReminder(
       body,
     })
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: `${config.emailFromName} <${config.emailFrom}>`,
       to: data.clientEmail,
       subject: `Recordatorio — Tu turno es manana`,
