@@ -30,11 +30,14 @@ jobs:
         run: pnpm lint
         continue-on-error: true
 
+      # Build must run before Type-check: it generates next-env.d.ts
+      # (gitignored, includes the typed-routes declaration file), which
+      # the standalone tsc step below needs to resolve asset/route imports.
+      - name: Build
+        run: pnpm build
+
       - name: Type-check
         run: pnpm exec tsc --noEmit
 
       - name: Test
         run: pnpm test -- --run
-
-      - name: Build
-        run: pnpm build
