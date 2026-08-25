@@ -39,9 +39,13 @@ jobs:
 
       # Generates next-env.d.ts (gitignored), which Type-check needs to
       # resolve asset/route imports like '@/public/logo/icon.png'.
+      # NODE_OPTIONS: the GitHub runner has 7GB RAM and next build's internal
+      # type-checking pass OOMs on default heap limits without this.
       - name: Build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Type-check
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
