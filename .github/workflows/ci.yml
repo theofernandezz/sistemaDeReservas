@@ -22,22 +22,31 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
+
+      # Each gate below runs independently of the others (via !cancelled()),
+      # so a single run reports every failure instead of stopping at the
+      # first one. They're still skipped together if install itself failed,
+      # since nothing can run without dependencies.
 
       # TODO: re-enable as a hard gate once the 239 pre-existing lint errors
       # are cleaned up (tracked separately, not part of this CI setup).
       - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm lint
         continue-on-error: true
 
-      # Build must run before Type-check: it generates next-env.d.ts
-      # (gitignored, includes the typed-routes declaration file), which
-      # the standalone tsc step below needs to resolve asset/route imports.
+      # Generates next-env.d.ts (gitignored), which Type-check needs to
+      # resolve asset/route imports like '@/public/logo/icon.png'.
       - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm build
 
       - name: Type-check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm exec tsc --noEmit
 
       - name: Test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm test -- --run
