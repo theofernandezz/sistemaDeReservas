@@ -44,3 +44,6 @@ next-env.d.ts
 .gitmodules
 .ai*
 
+# claude code agent worktrees (ephemeral, per-session)
+.claude/worktrees/
+

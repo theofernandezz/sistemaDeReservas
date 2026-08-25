@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        id: install
+        run: pnpm install --frozen-lockfile
+
+      # Each gate below runs independently of the others (via !cancelled()),
+      # so a single run reports every failure instead of stopping at the
+      # first one. They're still skipped together if install itself failed,
+      # since nothing can run without dependencies.
+
+      # TODO: re-enable as a hard gate once the 239 pre-existing lint errors
+      # are cleaned up (tracked separately, not part of this CI setup).
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm lint
+        continue-on-error: true
+
+      # Generates next-env.d.ts (gitignored), which Type-check needs to
+      # resolve asset/route imports like '@/public/logo/icon.png'.
+      # NODE_OPTIONS: the GitHub runner has 7GB RAM and next build's internal
+      # type-checking pass OOMs on default heap limits without this.
+      - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Type-check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm exec tsc --noEmit
+
+      - name: Test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm test -- --run

@@ -11,6 +11,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
+    exclude: ['node_modules/**', '.claude/worktrees/**'],
     env: loadEnv('', resolve(__dirname, '.'), ''),
     coverage: {
       provider: 'v8',
