@@ -78,11 +78,11 @@ export default async function PublicBookingPage({ params }: PageProps) {
       <section aria-labelledby="services-heading">
         {/* Section header with accent line */}
         <div className="flex items-center gap-3 mb-4 sm:mb-6">
-          <h2 
+          <h2
             id="services-heading"
             className="text-lg sm:text-xl font-semibold text-foreground"
           >
-            Nuestros Servicios
+            Servicios
           </h2>
           <div 
             className="flex-1 h-px opacity-20"

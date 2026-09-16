@@ -24,6 +24,8 @@ export interface SettingsProps {
     email?: string
     instagram?: string
     address?: string
+    emailFrom?: string | null
+    emailFromName?: string | null
   }
   businessSettings?: {
     primaryColor?: string

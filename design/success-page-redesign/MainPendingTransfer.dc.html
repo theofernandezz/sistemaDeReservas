@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; }
+    a { color: inherit; text-decoration: none; }
+
+    .copy-row { transition: border-color .15s ease; }
+    .copy-row:hover { border-color: oklch(0.75 0 0); }
+
+    .dropzone { transition: border-color .15s ease; }
+    .dropzone:hover { border-color: oklch(0.7 0 0); }
+
+    .cta-primary { transition: opacity .18s ease; }
+    .cta-primary:hover { opacity: 0.9; }
+
+    .ghost-link { transition: color .15s ease; }
+    .ghost-link:hover { color: oklch(0.145 0 0); }
+  </style>
+</helmet>
+
+<div style="width: 100%; min-height: 1300px; background: oklch(1 0 0); color: oklch(0.145 0 0); display: flex; align-items: center; justify-content: center; padding: 40px;">
+
+  <div style="width: 100%; max-width: 560px; border: 1px solid oklch(0.922 0 0); border-radius: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;">
+
+    <!-- Icon -->
+    <div style="width: 64px; height: 64px; border-radius: 999px; border: 1.5px solid oklch(0.7 0 0); display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.556 0 0)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em;">Reserva pre-confirmada</h1>
+      <p style="margin: 0; font-size: 13.5px; color: oklch(0.556 0 0); max-width: 380px;">
+        Tu lugar para el lunes 31 está guardado. Transferí para confirmarlo definitivamente.
+      </p>
+    </div>
+
+    <!-- Amounts -->
+    <div style="width: 100%; border: 1px solid oklch(0.922 0 0); border-radius: 14px; padding: 18px; text-align: left; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px;">
+        <span>Total del servicio</span>
+        <span style="font-weight: 600;">$20.000</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px;">
+        <span>Seña a transferir (30%)</span>
+        <span style="font-weight: 700; color: #b45309;">$6.000</span>
+      </div>
+    </div>
+
+    <!-- Transfer details -->
+    <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
+      <button type="button" class="copy-row" style="width: 100%; border: 1px solid oklch(0.9 0 0); border-radius: 12px; padding: 12px 16px; text-align: left; background: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <div>
+          <div style="font-size: 10.5px; color: oklch(0.708 0 0); margin-bottom: 2px;">Alias</div>
+          <div style="font-size: 14px; font-weight: 600;">estudio.norte.mp</div>
+        </div>
+        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: oklch(0.556 0 0);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="10" height="10" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          Copiar
+        </span>
+      </button>
+
+      <button type="button" class="copy-row" style="width: 100%; border: 1px solid oklch(0.9 0 0); border-radius: 12px; padding: 12px 16px; text-align: left; background: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <div>
+          <div style="font-size: 10.5px; color: oklch(0.708 0 0); margin-bottom: 2px;">CVU</div>
+          <div style="font-size: 14px; font-weight: 600;">0000003100094567892100</div>
+        </div>
+        <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: oklch(0.556 0 0); flex-shrink: 0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="10" height="10" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          Copiar
+        </span>
+      </button>
+
+      <div style="width: 100%; border: 1px solid oklch(0.922 0 0); border-radius: 12px; padding: 12px 16px; text-align: left;">
+        <div style="font-size: 10.5px; color: oklch(0.708 0 0); margin-bottom: 2px;">Titular</div>
+        <div style="font-size: 14px; font-weight: 600;">Estudio Norte SRL</div>
+      </div>
+    </div>
+
+    <!-- Proof upload -->
+    <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+      <div class="dropzone" style="width: 100%; border: 1.5px dashed oklch(0.85 0 0); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: oklch(0.556 0 0);"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <span style="font-size: 13px; font-weight: 600;">Subí tu comprobante</span>
+        <span style="font-size: 11.5px; color: oklch(0.708 0 0);">JPG, PNG, HEIC, PDF — máx. 10 MB</span>
+      </div>
+      <p style="margin: 0; font-size: 12px; color: oklch(0.556 0 0);">
+        ¿Cerraste la página? <a href="#" style="text-decoration: underline;">Accedé a tu reserva</a>
+      </p>
+    </div>
+
+    <a href="#" class="ghost-link" style="width: 100%; height: 46px; border-radius: 11px; border: 1px solid oklch(0.9 0 0); color: oklch(0.145 0 0); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center;">
+      Volver al inicio
+    </a>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

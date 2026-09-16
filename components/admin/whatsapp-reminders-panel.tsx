@@ -178,8 +178,8 @@ export default function WhatsAppRemindersPanel() {
         </div>
       </div>
 
-      {/* Content (Glassmorphic Window) */}
-      <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm">
+      {/* Content */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-12 text-center">
             <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
@@ -255,7 +255,7 @@ export default function WhatsAppRemindersPanel() {
                       size="sm"
                       onClick={() => handleWhatsAppClick(apt)}
                       disabled={sendingId === apt.id}
-                      className="h-9 px-4 bg-green-600/90 hover:bg-green-600 text-white gap-2 shadow-sm hover:shadow-md hover:shadow-green-600/20 hover:-translate-y-0.5 transition-all shrink-0"
+                      className="h-9 px-4 bg-green-600/90 hover:bg-green-600 text-white gap-2 shadow-sm transition-colors shrink-0"
                     >
                       {sendingId === apt.id ? (
                         <Loader2 size={16} className="animate-spin" />

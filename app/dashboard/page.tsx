@@ -66,13 +66,6 @@ export default async function DashboardHomePage() {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
       {business?.id && <AppointmentsRealtime businessId={business.id} />}
-      {/* UI_DIRECTION
-        - Intent: Transform the dashboard home into a professional command center with a Linear-style aesthetic.
-        - Pillars: Typography (High contrast headings), Surface (Glassmorphism and subtle borders), Motion (Hover lift on cards).
-        - Risky Choice: Asymmetric 2-column layout (70/30) abandoning the standard stacked view.
-        - Usability Guardrail: High contrast status badges with borders for easy scanability.
-        - Variation Proof: Layout structure, Background/surface treatment, Typography hierarchy.
-      */}
 
       {/* Header - Option B (Data-driven & Minimalist) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/50 pb-6">

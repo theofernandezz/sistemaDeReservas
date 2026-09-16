@@ -121,7 +121,7 @@ Si necesitás cancelar, avisame por acá.`
 
   if (hasNoPending && hasNoTomorrow) {
     return (
-      <div className="bg-card/50 backdrop-blur-xl border border-white/5 rounded-3xl p-10 text-center shadow-sm max-w-lg mx-auto mt-8">
+      <div className="bg-card border border-border rounded-3xl p-10 text-center shadow-sm max-w-lg mx-auto mt-8">
         <div className="h-16 w-16 rounded-full bg-secondary/50 border border-border/50 mx-auto mb-4 flex items-center justify-center shadow-inner">
           <CalendarCheck className="h-8 w-8 text-muted-foreground/70" />
         </div>
@@ -141,22 +141,16 @@ Si necesitás cancelar, avisame por acá.`
       {pendingAppointments.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2.5">
-              <div className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"></span>
-              </div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                Pagos Pendientes
-              </h2>
-            </div>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              Pagos Pendientes
+            </h2>
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
               {pendingAppointments.length} {pendingAppointments.length === 1 ? 'turno sin pagar' : 'turnos sin pagar'}
             </span>
           </div>
 
-          <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm">
-            <div className="divide-y divide-border/40">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <div className="divide-y divide-border">
               {pendingAppointments.map(apt => {
                 const startTime = new Date(apt.start_time)
                 const hasPhone = !!apt.client_phone
@@ -168,43 +162,45 @@ Si necesitás cancelar, avisame por acá.`
                 })()
 
                 return (
-                  <div key={apt.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/20 transition-colors duration-200 group">
+                  <div key={apt.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-secondary/30 transition-colors">
                     {/* Date/Time */}
                     <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <div className="text-center min-w-[4.5rem] bg-background/50 py-2 rounded-xl border border-border/50 shadow-sm group-hover:border-primary/20 transition-colors">
-                        <p className="text-sm font-semibold text-foreground tracking-tight">
+                      <div className="shrink-0 w-14 text-center">
+                        <p className="text-sm font-semibold text-foreground tabular-nums">
                           {format(startTime, 'HH:mm')}
                         </p>
                         <p className={cn(
-                          "text-[11px] font-medium uppercase tracking-wider mt-0.5",
-                          isToday ? "text-amber-500" :
+                          "text-xs mt-0.5",
+                          isToday ? "text-amber-600 dark:text-amber-400" :
                             isTomorrow ? "text-primary" :
-                              "text-muted-foreground/80"
+                              "text-muted-foreground"
                         )}>
-                          {isToday ? 'Hoy' : isTomorrow ? 'Mañ' : format(startTime, 'MMM d', { locale: es })}
+                          {isToday ? 'Hoy' : isTomorrow ? 'Mañana' : format(startTime, 'd MMM', { locale: es })}
                         </p>
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0 pl-2 border-l-[3px] border-amber-500/50 py-0.5 rounded-sm">
-                        <p className="font-semibold text-foreground truncate text-[15px] tracking-tight">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate">
                           {apt.client_name}
                         </p>
-                        <p className="text-sm text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
-                          {apt.service?.name || 'Servicio'}
-                        </p>
-                        {apt.client_phone && (
-                          <p className="text-[13px] text-muted-foreground/70 flex items-center gap-1.5 mt-1">
-                            <Phone size={12} className="opacity-70" />
-                            {apt.client_phone}
-                          </p>
-                        )}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+                          <span className="truncate">{apt.service?.name || 'Servicio'}</span>
+                          {apt.client_phone && (
+                            <>
+                              <span className="text-border">·</span>
+                              <span className="flex items-center gap-1 shrink-0">
+                                <Phone size={12} className="opacity-70" />
+                                {apt.client_phone}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0 pt-2 sm:pt-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {/* Message Button */}
                       {hasPhone && (
                         <Button
@@ -257,9 +253,9 @@ Si necesitás cancelar, avisame por acá.`
             </div>
           </div>
 
-          {/* Stats Cards (Glassmorphic) */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-3.5 mb-2">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
                   <CalendarCheck className="h-5 w-5 text-primary" />
@@ -269,7 +265,7 @@ Si necesitás cancelar, avisame por acá.`
               <p className="text-3xl font-bold text-foreground pl-1">{tomorrowAppointments.length}</p>
             </div>
 
-            <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-3.5 mb-2">
                 <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                   <Mail className="h-5 w-5 text-emerald-500" />
@@ -279,7 +275,7 @@ Si necesitás cancelar, avisame por acá.`
               <p className="text-3xl font-bold text-foreground pl-1">{emailsSent}</p>
             </div>
 
-            <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-3.5 mb-2">
                 <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
                   <MessageCircle className="h-5 w-5 text-green-500" />
@@ -289,7 +285,7 @@ Si necesitás cancelar, avisame por acá.`
               <p className="text-3xl font-bold text-foreground pl-1">{whatsappSent}</p>
             </div>
 
-            <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-3.5 mb-2">
                 <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                   <Clock className="h-5 w-5 text-amber-500" />
@@ -302,8 +298,8 @@ Si necesitás cancelar, avisame por acá.`
             </div>
           </div>
 
-          {/* Appointments List (Glassmorphic Inbox) */}
-          <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm">
+          {/* Appointments List */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="flex items-center justify-between p-5 border-b border-border/30 bg-secondary/10">
               <h3 className="font-semibold text-foreground tracking-tight flex items-center gap-2.5">
                 <MessageCircle size={18} className="text-primary" />
@@ -379,7 +375,7 @@ Si necesitás cancelar, avisame por acá.`
                           size="sm"
                           onClick={() => handleWhatsAppClick(apt)}
                           disabled={loadingWhatsApp === apt.id}
-                          className="h-9 px-4 bg-green-600/90 hover:bg-green-600 text-white gap-2 shadow-sm hover:shadow-md hover:shadow-green-600/20 hover:-translate-y-0.5 transition-all"
+                          className="h-9 px-4 bg-green-600/90 hover:bg-green-600 text-white gap-2 shadow-sm transition-colors"
                         >
                           {loadingWhatsApp === apt.id ? (
                             <Loader2 size={16} className="animate-spin" />

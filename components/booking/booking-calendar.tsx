@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { format, addMonths, subMonths, addDays, startOfDay } from 'date-fns'
+import { format, addDays, differenceInCalendarDays, isSameDay, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Clock, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ArrowLeft, Clock, ChevronRight, ChevronLeft, CalendarDays } from 'lucide-react'
 import { FrontendService } from '@/types/frontend.types'
-import { TimeSlot } from '@/types/database.types'
+import { TimeSlot, BusinessSettings } from '@/types/database.types'
 import { getAvailableSlots } from '@/app/actions'
+import { isDayOpen } from '@/lib/business-hours'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 interface BookingCalendarProps {
@@ -20,37 +22,60 @@ interface BookingCalendarProps {
   initialSlots: TimeSlot[]
   memberId?: string // "any" or specific team member ID
   maxAdvanceDays?: number
+  businessHours?: BusinessSettings['businessHours']
+  accentColor?: string
 }
 
 // Extracted outside to avoid remounting (which caused animations to replay on every select)
 const TimeSlotBtn = ({
   slot,
-  index = 0,
   selectedTime,
+  accentColor,
   onSelect,
 }: {
   slot: TimeSlot
-  index?: number
   selectedTime: string | null
+  accentColor: string
   onSelect: (time: string) => void
-}) => (
-  <button
-    onClick={() => slot.available && onSelect(slot.time)}
-    disabled={!slot.available}
-    style={{ animationDelay: `${index * 30}ms` }}
-    className={cn(
-      'h-12 px-5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden',
-      'animate-in fade-in slide-in-from-bottom-2 fill-mode-both',
-      selectedTime === slot.time
-        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02] ring-1 ring-primary/30'
-        : slot.available
-          ? 'bg-secondary/30 hover:bg-secondary/70 hover:shadow-sm hover:-translate-y-0.5 active:scale-[0.98] border border-transparent hover:border-border/50'
-          : 'opacity-40 cursor-not-allowed bg-muted/20 text-muted-foreground line-through'
-    )}
-  >
-    <span className="relative z-10 w-full text-center">{slot.time}</span>
-  </button>
-)
+}) => {
+  const isSelected = selectedTime === slot.time
+
+  if (isSelected) {
+    return (
+      <button
+        onClick={() => onSelect(slot.time)}
+        style={{ backgroundColor: accentColor }}
+        className="h-12 px-5 rounded-xl text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+      >
+        {slot.time}
+      </button>
+    )
+  }
+
+  if (!slot.available) {
+    return (
+      <button
+        disabled
+        className="h-12 px-5 rounded-xl text-sm text-muted-foreground/50 line-through cursor-not-allowed"
+      >
+        {slot.time}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => onSelect(slot.time)}
+      className={cn(
+        'h-12 px-5 rounded-xl text-sm font-medium border border-border flex items-center justify-center gap-2',
+        'transition-colors hover:border-muted-foreground/50 active:scale-[0.98]'
+      )}
+    >
+      {slot.time}
+      <span className="h-1 w-1 rounded-full bg-muted-foreground/50" aria-hidden="true" />
+    </button>
+  )
+}
 
 const SlotSkeleton = ({ cols }: { cols: 2 | 4 }) => (
   <motion.div
@@ -84,6 +109,8 @@ export default function BookingCalendar({
   initialSlots,
   memberId,
   maxAdvanceDays = 21,
+  businessHours,
+  accentColor = '#f97316',
 }: BookingCalendarProps) {
   const router = useRouter()
   const params = useParams()
@@ -95,6 +122,8 @@ export default function BookingCalendar({
     return today
   })
   const [month, setMonth] = useState<Date>(new Date())
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [slots, setSlots] = useState<TimeSlot[]>(initialSlots)
   const [loading, setLoading] = useState(false)
@@ -113,12 +142,7 @@ export default function BookingCalendar({
 
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
-  const handleDateSelect = async (newDate: Date | undefined) => {
-    if (!newDate) return
-    if (newDate < minBookableDate || newDate > maxBookableDate) {
-      return
-    }
-    setDate(newDate)
+  const fetchSlotsFor = async (newDate: Date) => {
     setSelectedTime(null)
     setLoading(true)
     const dateStr = format(newDate, 'yyyy-MM-dd')
@@ -127,6 +151,26 @@ export default function BookingCalendar({
       setSlots(result.data)
     }
     setLoading(false)
+  }
+
+  const handleDateSelect = async (newDate: Date | undefined) => {
+    if (!newDate) return
+    if (newDate < minBookableDate || newDate > maxBookableDate) return
+    setDate(newDate)
+    setWeekOffset(Math.max(0, Math.floor(differenceInCalendarDays(newDate, minBookableDate) / 7)))
+    await fetchSlotsFor(newDate)
+  }
+
+  const handleStripDaySelect = async (newDate: Date) => {
+    if (newDate < minBookableDate || newDate > maxBookableDate) return
+    if (!isDayOpen(businessHours, newDate.getDay())) return
+    setDate(newDate)
+    await fetchSlotsFor(newDate)
+  }
+
+  const handlePopoverSelect = async (newDate: Date | undefined) => {
+    await handleDateSelect(newDate)
+    setMonthPickerOpen(false)
   }
 
   const handleContinue = () => {
@@ -149,13 +193,15 @@ export default function BookingCalendar({
     }).format(price)
   }
 
-  const formattedDate = date
-    ? capitalize(format(date, "EEE d", { locale: es }))
-    : ''
-
   const formattedDateLong = date
     ? `${capitalize(format(date, "EEEE", { locale: es }))}, ${format(date, "d", { locale: es })} de ${capitalize(format(date, "MMMM", { locale: es }))}`
     : 'Selecciona una fecha'
+
+  // Ventana de 7 días para la tira (respeta el rango máximo de reserva)
+  const windowStart = addDays(minBookableDate, weekOffset * 7)
+  const stripDays = Array.from({ length: 7 }, (_, i) => addDays(windowStart, i))
+  const prevWeekDisabled = weekOffset === 0
+  const nextWeekDisabled = addDays(windowStart, 7) > maxBookableDate
 
   return (
     <>
@@ -175,9 +221,7 @@ export default function BookingCalendar({
               <span>{service.durationMin} min</span>
             </div>
           </div>
-          <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-secondary text-muted-foreground">
-            Paso 1 de 2
-          </span>
+          <span className="text-xs text-muted-foreground">Paso 1 de 2</span>
         </header>
 
         <div className="px-4 pt-4">
@@ -199,26 +243,6 @@ export default function BookingCalendar({
 
         {/* Calendar with custom navigation */}
         <div className="p-4 flex flex-col items-center border-b bg-secondary/20">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between w-full max-w-70 mb-3">
-            <button
-              type="button"
-              onClick={() => setMonth(subMonths(month, 1))}
-              className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="font-medium capitalize">
-              {format(month, 'MMMM yyyy', { locale: es })}
-            </span>
-            <button
-              type="button"
-              onClick={() => setMonth(addMonths(month, 1))}
-              className="p-2 hover:bg-secondary rounded-lg border bg-background shadow-sm"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
           <Calendar
             mode="single"
             selected={date}
@@ -227,13 +251,12 @@ export default function BookingCalendar({
             onMonthChange={setMonth}
             disabled={(d) => d < minBookableDate || d > maxBookableDate}
             className="rounded-xl border bg-card p-3 shadow-sm"
-            hideNavigation
           />
         </div>
 
         {/* Time Slots */}
         <div className="flex-1 p-4 pb-28 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4 animate-in fade-in duration-500">
+          <div className="flex items-center justify-between mb-4">
             <div className="text-sm font-medium">{formattedDateLong}</div>
             <span className="text-xs text-muted-foreground">Elegí un horario</span>
           </div>
@@ -263,11 +286,11 @@ export default function BookingCalendar({
                   className="space-y-6"
                 >
                   <div>
-                    <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Mañana</div>
+                    <div className="text-xs text-muted-foreground mb-3">Mañana</div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {morningSlots.length > 0 ? (
-                        morningSlots.map((slot, i) => (
-                          <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                        morningSlots.map((slot) => (
+                          <TimeSlotBtn key={slot.time} slot={slot} selectedTime={selectedTime} accentColor={accentColor} onSelect={setSelectedTime} />
                         ))
                       ) : (
                         <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No hay turnos mañana</p>
@@ -275,11 +298,11 @@ export default function BookingCalendar({
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Tarde</div>
+                    <div className="text-xs text-muted-foreground mb-3">Tarde</div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {afternoonSlots.length > 0 ? (
-                        afternoonSlots.map((slot, i) => (
-                          <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
+                        afternoonSlots.map((slot) => (
+                          <TimeSlotBtn key={slot.time} slot={slot} selectedTime={selectedTime} accentColor={accentColor} onSelect={setSelectedTime} />
                         ))
                       ) : (
                         <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No hay turnos tarde</p>
@@ -304,197 +327,192 @@ export default function BookingCalendar({
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-[calc(100vh-5rem)] bg-linear-to-br from-background via-background to-secondary/20">
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Reserva</p>
-              <h2 className="text-3xl font-bold tracking-tight">Elegí fecha y horario</h2>
-            </div>
-            <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-secondary/80 text-muted-foreground">
-              Paso 1 de 2
-            </span>
+      <div className="hidden lg:flex flex-col items-center bg-background min-h-[calc(100vh-5rem)] px-4 py-10">
+        {/* Top bar */}
+        <div className="w-full max-w-[720px] flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" /> Volver
+          </button>
+          <span className="text-sm font-semibold">
+            {service.title} <span className="font-normal text-muted-foreground">· {formatPrice(service.price)} · {service.durationMin} min</span>
+          </span>
+          <span className="text-xs text-muted-foreground">Paso 1 de 2</span>
+        </div>
+
+        {/* Box */}
+        <div className="w-full max-w-[720px] border border-border rounded-[20px] p-8">
+          {/* Box header */}
+          <div className="flex items-baseline justify-between mb-4">
+            <span className="text-sm text-muted-foreground">Seleccioná una fecha</span>
+            <Popover open={monthPickerOpen} onOpenChange={setMonthPickerOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Ver mes completo
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-3">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="p-1 hover:bg-secondary rounded-md">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-semibold capitalize">{format(month, 'MMMM yyyy', { locale: es })}</span>
+                  <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="p-1 hover:bg-secondary rounded-md">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={handlePopoverSelect}
+                  month={month}
+                  onMonthChange={setMonth}
+                  disabled={(d) => d < minBookableDate || d > maxBookableDate}
+                  hideNavigation
+                />
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Podés reservar hasta {maxAdvanceDays} días por adelantado
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          <div className="w-full bg-card/60 rounded-3xl shadow-2xl shadow-black/10 overflow-hidden border border-border/50 flex gap-0 backdrop-blur-sm">
-            {/* Left Column - Calendar (40%) */}
-            <div className="w-2/5 bg-linear-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-6 flex flex-col border-r border-border/30">
-              <button
-                onClick={() => router.back()}
-                className={cn(
-                  "flex items-center gap-2 text-muted-foreground rounded-lg px-2 py-1 -ml-2 mb-6 text-sm",
-                  "transition-all duration-200",
-                  "hover:text-foreground hover:bg-secondary/80 hover:-translate-x-1"
-                )}
-              >
-                <ArrowLeft className="h-4 w-4" /> Volver
-              </button>
+          {/* Day strip */}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((w) => Math.max(0, w - 1))}
+              disabled={prevWeekDisabled}
+              className="h-8 w-8 rounded-lg border border-border flex items-center justify-center shrink-0 hover:border-muted-foreground/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
 
-              <div className="flex-1 flex flex-col space-y-6">
-                {/* Service Info */}
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight mb-3">{service.title}</h1>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-2 font-semibold text-foreground">
-                      {formatPrice(service.price)}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" /> {service.durationMin} min
-                    </span>
-                  </div>
-                </div>
+            <div className="flex-1 grid grid-cols-7 gap-2">
+              {stripDays.map((day) => {
+                const outOfRange = day > maxBookableDate
+                const open = !outOfRange && isDayOpen(businessHours, day.getDay())
+                const isSelected = date && isSameDay(date, day)
+                const isToday = isSameDay(day, minBookableDate)
 
-                {/* Divider */}
-                <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
+                if (outOfRange) {
+                  return <div key={day.toISOString()} className="h-[62px]" />
+                }
 
-                {/* Calendar */}
-                <div className="flex-1 flex flex-col space-y-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">Seleccioná una fecha</h3>
-                  
-                  {/* Month Navigation */}
-                  <div className="flex items-center justify-between w-full">
-                    <button
-                      type="button"
-                      onClick={() => setMonth(subMonths(month, 1))}
-                      className={cn(
-                        "p-2 rounded-lg border bg-background/60 backdrop-blur-sm",
-                        "transition-all duration-200",
-                        "hover:bg-background hover:shadow-md hover:-translate-y-0.5"
-                      )}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="font-medium capitalize text-sm">
-                      {format(month, 'MMMM yyyy', { locale: es })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setMonth(addMonths(month, 1))}
-                      className={cn(
-                        "p-2 rounded-lg border bg-background/60 backdrop-blur-sm",
-                        "transition-all duration-200",
-                        "hover:bg-background hover:shadow-md hover:-translate-y-0.5"
-                      )}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                  
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateSelect}
-                    month={month}
-                    onMonthChange={setMonth}
-                    disabled={(d) => d < minBookableDate || d > maxBookableDate}
-                    className={cn(
-                      "rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm w-full p-4",
-                      "transition-all duration-200",
-                      "hover:shadow-sm"
-                    )}
-                    classNames={{
-                      month_grid: "w-full",
-                      day: "h-12 w-12 text-sm",
-                      day_button: "h-12 w-12 text-sm",
-                      weekday: "w-12 text-xs"
-                    }}
-                    hideNavigation
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Time Slots (60%) */}
-            <div className="flex-1 p-8 flex flex-col bg-background/40">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <div className="text-xl font-semibold tracking-tight">{formattedDateLong}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Seleccioná un horario disponible</p>
-                </div>
-                {selectedTime && (
-                  <div className={cn(
-                    "px-4 py-2 rounded-lg bg-primary/10 border border-primary/20",
-                    "transition-all duration-200",
-                    "animate-in fade-in slide-in-from-top-2"
-                  )}>
-                    <p className="text-xs text-muted-foreground">Horario seleccionado</p>
-                    <p className="text-lg font-bold text-primary">{selectedTime}</p>
-                  </div>
-                )}
-              </div>
-
-              <AnimatePresence mode="wait">
-                {loading ? (
-                  <SlotSkeleton key="skeleton-desktop" cols={4} />
-                ) : slots.length === 0 ? (
-                  <motion.div
-                    key="empty-desktop"
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="flex-1 flex items-center justify-center text-muted-foreground"
-                  >
-                    <div className="text-center">
-                      <Clock className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                      <p className="font-medium">Sin horarios disponibles</p>
-                      <p className="text-sm mt-1 opacity-70">Probá seleccionando otra fecha</p>
+                if (!open) {
+                  return (
+                    <div key={day.toISOString()} className="h-[62px] flex flex-col items-center justify-center gap-0.5">
+                      <span className="text-[10px] uppercase text-muted-foreground/50">{capitalize(format(day, 'EEE', { locale: es }))}</span>
+                      <span className="text-[15px] font-bold text-muted-foreground/50">{format(day, 'd')}</span>
+                      <span className="text-[8px] text-muted-foreground/50">Cerrado</span>
                     </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={date?.toISOString()}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex-1 space-y-8 overflow-y-auto pr-2 pb-4 scrollbar-thin"
-                  >
-                    {morningSlots.length > 0 && (
-                      <div>
-                        <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
-                          Turno Mañana
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          {morningSlots.map((slot, i) => (
-                            <TimeSlotBtn key={slot.time} slot={slot} index={i} selectedTime={selectedTime} onSelect={setSelectedTime} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {afternoonSlots.length > 0 && (
-                      <div>
-                        <div className="text-[11px] font-semibold text-muted-foreground/70 mb-4 uppercase tracking-widest">
-                          Turno Tarde
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          {afternoonSlots.map((slot, i) => (
-                            <TimeSlotBtn key={slot.time} slot={slot} index={i + morningSlots.length} selectedTime={selectedTime} onSelect={setSelectedTime} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )
+                }
 
-              {/* Continue Button */}
-              <Button
-                onClick={handleContinue}
-                disabled={!selectedTime}
-                className={cn(
-                  "w-full h-14 text-base mt-8 rounded-xl",
-                  "transition-all duration-200",
-                  "hover:-translate-y-0.5 hover:shadow-lg",
-                  "active:scale-[0.98]"
-                )}
-                size="lg"
-              >
-                Continuar <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
+                return (
+                  <button
+                    key={day.toISOString()}
+                    type="button"
+                    onClick={() => handleStripDaySelect(day)}
+                    className="h-[62px] flex flex-col items-center justify-center gap-0.5 group"
+                  >
+                    <span className="text-[10px] uppercase text-muted-foreground">{capitalize(format(day, 'EEE', { locale: es }))}</span>
+                    <span
+                      className={cn(
+                        'h-8 w-8 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors',
+                        !isSelected && 'group-hover:bg-secondary'
+                      )}
+                      style={isSelected ? { backgroundColor: accentColor, color: 'white' } : undefined}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                    <span
+                      className="h-1 w-1 rounded-full"
+                      style={{ backgroundColor: isToday && !isSelected ? 'currentColor' : 'transparent' }}
+                    />
+                  </button>
+                )
+              })}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setWeekOffset((w) => w + 1)}
+              disabled={nextWeekDisabled}
+              className="h-8 w-8 rounded-lg border border-border flex items-center justify-center shrink-0 hover:border-muted-foreground/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
+
+          <div className="h-px bg-border my-6" />
+
+          {/* Selected date heading */}
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-base font-bold tracking-tight">{formattedDateLong}</h2>
+            {selectedTime && (
+              <span className="text-sm text-muted-foreground">{selectedTime} seleccionado</span>
+            )}
+          </div>
+
+          {/* Time slots */}
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <SlotSkeleton key="skeleton-desktop" cols={4} />
+            ) : slots.length === 0 ? (
+              <motion.div
+                key="empty-desktop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="py-12 text-center text-muted-foreground text-sm"
+              >
+                Sin horarios disponibles para este día
+              </motion.div>
+            ) : (
+              <motion.div
+                key={date?.toISOString()}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {morningSlots.length > 0 && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2.5">Mañana</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {morningSlots.map((slot) => (
+                        <TimeSlotBtn key={slot.time} slot={slot} selectedTime={selectedTime} accentColor={accentColor} onSelect={setSelectedTime} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {afternoonSlots.length > 0 && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2.5">Tarde</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {afternoonSlots.map((slot) => (
+                        <TimeSlotBtn key={slot.time} slot={slot} selectedTime={selectedTime} accentColor={accentColor} onSelect={setSelectedTime} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <Button
+            onClick={handleContinue}
+            disabled={!selectedTime}
+            className="w-full h-[50px] text-base mt-7 rounded-[11px]"
+          >
+            Continuar <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
       </div>
     </>

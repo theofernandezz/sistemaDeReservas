@@ -1,16 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState, type InputHTMLAttributes } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Calendar, Clock, Loader2, CreditCard,
-  ChevronDown, ChevronUp, Check, Store, Sparkles, Landmark
+  ChevronDown, ChevronUp, Check, Landmark, User, Mail, Phone
 } from 'lucide-react'
 import { createAppointment } from '@/app/actions'
 import { getActiveTeamMembersForBusiness } from '@/app/actions/team'
 import { createPendingBookingPreference } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { SelectedAddon, ServiceAddon, Service } from '@/types/database.types'
@@ -49,6 +48,33 @@ interface ConfirmFormProps {
   date: string | null
   time: string | null
   memberParam: string | null
+  accentColor?: string
+}
+
+// Campo de texto con ícono a la izquierda — mismo trato en mobile y desktop
+function IconInput({
+  icon: Icon,
+  error,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { icon: typeof User; error?: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="relative">
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" aria-hidden="true" />
+        <input
+          {...props}
+          className={cn(
+            'h-[46px] w-full pl-10 pr-3.5 rounded-[11px] border border-border text-sm',
+            'placeholder:text-muted-foreground/60 focus:outline-none focus:border-muted-foreground/60 transition-colors',
+            error && 'border-destructive',
+            className
+          )}
+        />
+      </div>
+      {error && <p className="text-xs text-destructive font-medium ml-1">{error}</p>}
+    </div>
+  )
 }
 
 export default function ConfirmForm({
@@ -60,6 +86,7 @@ export default function ConfirmForm({
   date,
   time,
   memberParam,
+  accentColor = '#f97316',
 }: ConfirmFormProps) {
   const router = useRouter()
   const { error: showError } = useToast()
@@ -68,7 +95,7 @@ export default function ConfirmForm({
 
   const [loading, setLoading] = useState(false)
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([])
-  const [showAddons, setShowAddons] = useState(false)
+  const [showAddons, setShowAddons] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('full')
 
   const [name, setName] = useState('')
@@ -81,16 +108,7 @@ export default function ConfirmForm({
     phone: false
   })
 
-  const [validation, setValidation] = useState<FormValidationState>({
-    name: { isValid: false },
-    email: { isValid: false },
-    phone: { isValid: false }
-  })
-
-  useEffect(() => {
-    const currentValidation = validateBookingForm(name.trim(), email.trim(), phone.trim())
-    setValidation(currentValidation)
-  }, [name, email, phone])
+  const validation: FormValidationState = validateBookingForm(name.trim(), email.trim(), phone.trim())
 
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0)
   const addonsDuration = selectedAddons.reduce((sum, a) => sum + a.duration_minutes, 0)
@@ -162,7 +180,6 @@ export default function ConfirmForm({
     const trimmedPhone = phone.trim()
 
     const currentValidation = validateBookingForm(trimmedName, trimmedEmail, trimmedPhone)
-    setValidation(currentValidation)
 
     if (!isFormValid(currentValidation)) {
       showError('Error', 'Por favor completá todos los campos correctamente')
@@ -223,7 +240,7 @@ export default function ConfirmForm({
       })
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
-        window.location.href = preferenceResult.data.initPoint
+        window.location.assign(preferenceResult.data.initPoint)
         return
       } else {
         if (preferenceResult.error === 'mp_token_invalid') {
@@ -259,27 +276,27 @@ export default function ConfirmForm({
 
   const allFieldsValid = isFormValid(validation)
 
-  const AddonsSection = ({ compact = false }: { compact?: boolean }) => (
+  const ctaLabel = loading
+    ? 'Procesando...'
+    : isManualTransferFlow
+      ? 'Reservar y ver datos de transferencia'
+      : paymentConfig.hasMPConnected
+        ? `Pagar ${formatPrice(amountToPay)} y reservar`
+        : 'Confirmar reserva'
+
+  const renderAddons = () => (
     addons.length > 0 ? (
-      <div className={`${compact ? 'bg-background/60' : 'bg-card'} border border-border/70 rounded-2xl overflow-hidden`}>
+      <div>
         <button
           type="button"
           onClick={() => setShowAddons(!showAddons)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+          className="w-full flex items-center justify-between"
         >
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="font-medium text-sm">{compact ? 'Agregar extras' : 'Extras opcionales'}</span>
-            {selectedAddons.length > 0 && (
-              <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                {selectedAddons.length}
-              </span>
-            )}
-          </div>
-          {showAddons ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <span className="text-sm font-semibold">Extras opcionales</span>
+          {showAddons ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </button>
         {showAddons && (
-          <div className="border-t p-3 space-y-2">
+          <div className="flex flex-col gap-2 mt-3.5">
             {addons.map(addon => {
               const isSelected = selectedAddons.some(a => a.id === addon.id)
               return (
@@ -287,20 +304,22 @@ export default function ConfirmForm({
                   type="button"
                   key={addon.id}
                   onClick={() => handleToggleAddon(addon)}
-                  className={`w-full p-3 rounded-xl flex items-center justify-between transition-colors ${isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-secondary'
-                    }`}
+                  className="border border-border rounded-xl px-3.5 py-3 flex items-center gap-3 text-left hover:border-muted-foreground/40 transition-colors"
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/60'
-                      }`}>
-                      {isSelected && <Check className="h-3 w-3 text-white" />}
-                    </div>
-                    <div className="text-left flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{addon.name}</div>
-                      <div className="text-xs text-muted-foreground">+{addon.duration_minutes} min</div>
-                    </div>
-                  </div>
-                  <span className="font-semibold text-sm flex-shrink-0 ml-3">+{formatPrice(addon.price)}</span>
+                  {isSelected ? (
+                    <span
+                      className="h-[18px] w-[18px] rounded-[5px] flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                    </span>
+                  ) : (
+                    <span className="h-[18px] w-[18px] rounded-[5px] border-[1.5px] border-muted-foreground/40 shrink-0" />
+                  )}
+                  <span className="flex-1 min-w-0 text-sm font-medium">
+                    {addon.name} <span className="font-normal text-muted-foreground/70">· +{addon.duration_minutes} min</span>
+                  </span>
+                  <span className="text-sm font-semibold shrink-0">+{formatPrice(addon.price)}</span>
                 </button>
               )
             })}
@@ -310,180 +329,158 @@ export default function ConfirmForm({
     ) : null
   )
 
+  const renderPayment = () => {
+    if (isManualTransferFlow) {
+      return (
+        <div className="border border-border rounded-2xl p-[18px] flex gap-3.5 items-start">
+          <Landmark className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div>
+            <div className="text-sm font-semibold mb-1">Transferencia bancaria</div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Vas a ver el alias o CVU para transferir en el paso siguiente, después de reservar.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!paymentConfig.hasMPConnected) return null
+
+    return (
+      <div>
+        <span className="text-sm font-semibold">¿Cómo pagás?</span>
+        <div className="flex flex-col gap-2.5 mt-3.5">
+          <button
+            type="button"
+            onClick={() => setPaymentMethod('full')}
+            className={cn(
+              'border rounded-xl px-4 py-3.5 flex items-center justify-between transition-colors',
+              paymentMethod === 'full' ? 'border-foreground' : 'border-border hover:border-muted-foreground/40'
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="h-[18px] w-[18px] rounded-full border-[1.5px] shrink-0 flex items-center justify-center"
+                style={{ borderColor: paymentMethod === 'full' ? accentColor : undefined }}
+              >
+                {paymentMethod === 'full' && <span className="h-[9px] w-[9px] rounded-full" style={{ backgroundColor: accentColor }} />}
+              </span>
+              <div className="text-left">
+                <div className="text-sm font-semibold">Pagar todo</div>
+                <div className="text-xs text-muted-foreground">Tarjeta de crédito o débito</div>
+              </div>
+            </div>
+            <span className={cn('text-base font-bold', paymentMethod !== 'full' && 'text-muted-foreground')}>{formatPrice(totalPrice)}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPaymentMethod('deposit')}
+            className={cn(
+              'border rounded-xl px-4 py-3.5 flex items-center justify-between transition-colors',
+              paymentMethod === 'deposit' ? 'border-foreground' : 'border-border hover:border-muted-foreground/40'
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="h-[18px] w-[18px] rounded-full border-[1.5px] shrink-0 flex items-center justify-center"
+                style={{ borderColor: paymentMethod === 'deposit' ? accentColor : undefined }}
+              >
+                {paymentMethod === 'deposit' && <span className="h-[9px] w-[9px] rounded-full" style={{ backgroundColor: accentColor }} />}
+              </span>
+              <div className="text-left">
+                <div className="text-sm font-semibold">Seña + local</div>
+                <div className="text-xs text-muted-foreground">Resto: {formatPrice(remainingInLocal)} en el local</div>
+              </div>
+            </div>
+            <span className={cn('text-base font-bold', paymentMethod !== 'deposit' && 'text-muted-foreground')}>{formatPrice(depositAmount)}</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* MOBILE LAYOUT */}
       <div className="lg:hidden min-h-screen bg-background flex flex-col">
-        <header className="bg-card border-b px-4 py-3 flex items-center gap-3">
+        <header className="border-b px-4 py-3 flex items-center gap-3">
           <button type="button" onClick={() => router.back()} className="p-1 -ml-1 hover:bg-secondary rounded-lg">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate">{service.name}</h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              <span>{formatShortDate(date)}</span>
-              <span>•</span>
-              <Clock className="h-3 w-3" />
-              <span>{time}</span>
-            </div>
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="font-semibold text-sm truncate">{service.name}</h1>
+            <p className="text-xs text-muted-foreground">{formatShortDate(date)} · {time}</p>
           </div>
-          <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-secondary text-muted-foreground">
-            Paso 2 de 2
-          </span>
-          <div className="text-right">
-            <div className="font-bold text-primary">{formatPrice(totalPrice)}</div>
-            <div className="text-xs text-muted-foreground">{totalDuration} min</div>
-          </div>
+          <span className="text-xs text-muted-foreground">Paso 2 de 2</span>
         </header>
 
-        <main className="flex-1 p-4 space-y-4 pb-28">
-          <div className="rounded-2xl border border-border/50 bg-secondary/20 p-4">
-            <div className="flex items-center justify-between animate-in fade-in duration-500">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">Resumen</p>
-                <p className="text-sm font-medium">
-                  {formatLongDate(date)} <span className="text-muted-foreground mx-1">•</span> {time}
-                </p>
+        <main className="flex-1 p-4 space-y-6 pb-28">
+          <div className="rounded-2xl border border-border p-4 flex flex-col gap-2">
+            <div className="flex justify-between text-sm">
+              <span>{service.name}</span>
+              <span className="font-medium">{formatPrice(service.price)}</span>
+            </div>
+            {selectedAddons.map((addon) => (
+              <div key={addon.id} className="flex justify-between text-sm text-muted-foreground">
+                <span>+ {addon.name}</span>
+                <span>+{formatPrice(addon.price)}</span>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-sm font-semibold text-primary">{formatPrice(totalPrice)}</p>
-              </div>
+            ))}
+            <div className="h-px bg-border my-1" />
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm font-semibold">Total <span className="font-normal text-muted-foreground text-xs">({totalDuration} min)</span></span>
+              <span className="text-lg font-bold">{formatPrice(totalPrice)}</span>
             </div>
           </div>
 
-          <AddonsSection />
+          {renderAddons()}
 
-          <div className="bg-card border rounded-xl p-4 space-y-3">
-            <div className="text-sm font-semibold tracking-wide">Tus datos</div>
-            <div className="space-y-3">
-              <div className="space-y-1 relative">
-                <Input
-                  placeholder="Nombre completo (ej: María)"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={() => handleBlur('name')}
-                  className={cn(
-                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
-                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                    touched.name && !validation.name.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                  )}
-                  required
-                />
-                {touched.name && !validation.name.isValid && (
-                  <p className="text-xs text-destructive font-medium ml-2">{validation.name.error}</p>
-                )}
-              </div>
-              <div className="space-y-1 relative">
-                <Input
-                  placeholder="Tu correo electrónico"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  className={cn(
-                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
-                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                    touched.email && !validation.email.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                  )}
-                  required
-                />
-                {touched.email && !validation.email.isValid && (
-                  <p className="text-xs text-destructive font-medium ml-2">{validation.email.error}</p>
-                )}
-              </div>
-              <div className="space-y-1 mb-2 relative">
-                <Input
-                  placeholder="Teléfono (ej: 11 1234-5678)"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => handlePhoneChange(e.target.value)}
-                  onBlur={() => handleBlur('phone')}
-                  className={cn(
-                    "h-14 px-4 bg-secondary/30 border-transparent rounded-xl transition-all duration-300",
-                    "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                    touched.phone && !validation.phone.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                  )}
-                  required
-                />
-                {touched.phone && !validation.phone.isValid && (
-                  <p className="text-xs text-destructive">{validation.phone.error}</p>
-                )}
-              </div>
+          <div>
+            <span className="text-sm font-semibold">Tus datos</span>
+            <div className="flex flex-col gap-2.5 mt-3.5">
+              <IconInput
+                icon={User}
+                placeholder="Nombre completo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => handleBlur('name')}
+                error={touched.name && !validation.name.isValid ? validation.name.error : undefined}
+              />
+              <IconInput
+                icon={Mail}
+                type="email"
+                placeholder="Tu correo electrónico"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => handleBlur('email')}
+                error={touched.email && !validation.email.isValid ? validation.email.error : undefined}
+              />
+              <IconInput
+                icon={Phone}
+                type="tel"
+                placeholder="Teléfono (ej: 11 1234-5678)"
+                value={phone}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                onBlur={() => handleBlur('phone')}
+                error={touched.phone && !validation.phone.isValid ? validation.phone.error : undefined}
+              />
             </div>
           </div>
 
-          {isManualTransferFlow ? (
-            <div className="bg-card border rounded-xl p-4 space-y-3">
-              <div className="text-sm font-medium">Datos para transferencia</div>
-              <div className="rounded-lg border border-border/60 bg-secondary/20 p-4 text-sm text-center">
-                <Landmark className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground font-medium">Pago por transferencia bancaria</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  En el próximo paso verás el alias/CVU para enviar el comprobante y confirmar tu reserva.
-                </p>
-              </div>
-            </div>
-          ) : paymentConfig.hasMPConnected ? (
-            <div className="bg-card border rounded-xl p-4 space-y-3">
-              <div className="text-sm font-medium">¿Cómo pagás?</div>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('full')}
-                className={`w-full p-3 rounded-lg border-2 flex items-center justify-between ${paymentMethod === 'full' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full border-2 ${paymentMethod === 'full' ? 'border-primary bg-primary' : 'border-muted-foreground'}`} />
-                  <div className="text-left">
-                    <div className="font-medium text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" /> Pagar todo</div>
-                    <div className="text-xs text-muted-foreground">Tarjeta o débito</div>
-                  </div>
-                </div>
-                <span className="font-bold text-primary">{formatPrice(totalPrice)}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('deposit')}
-                className={`w-full p-3 rounded-lg border-2 flex items-center justify-between ${paymentMethod === 'deposit' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full border-2 ${paymentMethod === 'deposit' ? 'border-primary bg-primary' : 'border-muted-foreground'}`} />
-                  <div className="text-left">
-                    <div className="font-medium text-sm flex items-center gap-2"><Store className="h-4 w-4" /> Seña + local</div>
-                    <div className="text-xs text-muted-foreground">{formatPrice(depositAmount)} ahora, {formatPrice(remainingInLocal)} después</div>
-                  </div>
-                </div>
-                <span className="font-bold text-primary">{formatPrice(depositAmount)}</span>
-              </button>
-            </div>
-          ) : null}
+          {renderPayment()}
         </main>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
           <Button
             type="button"
             onClick={handleSubmit}
             disabled={loading || !allFieldsValid}
-            className="w-full h-12 text-base"
+            className="w-full h-12 text-base rounded-[11px]"
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : isManualTransferFlow ? (
-              'Reservar y ver datos de transferencia'
-            ) : paymentConfig.hasMPConnected ? (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pagar {formatPrice(amountToPay)} y reservar
-              </>
-            ) : (
-              'Confirmar reserva'
-            )}
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!loading && paymentConfig.hasMPConnected && !isManualTransferFlow && <CreditCard className="mr-2 h-4 w-4" />}
+            {ctaLabel}
           </Button>
           {!allFieldsValid && (
             <p className="text-xs text-muted-foreground text-center mt-2">
@@ -494,317 +491,113 @@ export default function ConfirmForm({
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex min-h-[calc(100vh-5rem)] items-center justify-center bg-linear-to-br from-background via-background to-secondary/20">
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 2xl:py-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Reserva</p>
-              <h2 className="text-4xl lg:text-5xl font-bold tracking-tighter">Confirmá tu reserva</h2>
-            </div>
-            <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-secondary/80 text-muted-foreground">
-              Paso 2 de 2
-            </span>
-          </div>
+      <div className="hidden lg:flex flex-col items-center bg-background min-h-[calc(100vh-5rem)] px-4 py-10">
+        {/* Top bar */}
+        <div className="w-full max-w-[720px] flex items-center justify-between mb-6">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" /> Volver
+          </button>
+          <span className="text-sm font-semibold">
+            {service.name} <span className="font-normal text-muted-foreground">· {formatLongDate(date)} · {time}</span>
+          </span>
+          <span className="text-xs text-muted-foreground">Paso 2 de 2</span>
+        </div>
 
-          <div className="w-full bg-card/60 rounded-3xl shadow-2xl shadow-black/10 overflow-hidden border border-border/50 flex gap-0 backdrop-blur-sm lg:h-[calc(100vh-10rem)] lg:max-h-[850px] lg:min-h-[550px]">
-            {/* Left Column - Summary & Addons (40%) */}
-            <div className="w-2/5 bg-gradient-to-br from-secondary/50 to-secondary/30 backdrop-blur-sm p-6 lg:p-8 flex flex-col border-r border-border/30 overflow-y-auto scrollbar-thin">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className={cn(
-                  "flex items-center gap-2 text-muted-foreground rounded-lg px-2 py-1 -ml-2 mb-8 text-sm",
-                  "transition-all duration-200",
-                  "hover:text-foreground hover:bg-secondary/80 hover:-translate-x-1"
-                )}
-              >
-                <ArrowLeft className="h-4 w-4" /> Volver
-              </button>
+        {/* Box */}
+        <div className="w-full max-w-[720px] border border-border rounded-[20px] p-8">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex flex-col gap-7">
 
-              <div className="flex-1 space-y-8">
-                <div>
-                  <h1 className="text-xl lg:text-2xl font-bold tracking-tight mb-3">{service.name}</h1>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" /> {formatLongDate(date)}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" /> {time}
-                    </span>
-                  </div>
+            {/* Summary */}
+            <div className="flex flex-col gap-3.5">
+              <h1 className="text-lg font-bold tracking-tight">{service.name}</h1>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {formatLongDate(date)}</span>
+                <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {time}</span>
+              </div>
+              <div className="flex flex-col gap-2 mt-1">
+                <div className="flex justify-between text-sm">
+                  <span>{service.name}</span>
+                  <span className="font-medium">{formatPrice(service.price)}</span>
                 </div>
-
-                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-
-                <div className="space-y-2.5">
-                  <div className="flex justify-between text-sm tabular-nums">
-                    <span className="text-foreground">{service.name}</span>
-                    <span className="font-medium text-foreground">{formatPrice(service.price)}</span>
+                {selectedAddons.map((addon) => (
+                  <div key={addon.id} className="flex justify-between text-sm text-muted-foreground">
+                    <span>+ {addon.name}</span>
+                    <span>+{formatPrice(addon.price)}</span>
                   </div>
-                  {selectedAddons.map((addon) => (
-                    <div key={addon.id} className="flex justify-between text-sm text-primary tabular-nums">
-                      <span>+ {addon.name}</span>
-                      <span className="font-medium">+{formatPrice(addon.price)}</span>
-                    </div>
-                  ))}
-                  <div className="h-px bg-gradient-to-r from-border/50 via-border to-border/50 my-4" />
-                  <div className="flex justify-between font-semibold text-base">
-                    <span>Total ({totalDuration} min)</span>
-                    <span className="text-xl tabular-nums text-primary">{formatPrice(totalPrice)}</span>
-                  </div>
+                ))}
+                <div className="h-px bg-border my-1.5" />
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-semibold">Total <span className="font-normal text-muted-foreground text-xs">({totalDuration} min)</span></span>
+                  <span className="text-xl font-bold">{formatPrice(totalPrice)}</span>
                 </div>
-
-                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-
-                {addons.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Extras disponibles
-                    </h3>
-                    <div className="space-y-3">
-                      {addons.map((addon) => {
-                        const isSelected = selectedAddons.some((a) => a.id === addon.id)
-                        return (
-                          <button
-                            type="button"
-                            key={addon.id}
-                            onClick={() => handleToggleAddon(addon)}
-                            className={cn(
-                              "w-full py-3 px-4 rounded-xl flex items-center justify-between border-2",
-                              "transition-all duration-200 hover:-translate-y-0.5",
-                              isSelected
-                                ? "bg-primary/10 border-primary/40 shadow-sm"
-                                : "bg-card/50 border-transparent hover:border-primary/20 hover:bg-card/60"
-                            )}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors duration-200",
-                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                              </div>
-                              <div className="text-left">
-                                <div className="font-medium text-sm">{addon.name}</div>
-                                <div className="text-xs text-muted-foreground">+{addon.duration_minutes} min</div>
-                              </div>
-                            </div>
-                            <span className="font-semibold text-primary tabular-nums">+{formatPrice(addon.price)}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Right Column - Form & Payment (60%) */}
-            <div className="flex-1 p-6 lg:p-8 flex flex-col bg-background/40 overflow-y-auto scrollbar-thin">
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
-                <h2 className="text-lg lg:text-xl font-semibold mb-6 tracking-tight">Completá tu reserva</h2>
+            <div className="h-px bg-border" />
 
-                <div className="space-y-4 flex-1">
-                  <div className={cn(
-                    "bg-card/40 border border-border/40 rounded-3xl p-6 space-y-4",
-                    "transition-all duration-300",
-                    "hover:border-border/60 hover:shadow-md hover:bg-card/60 backdrop-blur-sm"
-                  )}>
-                    <div className="text-sm font-semibold tracking-wide text-foreground">Tus datos personales</div>
-                    <div className="space-y-4">
-                      <div className="space-y-1 relative">
-                        <Input
-                          placeholder="Nombre completo"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          onBlur={() => handleBlur('name')}
-                          className={cn(
-                            "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
-                            "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                            touched.name && !validation.name.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                          )}
-                          required
-                        />
-                        {touched.name && !validation.name.isValid && (
-                          <p className="text-xs text-destructive font-medium ml-2">{validation.name.error}</p>
-                        )}
-                      </div>
-                      <div className="space-y-1 relative">
-                        <Input
-                          placeholder="Tu correo electrónico"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          onBlur={() => handleBlur('email')}
-                          className={cn(
-                            "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
-                            "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                            touched.email && !validation.email.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                          )}
-                          required
-                        />
-                        {touched.email && !validation.email.isValid && (
-                          <p className="text-xs text-destructive font-medium ml-2">{validation.email.error}</p>
-                        )}
-                      </div>
-                      <div className="space-y-1 relative">
-                        <Input
-                          placeholder="Teléfono (ej: 11 1234-5678)"
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => handlePhoneChange(e.target.value)}
-                          onBlur={() => handleBlur('phone')}
-                          className={cn(
-                            "h-14 px-5 bg-secondary/30 border-transparent rounded-2xl transition-all duration-300",
-                            "focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:bg-background focus-visible:border-border",
-                            touched.phone && !validation.phone.isValid && "border-destructive bg-destructive/5 focus-visible:ring-destructive"
-                          )}
-                          required
-                        />
-                        {touched.phone && !validation.phone.isValid && (
-                          <p className="text-xs text-destructive">{validation.phone.error}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+            {renderAddons()}
 
-                  {isManualTransferFlow ? (
-                    <div className={cn(
-                      "bg-card/60 border border-border/50 rounded-2xl p-6 transition-all duration-200 hover:border-border/70 hover:shadow-sm"
-                    )}>
-                      <div className="text-sm font-medium text-foreground mb-4">Pago por transferencia</div>
-                      <div className="rounded-xl border border-border/50 bg-secondary/20 p-6 text-center space-y-2">
-                        <Landmark className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-muted-foreground font-medium">Pago por transferencia bancaria</p>
-                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                          Al confirmar, verás los datos (Alias/CVU) para realizar la transferencia y adjuntar tu comprobante.
-                        </p>
-                      </div>
-                    </div>
-                  ) : paymentConfig.hasMPConnected ? (
-                    <div className={cn(
-                      "bg-card/60 border border-border/50 rounded-2xl p-6 space-y-5",
-                      "transition-all duration-200",
-                      "hover:border-border/70 hover:shadow-sm"
-                    )}>
-                      <div className="text-sm font-medium text-foreground">Método de pago</div>
-                      <div className="space-y-4">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('full')}
-                          className={cn(
-                            "w-full px-6 py-5 rounded-xl border-2",
-                            "transition-all duration-200",
-                            "hover:-translate-y-0.5 hover:shadow-md",
-                            "active:scale-[0.98]",
-                            paymentMethod === 'full'
-                              ? "border-primary bg-primary/5 shadow-sm"
-                              : "border-border/50 hover:border-primary/60 hover:bg-primary/5"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-6">
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                                  "transition-colors duration-200",
-                                  paymentMethod === 'full' ? "border-primary bg-primary" : "border-muted-foreground"
-                                )}
-                              >
-                                {paymentMethod === 'full' && <div className="w-2 h-2 rounded-full bg-white" />}
-                              </div>
-                              <CreditCard className="h-5 w-5 text-primary flex-shrink-0" />
-                              <div className="text-left flex-1 min-w-0">
-                                <div className="font-semibold text-base">Pagar todo</div>
-                                <div className="text-xs text-muted-foreground mt-1">Tarjeta de crédito o débito</div>
-                              </div>
-                            </div>
-                            <div className="text-xl font-bold text-primary tabular-nums flex-shrink-0">
-                              {formatPrice(totalPrice)}
-                            </div>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod('deposit')}
-                          className={cn(
-                            "w-full px-6 py-5 rounded-xl border-2",
-                            "transition-all duration-200",
-                            "hover:-translate-y-0.5 hover:shadow-md",
-                            "active:scale-[0.98]",
-                            paymentMethod === 'deposit'
-                              ? "border-primary bg-primary/5 shadow-sm"
-                              : "border-border/50 hover:border-primary/60 hover:bg-primary/5"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-6">
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                                  "transition-colors duration-200",
-                                  paymentMethod === 'deposit' ? "border-primary bg-primary" : "border-muted-foreground"
-                                )}
-                              >
-                                {paymentMethod === 'deposit' && <div className="w-2 h-2 rounded-full bg-white" />}
-                              </div>
-                              <Store className="h-5 w-5 text-primary flex-shrink-0" />
-                              <div className="text-left flex-1 min-w-0">
-                                <div className="font-semibold text-base">Seña + local</div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Resto: {formatPrice(remainingInLocal)} en el local
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-xl font-bold text-primary tabular-nums flex-shrink-0">
-                              {formatPrice(depositAmount)}
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+            {addons.length > 0 && <div className="h-px bg-border" />}
 
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={loading || !allFieldsValid}
-                  className={cn(
-                    "w-full h-12 text-base mt-4 rounded-xl",
-                    "transition-all duration-200",
-                    "hover:-translate-y-0.5 hover:shadow-lg",
-                    "active:scale-[0.98]"
-                  )}
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Procesando...
-                    </>
-                  ) : isManualTransferFlow ? (
-                    'Reservar y ver datos de transferencia'
-                  ) : paymentConfig.hasMPConnected ? (
-                    <>
-                      <CreditCard className="mr-2 h-5 w-5" />
-                      Pagar {formatPrice(amountToPay)} y reservar
-                    </>
-                  ) : (
-                    'Confirmar reserva'
-                  )}
-                </Button>
-                {!allFieldsValid && (
-                  <p className="text-xs text-muted-foreground text-center mt-3">
-                    Completá todos los campos requeridos correctamente
-                  </p>
-                )}
-              </form>
+            <div>
+              <span className="text-sm font-semibold">Tus datos</span>
+              <div className="flex flex-col gap-2.5 mt-3.5">
+                <IconInput
+                  icon={User}
+                  placeholder="Nombre completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onBlur={() => handleBlur('name')}
+                  error={touched.name && !validation.name.isValid ? validation.name.error : undefined}
+                />
+                <IconInput
+                  icon={Mail}
+                  type="email"
+                  placeholder="Tu correo electrónico"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  error={touched.email && !validation.email.isValid ? validation.email.error : undefined}
+                />
+                <IconInput
+                  icon={Phone}
+                  type="tel"
+                  placeholder="Teléfono (ej: 11 1234-5678)"
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  error={touched.phone && !validation.phone.isValid ? validation.phone.error : undefined}
+                />
+              </div>
             </div>
-          </div>
+
+            {(isManualTransferFlow || paymentConfig.hasMPConnected) && (
+              <>
+                <div className="h-px bg-border" />
+                {renderPayment()}
+              </>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !allFieldsValid}
+              className="w-full h-[50px] text-base rounded-[11px]"
+            >
+              {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              {!loading && paymentConfig.hasMPConnected && !isManualTransferFlow && <CreditCard className="mr-2 h-5 w-5" />}
+              {ctaLabel}
+            </Button>
+            {!allFieldsValid && (
+              <p className="text-xs text-muted-foreground text-center -mt-4">
+                Completá todos los campos requeridos correctamente
+              </p>
+            )}
+          </form>
         </div>
       </div>
     </>

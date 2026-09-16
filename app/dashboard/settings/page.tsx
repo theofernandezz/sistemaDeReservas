@@ -78,7 +78,9 @@ export default async function SettingsServerPage() {
         phone: business.phone || '',
         email: business.email || '',
         instagram: business.instagram || '',
-        address: business.address || ''
+        address: business.address || '',
+        emailFrom: business.email_from,
+        emailFromName: business.email_from_name
       } : undefined}
       businessSettings={business?.settings ? {
         primaryColor: business.settings.primaryColor,

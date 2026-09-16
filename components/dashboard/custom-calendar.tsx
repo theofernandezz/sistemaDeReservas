@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X, Phone, Mail, Clock, CheckCircle, XCircle, Loader2, Ban, CalendarPlus } from 'lucide-react'
 import { AppointmentWithService, BlockedSlot } from '@/types/database.types'
 import { Button } from '@/components/ui/button'
@@ -76,7 +76,6 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<'day' | 'week' | 'month'>('week')
-  const [isMobile, setIsMobile] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithService | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [showFabMenu, setShowFabMenu] = useState(false)
@@ -90,14 +89,6 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
     setAppointments(prev => [...prev, newAppointment])
     router.refresh() // Refresh server data
   }
-
-  // Check for mobile
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   // Week days
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate])
@@ -210,7 +201,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
   const monthYear = currentDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col p-4 md:p-6">
+    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] flex flex-col p-4 md:p-6">
       {/* Header */}
       <div className="relative flex items-center justify-between mb-4 px-2">
         {/* Left: Navigation */}
@@ -285,36 +276,41 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
       </div>
 
       {/* Mobile Date Picker */}
-      {isMobile && (
-        <div className="flex justify-center gap-2 mb-4 px-2">
-          {mobileDays.map((day, idx) => {
-            const isSelected = isSameDay(day, selectedDate)
-            const isToday = isSameDay(day, new Date())
+      <div className="flex justify-center gap-1 mb-4 px-2 md:hidden">
+        {mobileDays.map((day, idx) => {
+          const isSelected = isSameDay(day, selectedDate)
+          const isToday = isSameDay(day, new Date())
 
-            return (
-              <button
-                key={idx}
-                onClick={() => setSelectedDate(day)}
-                className={`flex flex-col items-center px-3 py-2 rounded-2xl transition-all ${isSelected
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+          return (
+            <button
+              key={idx}
+              onClick={() => setSelectedDate(day)}
+              className="flex flex-col items-center gap-1.5 px-2 py-1"
+            >
+              <span className={cn(
+                "text-[11px] font-medium uppercase tracking-wide",
+                isSelected ? "text-foreground" : "text-muted-foreground"
+              )}>
+                {day.toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3)}
+              </span>
+              <span className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                isSelected
+                  ? "bg-primary text-primary-foreground"
                   : isToday
-                    ? 'bg-secondary'
-                    : 'hover:bg-secondary/50'
-                  }`}
-              >
-                <span className="text-xs font-medium uppercase">
-                  {day.toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3)}
-                </span>
-                <span className="text-lg font-bold">{day.getDate()}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
+                    ? "text-primary ring-1 ring-primary/40"
+                    : "text-foreground hover:bg-secondary"
+              )}>
+                {day.getDate()}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
       {/* Desktop Day Header */}
-      {!isMobile && view === 'day' && (
-        <div className="border-b border-border/40 mb-2 pb-3 pt-2">
+      {view === 'day' && (
+        <div className="hidden md:block border-b border-border/40 mb-2 pb-3 pt-2">
           <div className="text-center">
             <span className="text-xl font-medium tracking-tight text-foreground">
               {selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -324,8 +320,8 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
       )}
 
       {/* Desktop Week Header */}
-      {!isMobile && view === 'week' && (
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/40 mb-2 pt-2">
+      {view === 'week' && (
+        <div className="hidden md:grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/40 mb-2 pt-2">
           <div /> {/* Time column spacer */}
           {weekDays.map((day, idx) => {
             const isToday = isSameDay(day, new Date())
@@ -354,8 +350,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
       {/* Calendar Grid / Timeline */}
       <div className="flex-1 overflow-y-auto relative">
         {/* Mobile Timeline View */}
-        {isMobile && (
-          <div className="px-2 pb-20">
+        <div className="px-2 pb-20 md:hidden">
             {HOURS.map(hour => {
               const appointments = getAppointmentsForDay(selectedDate).filter(apt => {
                 const h = new Date(apt.start_time).getHours()
@@ -435,12 +430,11 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
                 </span>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* Desktop Day Grid */}
-        {!isMobile && view === 'day' && (
-          <div className="grid grid-cols-[60px_1fr]">
+        {view === 'day' && (
+          <div className="hidden md:grid grid-cols-[60px_1fr]">
             {HOURS.map(hour => {
               const dayAppointments = getAppointmentsForDay(selectedDate).filter(apt => {
                 const h = new Date(apt.start_time).getHours()
@@ -542,8 +536,8 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
         )}
 
         {/* Desktop Week Grid */}
-        {!isMobile && view === 'week' && (
-          <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+        {view === 'week' && (
+          <div className="hidden md:grid grid-cols-[60px_repeat(7,1fr)]">
             {HOURS.map(hour => (
               <div key={hour} className="contents">
                 <div className="h-20 text-[11px] font-medium text-muted-foreground/60 text-right pr-3 pt-1">
@@ -647,22 +641,23 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
         )}
 
         {/* Desktop Month Grid */}
-        {!isMobile && view === 'month' && (
-          <MonthView
-            currentDate={currentDate}
-            appointments={appointments}
-            blockedSlots={blockedSlots}
-            onSelectDate={(date) => {
-              setSelectedDate(date)
-              setView('day')
-            }}
-          />
+        {view === 'month' && (
+          <div className="hidden md:block">
+            <MonthView
+              currentDate={currentDate}
+              appointments={appointments}
+              blockedSlots={blockedSlots}
+              onSelectDate={(date) => {
+                setSelectedDate(date)
+                setView('day')
+              }}
+            />
+          </div>
         )}
       </div>
 
       {/* Mobile FAB */}
-      {isMobile && (
-        <>
+      <div className="md:hidden">
           {/* Backdrop to close FAB menu */}
           {showFabMenu && (
             <div
@@ -670,7 +665,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
               onClick={() => setShowFabMenu(false)}
             />
           )}
-          <div className="fixed bottom-6 right-6 z-20">
+          <div className="fixed bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] right-6 z-20">
             {/* FAB Menu */}
             {showFabMenu && (
               <div className="absolute bottom-16 right-0 bg-card border border-border rounded-xl shadow-xl py-2 min-w-45 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -702,8 +697,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
               <Plus size={24} />
             </button>
           </div>
-        </>
-      )}
+      </div>
 
       {/* Appointment Details Modal */}
       {selectedAppointment && (
@@ -712,7 +706,7 @@ export default function CustomCalendar({ initialAppointments, initialBlockedSlot
           onClick={() => setSelectedAppointment(null)}
         >
           <div
-            className="bg-card/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-full max-w-md animate-in zoom-in-95 duration-200 overflow-hidden"
+            className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md animate-in zoom-in-95 duration-200 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

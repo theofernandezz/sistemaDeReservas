@@ -29,6 +29,8 @@ export default async function CalendarPage({ params, searchParams }: PageProps) 
     .single()
 
   const maxAdvanceDays = Math.max(1, Number(businessData?.settings?.maxAdvanceDays ?? 21))
+  const businessHours = businessData?.settings?.businessHours
+  const accentColor = businessData?.settings?.accentColor || '#f97316'
 
   // Fetch initial slots using team member schedule (or business schedule if "any")
   const slotsResult = await getAvailableSlots(serviceId, today, undefined, member)
@@ -42,6 +44,8 @@ export default async function CalendarPage({ params, searchParams }: PageProps) 
       initialSlots={initialSlots}
       memberId={member}
       maxAdvanceDays={maxAdvanceDays}
+      businessHours={businessHours}
+      accentColor={accentColor}
     />
   )
 }

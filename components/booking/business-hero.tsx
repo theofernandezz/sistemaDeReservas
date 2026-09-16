@@ -1,5 +1,6 @@
-import { MapPin, Phone, Instagram, Sparkles } from 'lucide-react'
+import { MapPin, Phone, Instagram } from 'lucide-react'
 import type { Business } from '@/types/database.types'
+import { getOpenStatus } from '@/lib/business-hours'
 import { cn } from '@/lib/utils'
 
 interface BusinessHeroProps {
@@ -8,12 +9,10 @@ interface BusinessHeroProps {
 }
 
 /**
- * BusinessHero - Premium hero section for public booking pages
- * 
- * Design: Linear-style minimal with accent color gradient mesh background
- * - No images - uses subtle gradient patterns based on accent color
- * - Asymmetric layout for visual interest
- * - Glassmorphism contact pills
+ * BusinessHero - Hero del storefront público del negocio
+ *
+ * El título es el propio texto del negocio (description), no un saludo genérico.
+ * El estado "abierto/cerrado" sale de settings.businessHours (hora Argentina).
  */
 export function BusinessHero({ business, accentColor = '#f97316' }: BusinessHeroProps) {
   const hasDescription = !!business.description
@@ -22,112 +21,83 @@ export function BusinessHero({ business, accentColor = '#f97316' }: BusinessHero
   const hasInstagram = !!business.instagram
   const hasContactInfo = hasAddress || hasPhone || hasInstagram
 
+  const openStatus = getOpenStatus(business.settings?.businessHours)
+
   return (
-    <section 
-      className="relative overflow-hidden border-b border-border/40 mb-8 sm:mb-12 pb-8 sm:pb-12"
+    <section
+      className="relative border-b border-border/40 mb-8 sm:mb-12 pb-8 sm:pb-12"
       aria-labelledby="business-hero-title"
     >
-
-      {/* Content */}
-      <div className="relative z-10 px-0 sm:px-4">
-        {/* Badge - top accent */}
-        <div 
-          className={cn(
-            "inline-flex items-center gap-2 mb-6",
-            "text-sm font-medium tracking-wide text-muted-foreground uppercase"
-          )}
+      <div className="max-w-3xl space-y-4 sm:space-y-6 px-0 sm:px-4">
+        <h1
+          id="business-hero-title"
+          className="text-3xl sm:text-4xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.08]"
         >
-          <Sparkles 
-            className="h-4 w-4" 
-            style={{ color: accentColor }} 
-            aria-hidden="true"
-          />
-          <span>Reserva Online</span>
-        </div>
+          {hasDescription ? business.description : business.name}
+        </h1>
 
-        {/* Main heading - asymmetric for visual interest */}
-        <div className="max-w-4xl space-y-4 sm:space-y-6">
-          <h1 
-            id="business-hero-title"
-            className="text-4xl sm:text-5xl lg:text-7xl font-semibold tracking-tighter text-foreground leading-[1.1]"
-          >
-            Bienvenido a{' '}
-            <span 
-              className="relative inline-block"
-              style={{ color: accentColor }}
-            >
-              {business.name}
-              {/* Subtle underline accent */}
-              <span 
-                className="absolute -bottom-2 lg:-bottom-3 left-0 right-0 h-1 sm:h-1.5 opacity-20"
-                style={{ backgroundColor: accentColor }}
-                aria-hidden="true"
-              />
+        {hasDescription && (
+          <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-xl">
+            Reservá online en menos de dos minutos.
+          </p>
+        )}
+
+        {openStatus && (
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className="h-2 w-2 rounded-full animate-pulse"
+              style={{ backgroundColor: accentColor }}
+              aria-hidden="true"
+            />
+            <span className="font-medium text-foreground">
+              {openStatus.isOpen ? 'Abierto ahora' : 'Cerrado ahora'}
             </span>
-          </h1>
-          
-          {hasDescription && (
-            <p className="text-muted-foreground text-base sm:text-lg lg:text-xl leading-relaxed max-w-2xl font-light">
-              {business.description}
-            </p>
-          )}
-        </div>
+            {openStatus.isOpen && (
+              <span className="text-muted-foreground">· Cierra {openStatus.closesAt}</span>
+            )}
+          </div>
+        )}
 
-        {/* Contact info - minimal layout */}
         {hasContactInfo && (
-          <div 
-            className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 sm:mt-12"
+          <div
+            className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
             role="list"
             aria-label="Información de contacto"
           >
             {hasAddress && (
-              <div 
-                className="flex items-center gap-2.5 text-sm sm:text-base text-muted-foreground"
-                role="listitem"
-              >
-                <div 
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-muted/30"
-                  aria-hidden="true"
-                >
-                  <MapPin className="h-4 w-4" style={{ color: accentColor }} />
-                </div>
-                <span className="line-clamp-1 border-b border-transparent hover:border-border transition-colors">{business.address}</span>
-              </div>
+              <span className="flex items-center gap-1.5" role="listitem">
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="line-clamp-1">{business.address}</span>
+              </span>
             )}
-            
+
             {hasPhone && (
-              <a 
+              <a
                 href={`tel:${business.phone}`}
-                className="flex items-center gap-2.5 text-sm sm:text-base text-muted-foreground group"
+                className={cn(
+                  "flex items-center gap-1.5 hover:text-foreground transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                )}
                 role="listitem"
               >
-                <div 
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors"
-                  aria-hidden="true"
-                >
-                  <Phone className="h-4 w-4" style={{ color: accentColor }} />
-                </div>
-                <span className="border-b border-transparent group-hover:border-border transition-colors">{business.phone}</span>
+                <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {business.phone}
               </a>
             )}
-            
+
             {hasInstagram && business.instagram && (
               <a
                 href={`https://instagram.com/${business.instagram.replace('@', '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2.5 text-sm sm:text-base text-muted-foreground group"
+                className={cn(
+                  "flex items-center gap-1.5 hover:text-foreground transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                )}
                 role="listitem"
               >
-                <div 
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors"
-                  aria-hidden="true"
-                >
-                  <Instagram className="h-4 w-4" style={{ color: accentColor }} />
-                </div>
-                <span className="border-b border-transparent group-hover:border-border transition-colors">
-                  {business.instagram.startsWith('@') ? business.instagram : `@${business.instagram}`}
-                </span>
+                <Instagram className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {business.instagram.startsWith('@') ? business.instagram : `@${business.instagram}`}
               </a>
             )}
           </div>

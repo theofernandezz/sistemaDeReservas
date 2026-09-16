@@ -1260,6 +1260,29 @@ export async function getServiceAddons(): Promise<ServerActionResponse<ServiceAd
 }
 
 /**
+ * Get active service add-ons for a business - public (booking flow, sin sesión)
+ */
+export async function getServiceAddonsByBusinessId(businessId: string): Promise<ServerActionResponse<ServiceAddon[]>> {
+  try {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('service_addons')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('name')
+
+    if (error) throw error
+
+    return { success: true, data: data || [] }
+  } catch (error: unknown) {
+    console.error('Error fetching addons by business:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error fetching addons by business' }
+  }
+}
+
+/**
  * Get all service add-ons (including inactive) for current business - for admin
  */
 export async function getAllServiceAddons(): Promise<ServerActionResponse<ServiceAddon[]>> {

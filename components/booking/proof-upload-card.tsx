@@ -118,20 +118,20 @@ export function ProofUploadCard({
 
   if (alreadySent) {
     return (
-      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-5 flex items-start gap-4">
-        <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      <div className="rounded-2xl border border-border p-5 flex items-start gap-3.5">
+        <div className="shrink-0 w-9 h-9 rounded-full border-[1.5px] flex items-center justify-center" style={{ borderColor: '#16a34a', color: '#16a34a' }}>
+          <CheckCircle2 className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">
+          <p className="font-semibold text-sm">
             Comprobante enviado
           </p>
           {uploadedAt && (
-            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {format(uploadedAt, "d 'de' MMMM, HH:mm 'hs'", { locale: es })}
             </p>
           )}
-          <p className="text-xs text-emerald-700/80 dark:text-emerald-300/70 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             El negocio lo está revisando. Te confirmamos pronto.
           </p>
           {currentProofUrl && (
@@ -139,7 +139,7 @@ export function ProofUploadCard({
               href={currentProofUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:underline"
+              className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold hover:underline"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               Ver comprobante
@@ -171,32 +171,23 @@ export function ProofUploadCard({
         disabled={isUploading}
         aria-label="Subir comprobante de pago — hacé click o arrastrá un archivo"
         className={cn(
-          'w-full rounded-2xl border-2 border-dashed p-7 flex flex-col items-center gap-3',
-          'transition-all duration-200 cursor-pointer',
+          'w-full rounded-2xl border-[1.5px] border-dashed p-6 flex flex-col items-center gap-2.5',
+          'transition-colors cursor-pointer',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          isDragging
-            ? 'border-primary bg-primary/5 scale-[1.01]'
-            : 'border-border/60 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50',
-          isUploading && 'opacity-70 cursor-not-allowed scale-100'
+          isDragging ? 'border-muted-foreground/60' : 'border-border hover:border-muted-foreground/40',
+          isUploading && 'opacity-70 cursor-not-allowed'
         )}
       >
         {isUploading ? (
           <>
-            <Loader2 className="w-9 h-9 text-primary animate-spin" />
-            <p className="text-sm font-medium text-foreground">Subiendo comprobante...</p>
+            <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+            <p className="text-sm font-medium">Subiendo comprobante...</p>
           </>
         ) : (
           <>
-            <div className={cn(
-              'w-12 h-12 rounded-full flex items-center justify-center transition-colors',
-              isDragging
-                ? 'bg-primary/15 text-primary'
-                : 'bg-secondary text-muted-foreground'
-            )}>
-              <Upload className="w-6 h-6" />
-            </div>
+            <Upload className="w-6 h-6 text-muted-foreground" strokeWidth={1.75} />
             <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold">
                 {isDragging ? 'Soltá el archivo aquí' : 'Subí tu comprobante'}
               </p>
               <p className="text-xs text-muted-foreground">

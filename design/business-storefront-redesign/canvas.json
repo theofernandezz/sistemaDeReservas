@@ -1,0 +1,32 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1750,
+      "expand": "fill"
+    },
+    {
+      "file": "Mobile.dc.html",
+      "x": 1600,
+      "y": 0,
+      "w": 390,
+      "h": 2650,
+      "expand": "fill"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-direction",
+      "x": 0,
+      "y": -160,
+      "w": 520,
+      "text": "Storefront del negocio — mismos tokens de la app (zinc + Geist + Playfair Display), sin glassmorphism/gradientes decorativos. El tagline del negocio es el headline (no \"Bienvenido a X\"), info funcional real en vez de badges vacíos, accentColor como palanca editable (tweak arriba del artboard)."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

@@ -34,9 +34,6 @@ export default async function PublicBookingLayout({
   }
 
   const business = result.data
-  
-  // Color de acento del negocio (default naranja)
-  const accentColor = business.settings?.accentColor || '#f97316'
 
   return (
     <BusinessProvider business={business}>
@@ -90,14 +87,6 @@ export default async function PublicBookingLayout({
               </div>
             </a>
 
-            {/* Right side */}
-            <div className="flex items-center gap-4">
-              {/* Powered by badge - subtle editorial */}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/30 border border-border/50 text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} aria-hidden="true" />
-                Reservas Online
-              </div>
-            </div>
           </div>
         </header>
 

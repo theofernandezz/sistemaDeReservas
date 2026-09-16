@@ -40,17 +40,8 @@ export default function SettingsPage({
         ? 'integrations'
         : 'profile'
   )
-  const [isMobile, setIsMobile] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(true)
   const { success: showSuccess, error: showError } = useToast()
-
-  // Mobile detection
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   // Handle OAuth callbacks
   const successParam = searchParams.get('success')
@@ -130,7 +121,14 @@ export default function SettingsPage({
       case 'integrations':
         return <IntegrationsSection isGoogleConnected={isGoogleConnected} />
       case 'notifications':
-        return <NotificationsSection initialEmail={initialAdminEmail} />
+        return (
+          <NotificationsSection
+            initialEmail={initialAdminEmail}
+            initialEmailFrom={business?.emailFrom}
+            initialEmailFromName={business?.emailFromName}
+            businessName={businessName}
+          />
+        )
       case 'account':
         return <AccountSection businessName={businessName} />
       default:
@@ -138,10 +136,10 @@ export default function SettingsPage({
     }
   }
 
-  // Mobile: show section list or content
-  if (isMobile) {
-    return (
-      <div className="p-4">
+  return (
+    <>
+      {/* Mobile: show section list or content */}
+      <div className="p-4 md:hidden">
         {!showMobileMenu ? (
           <div>
             <button
@@ -167,10 +165,10 @@ export default function SettingsPage({
                     setActiveSection(section.id)
                     setShowMobileMenu(false)
                   }}
-                  className="w-full flex items-center justify-between p-4 bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:bg-secondary/40 hover:shadow-sm transition-all group"
+                  className="w-full flex items-center justify-between p-4 bg-card border border-border rounded-2xl hover:border-primary/40 hover:bg-secondary/40 transition-colors group"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary/80 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shadow-inner border border-white/5">
+                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-secondary/80 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors shadow-inner border border-border">
                       {section.icon}
                     </div>
                     <div className="text-left">
@@ -185,54 +183,52 @@ export default function SettingsPage({
           </div>
         )}
       </div>
-    )
-  }
 
-  // Desktop: sidebar + content
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold tracking-tight mb-8">Configuración</h1>
+      {/* Desktop: sidebar + content */}
+      <div className="hidden md:block p-6">
+        <h1 className="text-2xl font-bold tracking-tight mb-8">Configuración</h1>
 
-      <div className="flex gap-8">
-        {/* Sidebar */}
-        <div className="w-64 shrink-0">
-          <nav className="space-y-1.5 sticky top-8">
-            {sections.map(section => {
-              const isActive = activeSection === section.id
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-card/60 backdrop-blur-xl shadow-sm border border-white/10 text-primary font-semibold'
-                      : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground border border-transparent'
-                  }`}
-                >
-                  <div className={`transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-foreground'}`}>
-                    {section.icon}
-                  </div>
-                  <span className="text-sm tracking-tight">{section.label}</span>
-                </button>
-              )
-            })}
-          </nav>
-        </div>
+        <div className="flex gap-8">
+          {/* Sidebar */}
+          <div className="w-64 shrink-0">
+            <nav className="space-y-1.5 sticky top-8">
+              {sections.map(section => {
+                const isActive = activeSection === section.id
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
+                      isActive
+                        ? 'bg-card shadow-sm border border-border text-primary font-semibold'
+                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground border border-transparent'
+                    }`}
+                  >
+                    <div className={`transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-foreground'}`}>
+                      {section.icon}
+                    </div>
+                    <span className="text-sm tracking-tight">{section.label}</span>
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 max-w-2xl">
-          <div className="bg-card/20 backdrop-blur-md border border-white/5 rounded-[2rem] p-8 shadow-sm">
-            <h2 className="text-xl font-bold tracking-tight mb-1.5 text-foreground">
-              {sections.find(s => s.id === activeSection)?.label}
-            </h2>
-            <p className="text-sm text-muted-foreground/80 mb-8 pb-6 border-b border-border/40">
-              {sections.find(s => s.id === activeSection)?.description}
-            </p>
-            {renderContent()}
+          {/* Content */}
+          <div className="flex-1 max-w-2xl">
+            <div className="bg-card border border-border rounded-[2rem] p-8 shadow-sm">
+              <h2 className="text-xl font-bold tracking-tight mb-1.5 text-foreground">
+                {sections.find(s => s.id === activeSection)?.label}
+              </h2>
+              <p className="text-sm text-muted-foreground/80 mb-8 pb-6 border-b border-border/40">
+                {sections.find(s => s.id === activeSection)?.description}
+              </p>
+              {renderContent()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

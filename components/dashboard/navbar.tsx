@@ -127,13 +127,10 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
               <span className="opacity-80">Ver página</span>
             </Link>
 
-            {/* Notification Center + User grouped */}
-            <div className="hidden sm:flex items-center gap-0.5 bg-secondary/30 rounded-full p-1 border border-border/30">
+            {/* Notification Center + User */}
+            <div className="hidden sm:flex items-center gap-1">
               {/* Notification Center - hidden on mobile, use hamburger menu */}
               <NotificationCenter />
-
-              {/* Divider */}
-              <div className="w-px h-6 bg-border/50 mx-0.5" />
 
               {/* User Avatar Dropdown - hidden on mobile, use hamburger menu instead */}
               <div className="relative" ref={userMenuRef}>
@@ -226,9 +223,9 @@ export function DashboardNavbar({ business }: DashboardNavbarProps) {
           />
 
           {/* Menu Panel (Glassmorphism Offcanvas) */}
-          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-card border-l border-white/10 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+          <div className="fixed right-0 top-0 bottom-0 w-4/5 max-w-xs bg-card border-l border-border shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-background/50">
+            <div className="flex items-center justify-between p-5 border-b border-border bg-background/50">
               <div className="flex items-center gap-3">
                 {logoUrl ? (
                   <img

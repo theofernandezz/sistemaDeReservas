@@ -348,7 +348,7 @@ export default function ServicesAndAddons({
 
         <div className="flex items-center gap-3">
           {/* Tabs (Segmented Control Style) */}
-          <div className="flex items-center bg-secondary/40 backdrop-blur-md rounded-full p-1 border border-white/5 shadow-sm">
+          <div className="flex items-center bg-secondary/80 rounded-full p-1 border border-border/50 shadow-sm">
             <button
               onClick={() => setActiveTab('services')}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${activeTab === 'services'
@@ -385,7 +385,7 @@ export default function ServicesAndAddons({
             {services.map((service, index) => (
               <div
                 key={service.id}
-                className={`bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 flex flex-col group ${service.active === false ? 'opacity-50 grayscale-[50%]' : ''
+                className={`bg-card border border-border rounded-2xl overflow-hidden shadow-sm transition-colors hover:border-primary/40 flex flex-col group ${service.active === false ? 'opacity-50 grayscale-[50%]' : ''
                   }`}
               >
                 {/* Service Image */}
@@ -488,7 +488,7 @@ export default function ServicesAndAddons({
             {/* Add New Service Card (Dashed) */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-all min-h-[14rem] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-colors min-h-[14rem]"
             >
               <div className="p-3 bg-background rounded-full border border-border shadow-sm">
                 <Plus size={24} />
@@ -504,7 +504,7 @@ export default function ServicesAndAddons({
             {addons.map(addon => (
               <div
                 key={addon.id}
-                className="bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 flex flex-col group"
+                className="bg-card border border-border rounded-2xl p-5 shadow-sm transition-colors hover:border-primary/40 flex flex-col group"
               >
                 {/* Title */}
                 <h3 className="font-semibold text-base tracking-tight text-foreground mb-1.5">
@@ -552,7 +552,7 @@ export default function ServicesAndAddons({
             {/* Add New Addon Card */}
             <button
               onClick={() => handleOpenModal()}
-              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-all min-h-[14rem] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              className="border-2 border-dashed border-border/50 bg-secondary/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:bg-secondary/20 hover:border-primary/40 hover:text-primary transition-colors min-h-[14rem]"
             >
               <div className="p-3 bg-background rounded-full border border-border shadow-sm">
                 <Plus size={24} />
@@ -568,7 +568,7 @@ export default function ServicesAndAddons({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}></div>
           
-          <div className="relative bg-card/90 backdrop-blur-2xl border border-white/10 rounded-2xl w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-in fade-in zoom-in-95 slide-in-from-bottom-[2%] duration-300">
+          <div className="relative bg-card border border-border rounded-2xl w-full max-w-md shadow-xl animate-in fade-in zoom-in-95 slide-in-from-bottom-[2%] duration-300">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-border/30 bg-secondary/20 rounded-t-2xl">
               <h2 className="text-xl font-semibold tracking-tight">
@@ -664,7 +664,7 @@ export default function ServicesAndAddons({
               <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="hover:bg-secondary border border-transparent hover:border-border/50">
                 Cancelar
               </Button>
-              <Button onClick={handleSave} disabled={saving} className="shadow-lg hover:-translate-y-0.5 transition-all">
+              <Button onClick={handleSave} disabled={saving}>
                 {saving && <Loader2 size={16} className="animate-spin mr-2" />}
                 {editingItem ? 'Guardar Cambios' : 'Crear'}
               </Button>

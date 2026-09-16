@@ -259,15 +259,20 @@ export function ProfileSection({ business }: ProfileSectionProps) {
 
         <div>
           <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Descripción</label>
+          <p className="text-xs text-muted-foreground/70 mb-2">
+            Se muestra como título en tu página pública. Una frase corta, no un párrafo (ej. &quot;Cortes prolijos, sin vueltas.&quot;).
+          </p>
           <div className="bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
             <textarea
               value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Contá brevemente de qué se trata tu negocio..."
-              rows={3}
+              onChange={e => setDescription(e.target.value.slice(0, 90))}
+              placeholder="Cortes prolijos, sin vueltas."
+              maxLength={90}
+              rows={2}
               className="w-full px-3 py-2 border-0 bg-transparent text-[15px] font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none resize-none"
             />
           </div>
+          <span className="text-xs text-muted-foreground/60 mt-1 block text-right">{description.length}/90</span>
         </div>
 
         <div className="pt-2">

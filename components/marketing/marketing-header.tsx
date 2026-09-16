@@ -51,7 +51,7 @@ export function MarketingHeader() {
           >
             Ingresar
           </Link>
-          <Button asChild size="sm" className="rounded-full px-6 font-semibold shadow-none">
+          <Button asChild size="sm" className="rounded-[9px] px-6 font-semibold shadow-none bg-[oklch(0.56_0.19_280)] hover:bg-[oklch(0.48_0.19_280)]">
             <Link href="/signup">Comenzar Gratis</Link>
           </Button>
         </nav>

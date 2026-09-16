@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    a { color: inherit; text-decoration: none; }
+    .grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.05; mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    .grain-dark { opacity: 0.09; mix-blend-mode: overlay; }
+    @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal { animation: riseIn 0.8s cubic-bezier(.16,.8,.24,1) both; }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .pulse-dot { animation: pulseDot 2.2s ease-in-out infinite; }
+    .text-link { color: oklch(0.56 0.19 280); text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 100%; background: oklch(0.98 0.014 75); color: oklch(0.19 0.02 50); overflow-x: hidden;">
+
+  <!-- HEADER -->
+  <header style="height: 72px; display: flex; align-items: center; justify-content: space-between; padding-inline: 20px; border-bottom: 1px solid oklch(0.88 0.02 65);">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <img src="icon.png" alt="Devora Buki" style="height: 28px; width: auto; object-fit: contain;">
+      <span style="font-weight: 800; font-size: 16px;">Devora Buki</span>
+    </div>
+    <a href="#" style="height: 36px; padding: 0 16px; border-radius: 999px; background: oklch(0.56 0.19 280); color: oklch(0.99 0.01 70); font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center;">Empezar</a>
+  </header>
+
+  <!-- HERO -->
+  <section style="position: relative; padding: 44px 20px 56px;">
+
+    <div style="position: relative; text-align: center;">
+      <div class="reveal" style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+        <span style="width: 16px; height: 2px; background: oklch(0.56 0.19 280);"></span>
+        <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: oklch(0.4 0.02 55);">Reservas online · AR</span>
+        <span style="width: 16px; height: 2px; background: oklch(0.56 0.19 280);"></span>
+      </div>
+
+      <h1 class="reveal" style="margin: 0; font-weight: 800; font-size: 40px; line-height: 1.02; letter-spacing: -0.02em; animation-delay: .08s;">
+        Tu negocio,<br>
+        <span style="color: oklch(0.56 0.19 280);">sin el caos.</span>
+      </h1>
+
+      <p class="reveal" style="margin: 18px auto 0; font-size: 15px; line-height: 1.6; color: oklch(0.46 0.018 60); max-width: 320px; animation-delay: .16s;">
+        La plataforma todo-en-uno para profesionales que quieren cobrar más, atender mejor y no perderse un turno.
+      </p>
+
+      <div class="reveal" style="margin-top: 24px; display: flex; flex-direction: column; gap: 10px; animation-delay: .24s;">
+        <a href="#" style="height: 48px; border-radius: 10px; background: oklch(0.56 0.19 280); color: oklch(0.99 0.01 70); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          Comenzar gratis
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+        </a>
+        <a href="#" style="height: 46px; border-radius: 10px; font-size: 14.5px; font-weight: 600; color: oklch(0.4 0.02 55); display: flex; align-items: center; justify-content: center;">Ver funcionalidades →</a>
+      </div>
+
+      <p class="reveal" style="margin-top: 16px; font-size: 11.5px; color: oklch(0.6 0.015 60); line-height: 1.5; animation-delay: .3s;">
+        Sin tarjeta de crédito · Configuración en 5 minutos
+      </p>
+
+      <div class="reveal" style="margin-top: 26px; display: flex; align-items: center; justify-content: center; padding-top: 20px; border-top: 1px solid oklch(0.88 0.02 65); animation-delay: .34s;">
+        <div style="padding: 0 16px; text-align: center;"><div style="font-weight: 800; font-size: 19px;">2 min</div><div style="font-size: 10px; color: oklch(0.55 0.018 60); margin-top: 2px;">Setup</div></div>
+        <div style="width: 1px; height: 24px; background: oklch(0.88 0.02 65);"></div>
+        <div style="padding: 0 16px; text-align: center;"><div style="font-weight: 800; font-size: 19px;">0%</div><div style="font-size: 10px; color: oklch(0.55 0.018 60); margin-top: 2px;">Comisión</div></div>
+        <div style="width: 1px; height: 24px; background: oklch(0.88 0.02 65);"></div>
+        <div style="padding: 0 16px; text-align: center;"><div style="font-weight: 800; font-size: 19px;">24/7</div><div style="font-size: 10px; color: oklch(0.55 0.018 60); margin-top: 2px;">Automático</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section style="padding: 64px 20px;">
+    <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; color: oklch(0.52 0.018 60); margin: 0 0 12px;">Funcionalidades</p>
+    <h2 style="margin: 0; font-weight: 800; font-size: 30px; line-height: 1.1; letter-spacing: -0.02em;">
+      Todo lo que necesitás.<br>
+      <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: oklch(0.4 0.02 55);">Nada que sobre.</span>
+    </h2>
+    <p style="margin: 14px 0 0; font-size: 14.5px; line-height: 1.6; color: oklch(0.52 0.018 60);">Una suite completa diseñada obsesivamente para ser simple.</p>
+
+    <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 16px;">
+
+      <div style="border-radius: 20px; background: oklch(1 0 0); border: 1px solid oklch(0.88 0.02 65); padding: 24px;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: oklch(0.965 0.03 280); border: 1px solid oklch(0.87 0.06 280); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.56 0.19 280)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M8.5 14.2l2 2 4-4.2"></path></svg>
+        </div>
+        <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800;">Tu agenda, siempre actualizada</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: oklch(0.52 0.018 60);">Tus clientes eligen el horario y vos lo ves en tiempo real. Sin WhatsApp ida y vuelta.</p>
+      </div>
+
+      <div style="position: relative; overflow: hidden; border-radius: 20px; background: oklch(0.17 0.02 50); padding: 24px;">
+        <div class="grain grain-dark" aria-hidden="true"></div>
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 12px; background: oklch(1 0 0 / 0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.99 0.01 70)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l6-6"></path><circle cx="7" cy="17" r="3"></circle><circle cx="17" cy="7" r="3"></circle></svg>
+        </div>
+        <h3 style="position: relative; margin: 0 0 8px; font-size: 18px; font-weight: 800; color: oklch(0.99 0.01 70);">Conectado a todo.</h3>
+        <p style="position: relative; margin: 0; font-size: 13.5px; line-height: 1.55; color: oklch(0.68 0.015 60);">Google Calendar, Mercado Pago y Gmail sincronizados automáticamente.</p>
+      </div>
+
+      <div style="border-radius: 20px; background: oklch(0.965 0.03 280); border: 1px solid oklch(0.87 0.06 280); padding: 24px;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: oklch(1 0 0); border: 1px solid oklch(0.87 0.06 280); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.56 0.19 280)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.2"></rect><path d="M3 10.5h18"></path></svg>
+        </div>
+        <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800;">Cobrá señas sin esfuerzo</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: oklch(0.46 0.03 280);">Reducí cancelaciones cobrando un porcentaje al reservar.</p>
+      </div>
+
+      <div style="border-radius: 20px; background: oklch(1 0 0); border: 1px solid oklch(0.88 0.02 65); padding: 24px;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: oklch(0.965 0.015 70); border: 1px solid oklch(0.88 0.02 65); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.19 0.02 50)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 0 1 12 0c0 4.2 1.3 5.8 2 6.5H4c.7-.7 2-2.3 2-6.5Z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+        </div>
+        <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 800;">Adiós a los olvidos</h3>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: oklch(0.52 0.018 60);">Recordatorios automáticos por email antes de cada cita.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section style="background: oklch(0.955 0.02 70); padding: 56px 20px;">
+    <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; color: oklch(0.52 0.018 60); margin: 0 0 12px;">Preguntas frecuentes</p>
+    <h2 style="margin: 0 0 24px; font-weight: 800; font-size: 26px; letter-spacing: -0.01em;">Todo lo que querés saber</h2>
+
+    <div>
+      <div style="padding: 20px 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+          <span style="font-size: 15px; font-weight: 700;">¿Cómo funciona el período gratuito?</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.56 0.19 280)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; transform: rotate(180deg);"><path d="M6 9l6 6 6-6"></path></svg>
+        </div>
+        <p style="margin: 10px 0 0; font-size: 13.5px; line-height: 1.6; color: oklch(0.46 0.02 55);">Durante el early access, usás todo sin costo. Cuando lancemos planes pagos, te avisamos con anticipación.</p>
+      </div>
+      <div style="padding: 20px 0; border-top: 1px solid oklch(0.88 0.02 65); display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+        <span style="font-size: 15px; font-weight: 700;">¿Cómo conecto Mercado Pago?</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.52 0.018 60)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+      <div style="padding: 20px 0; border-top: 1px solid oklch(0.88 0.02 65); display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+        <span style="font-size: 15px; font-weight: 700;">¿Mis clientes necesitan una cuenta?</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.52 0.018 60)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+      <div style="padding: 20px 0; border-top: 1px solid oklch(0.88 0.02 65); display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+        <span style="font-size: 15px; font-weight: 700;">¿Puedo personalizar mis horarios?</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.52 0.018 60)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+      <p style="margin: 24px 0 0; font-size: 13px; color: oklch(0.52 0.018 60);">¿No encontrás lo que buscás? <a href="mailto:soporte@tudominio.com" class="text-link">Escribinos</a></p>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section style="position: relative; background: oklch(0.17 0.02 50); color: oklch(0.99 0.01 70); padding: 64px 20px; overflow: hidden;">
+    <div class="grain grain-dark" aria-hidden="true"></div>
+    <h2 style="position: relative; margin: 0; font-weight: 800; font-size: 34px; line-height: 1.02; letter-spacing: -0.02em;">
+      Empezá hoy.<br>
+      <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: oklch(0.6 0.015 60);">Sin excusas.</span>
+    </h2>
+    <p style="position: relative; margin: 16px 0 0; font-size: 14.5px; line-height: 1.6; color: oklch(0.68 0.015 60);">Creá tu página de reservas en minutos. Sin tarjeta, sin contratos.</p>
+
+    <div style="position: relative; margin-top: 26px; display: flex; flex-direction: column; gap: 10px;">
+      <a href="#" style="height: 50px; border-radius: 999px; background: oklch(0.99 0.01 70); color: oklch(0.17 0.02 50); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        Crear cuenta gratis
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+      </a>
+      <a href="#" style="height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 600; color: oklch(0.68 0.015 60);">Ver planes →</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="padding: 48px 20px 32px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+      <img src="icon.png" alt="Devora Buki" style="height: 22px; width: auto; object-fit: contain;">
+      <span style="font-weight: 800; font-size: 15px;">Devora Buki</span>
+    </div>
+    <p style="margin: 0 0 20px; font-size: 12.5px; line-height: 1.6; color: oklch(0.52 0.018 60); max-width: 280px;">Plataforma de gestión de reservas para profesionales independientes.</p>
+
+    <nav style="display: flex; flex-wrap: wrap; gap: 16px 24px; margin-bottom: 28px;">
+      <a href="#" style="font-size: 12.5px; color: oklch(0.52 0.018 60);">Precios</a>
+      <a href="#" style="font-size: 12.5px; color: oklch(0.52 0.018 60);">FAQ</a>
+      <a href="#" style="font-size: 12.5px; color: oklch(0.52 0.018 60);">Ingresar</a>
+      <a href="#" style="font-size: 12.5px; color: oklch(0.52 0.018 60);">Privacidad</a>
+      <a href="#" style="font-size: 12.5px; color: oklch(0.52 0.018 60);">Términos</a>
+    </nav>
+
+    <div style="padding-top: 18px; border-top: 1px solid oklch(0.9 0.015 65); display: flex; flex-direction: column; gap: 6px;">
+      <p style="margin: 0; font-size: 11px; color: oklch(0.62 0.015 60);">© 2026 Devora Buki. Todos los derechos reservados.</p>
+      <p style="margin: 0; font-size: 11px; color: oklch(0.62 0.015 60);">Datos seguros · Integración con Mercado Pago</p>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+</body>
+</html>
