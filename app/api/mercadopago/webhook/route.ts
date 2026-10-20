@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createServiceClient } from '@/utils/supabase/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import * as crypto from 'crypto'
 import { sendNewAppointmentNotification, sendClientConfirmation } from '@/lib/email'
@@ -145,7 +145,8 @@ export async function GET() {
 }
 
 async function processPaymentNotification(paymentId: string) {
-  const supabase = await createClient()
+  // Service client: el webhook no tiene sesión y mp_integrations no es legible por anon
+  const supabase = createServiceClient()
 
   try {
     // First, try to find by pending_booking_id (new flow)
