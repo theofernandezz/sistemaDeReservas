@@ -26,19 +26,13 @@ import {
 } from '@/types/database.types'
 import {
   createAppointmentSchema,
-  rescheduleAppointmentSchema,
   createServiceSchema,
   updateServiceSchema,
   updateServiceOrderSchema,
 } from '@/lib/schemas'
-import {
-  startOfDayUTC,
-  endOfDayUTC,
-  createSlotTimeUTC,
-  addMinutesToUTC,
-  isPastDate,
-  doTimeRangesOverlap
-} from '@/lib/utils/timezone'
+import { startOfDayUTC } from '@/lib/utils/timezone'
+import { computeAvailableSlots } from '@/lib/availability'
+import { tryBuildManageToken } from '@/lib/manage-token'
 
 function isDynamicServerUsageError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -602,41 +596,12 @@ export async function getAppointments(filters?: AppointmentFilters): Promise<Ser
 }
 
 /**
- * Get appointment by ID with service data
- */
-export async function getAppointmentById(id: string): Promise<ServerActionResponse<AppointmentWithService>> {
-  try {
-    const supabase = await createClient()
-
-    const { data, error } = await supabase
-      .from('appointments')
-      .select(`
-        *,
-        service:services(*)
-      `)
-      .eq('id', id)
-      .single()
-
-    if (error) throw error
-
-    return { success: true, data }
-  } catch (error: unknown) {
-    const postgrestError = error as { code?: string; message?: string; details?: string; hint?: string }
-    console.error('Error fetching appointment:', {
-      id,
-      code: postgrestError.code,
-      message: postgrestError.message,
-      details: postgrestError.details,
-      hint: postgrestError.hint,
-    })
-    return { success: false, error: postgrestError.message || 'Error fetching appointment' }
-  }
-}
-
-/**
  * Create a new appointment
  */
-export async function createAppointment(input: CreateAppointmentInput): Promise<ServerActionResponse<Appointment>> {
+/** Appointment returned to the booking flow plus its signed manage token (null only if MANAGE_LINK_SECRET is not configured). */
+export type CreatedAppointment = Appointment & { manage_token: string | null }
+
+export async function createAppointment(input: CreateAppointmentInput): Promise<ServerActionResponse<CreatedAppointment>> {
   try {
     // Validate input with Zod
     const validationResult = createAppointmentSchema.safeParse(input)
@@ -723,6 +688,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       .single()
 
     if (error) throw error
+    // Signed token recomputed from id + version; never stored. Null (logged) if the secret is missing.
+    const manageToken = tryBuildManageToken(data.id, (data as { manage_token_version?: number }).manage_token_version)
 
     // Send email notification to admin
     try {
@@ -742,7 +709,8 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
           date: startDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' }),
           time: startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }),
           startDateTime: startDate,
-          endDateTime: endDate
+          endDateTime: endDate,
+          manageToken: manageToken ?? undefined,
         }
 
         // Email to admin (uses business-specific admin_notification_email from businesses table)
@@ -810,7 +778,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     }
 
     revalidatePath('/dashboard', 'layout')
-    return { success: true, data }
+    return { success: true, data: { ...(data as Appointment), manage_token: manageToken } }
   } catch (error: unknown) {
     console.error('Error creating appointment:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error creating appointment' }
@@ -913,183 +881,7 @@ export async function getAvailableSlots(
 ): Promise<ServerActionResponse<TimeSlot[]>> {
   try {
     const supabase = await createClient()
-    const TIMEZONE = 'America/Argentina/Buenos_Aires'
-
-    const [dateYear, dateMonth, dateDay] = date.split('-').map(Number)
-    const requestedDateLocal = new Date(dateYear, dateMonth - 1, dateDay)
-
-    // Get the service to know duration
-    const { data: service, error: serviceError } = await supabase
-      .from('services')
-      .select('duration_minutes, business_id')
-      .eq('id', serviceId)
-      .single()
-
-    if (serviceError) throw serviceError
-
-    const { data: businessData, error: businessError } = await supabase
-      .from('businesses')
-      .select('settings')
-      .eq('id', service.business_id)
-      .single()
-
-    if (businessError) throw businessError
-
-    const businessSettings = (businessData?.settings as {
-      businessHours?: { dayOfWeek: number; isOpen: boolean; startTime: string; endTime: string; breaks?: { name: string; start: string; end: string }[] }[]
-      slotInterval?: number
-      bufferTime?: number
-      maxAdvanceDays?: number
-      minAdvanceHours?: number
-    } | undefined) || {}
-
-    const maxAdvanceDays = Math.max(1, Number(businessSettings.maxAdvanceDays ?? 21))
-    const minAdvanceMinutes = businessSettings.minAdvanceHours !== undefined
-      ? Math.max(0, Number(businessSettings.minAdvanceHours)) * 60
-      : 30
-    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE }) // YYYY-MM-DD
-    const todayLocal = new Date(`${todayStr}T00:00:00`)
-    const maxDateLocal = new Date(todayLocal)
-    maxDateLocal.setDate(maxDateLocal.getDate() + maxAdvanceDays)
-
-    if (requestedDateLocal < todayLocal || requestedDateLocal > maxDateLocal) {
-      return { success: true, data: [] }
-    }
-
-    // Get appointments for that day - use UTC boundaries for database query
-    const dayStartUTC = startOfDayUTC(date)
-    const dayEndUTC = endOfDayUTC(date)
-
-    const { data: appointments, error: appointmentsError } = await supabase
-      .from('appointments')
-      .select('start_time, end_time, team_member_id')
-      .gte('start_time', dayStartUTC)
-      .lte('start_time', dayEndUTC)
-      .eq('business_id', service.business_id)
-      .neq('status', 'cancelled')
-
-    if (appointmentsError) throw appointmentsError
-
-    // Get blocked slots for that day
-    const { data: blocked, error: blockedError } = await supabase
-      .from('blocked_slots')
-      .select('start_time, end_time, reason')
-      .gte('start_time', dayStartUTC)
-      .lte('start_time', dayEndUTC)
-      .eq('business_id', service.business_id)
-
-    if (blockedError) throw blockedError
-
-    // ─── Unified Team Member Schedule Path ───────────────────────────────────
-    // Always use team members as the single source of truth for availability.
-    // When teamMemberId is undefined or 'any', fetch all active members (union of slots).
-    // When a specific member ID is provided, fetch only that member.
-    const effectiveMemberId = teamMemberId ?? 'any'
-
-    let members: { id: string; slot_interval: number; buffer_time: number; weekly_schedule: Record<string, { isOpen: boolean; startTime: string; endTime: string; breaks: { name: string; start: string; end: string }[] }> }[] = []
-
-    if (effectiveMemberId === 'any') {
-      const { data: allMembers, error: membersErr } = await supabase
-        .from('team_members')
-        .select('id, slot_interval, buffer_time, weekly_schedule')
-        .eq('business_id', service.business_id)
-        .eq('is_active', true)
-      if (membersErr) throw membersErr
-      members = allMembers || []
-    } else {
-      const { data: member, error: memberErr } = await supabase
-        .from('team_members')
-        .select('id, slot_interval, buffer_time, weekly_schedule')
-        .eq('id', effectiveMemberId)
-        .eq('business_id', service.business_id)
-        .single()
-      if (memberErr) throw memberErr
-      if (member) members = [member]
-    }
-
-    if (members.length === 0) {
-      // No team members configured for this business
-      return { success: true, data: [] }
-    }
-
-    const dayKey = String(requestedDateLocal.getDay())
-
-    type MinuteRange = {
-      startMin: number
-      endMin: number
-      interval: number
-      memberId: string
-      breaks: { startMin: number; endMin: number }[]
-    }
-    const ranges: MinuteRange[] = []
-
-    for (const member of members) {
-      const daySchedule = member.weekly_schedule?.[dayKey]
-      if (!daySchedule?.isOpen) continue
-
-      const [sh, sm = 0] = daySchedule.startTime.split(':').map(Number)
-      const [eh, em = 0] = daySchedule.endTime.split(':').map(Number)
-      const breaks = (daySchedule.breaks || []).map((rest) => {
-        const [bsh, bsm = 0] = rest.start.split(':').map(Number)
-        const [beh, bem = 0] = rest.end.split(':').map(Number)
-        return {
-          startMin: bsh * 60 + bsm,
-          endMin: beh * 60 + bem,
-        }
-      })
-
-      ranges.push({
-        startMin: sh * 60 + sm,
-        endMin:   eh * 60 + em,
-        interval: member.slot_interval || 30,
-        memberId: member.id,
-        breaks,
-      })
-    }
-
-    if (ranges.length === 0) {
-      return { success: true, data: [] }
-    }
-
-    const slotMap = new Map<string, boolean>()
-
-    for (const range of ranges) {
-      // For 'any': only count appointments assigned to this specific member.
-      // For a specific member: count appointments assigned to that member OR unassigned (null).
-      const memberAppts = effectiveMemberId === 'any'
-        ? (appointments || []).filter(a => (a as unknown as { team_member_id?: string }).team_member_id === range.memberId)
-        : (appointments || []).filter(a => {
-            const appt = a as unknown as { team_member_id?: string | null }
-            return appt.team_member_id === range.memberId || appt.team_member_id === null
-          })
-
-      let cur = range.startMin
-      while (cur <= range.endMin) {
-        const hour   = Math.floor(cur / 60)
-        const minute = cur % 60
-        const slotTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-
-        const slotStartUTC = createSlotTimeUTC(date, slotTime)
-        const slotEndUTC   = addMinutesToUTC(slotStartUTC, service.duration_minutes)
-
-        const isPast    = isPastDate(slotStartUTC, minAdvanceMinutes)
-        const isBooked  = memberAppts.some(apt => doTimeRangesOverlap(slotStartUTC, slotEndUTC, apt.start_time, apt.end_time))
-        const isBlocked = blocked?.some(block => doTimeRangesOverlap(slotStartUTC, slotEndUTC, block.start_time, block.end_time))
-        const isBreak = range.breaks.some(rest => cur < rest.endMin && (cur + service.duration_minutes) > rest.startMin)
-
-        const available = !isPast && !isBooked && !isBlocked && !isBreak
-        if (available || !slotMap.has(slotTime)) {
-          slotMap.set(slotTime, available)
-        }
-
-        cur += range.interval
-      }
-    }
-
-    const slots: TimeSlot[] = Array.from(slotMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([time, available]) => ({ time, available }))
-
+    const slots = await computeAvailableSlots(supabase, serviceId, date, { teamMemberId })
     return { success: true, data: slots }
   } catch (error: unknown) {
     console.error('Error getting available slots:', error)
@@ -1571,81 +1363,6 @@ export async function updateAdminNotificationEmail(email: string): Promise<Serve
   }
 }
 
-/**
- * Cancel an appointment
- */
-export async function cancelAppointment(id: string, reason: string = 'Cancelado por el cliente'): Promise<ServerActionResponse> {
-  try {
-    const supabase = await createClient()
-
-    // 1. Get appointment details
-    const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
-      .select('*, service:services(name, price)') // Get service details for email
-      .eq('id', id)
-      .single()
-
-    if (fetchError || !appointment) {
-      throw new Error('Reserva no encontrada')
-    }
-
-    if (appointment.status === 'cancelled') {
-      return { success: true } // Already cancelled
-    }
-
-    if (appointment.status === 'completed') {
-      return { success: false, error: 'No se puede cancelar un turno que ya fue completado' }
-    }
-
-    // Check cancellation window using business settings
-    const { data: businessForCancel } = await supabase
-      .from('businesses')
-      .select('settings')
-      .eq('id', appointment.business_id)
-      .single()
-
-    const cancelSettings = (businessForCancel?.settings as { cancellationHours?: number } | null) || {}
-    const cancelHours = cancelSettings.cancellationHours ?? 24
-    const hoursUntil = (new Date(appointment.start_time).getTime() - Date.now()) / (1000 * 60 * 60)
-
-    if (hoursUntil >= 0 && hoursUntil < cancelHours) {
-      return { success: false, error: `Solo podés cancelar con al menos ${cancelHours} horas de anticipación` }
-    }
-
-    // 2. Update status in DB
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', id)
-
-    if (updateError) throw updateError
-
-    // 3. Delete from Google Calendar if connected (using business-specific token)
-    await deleteGoogleCalendarEventIfLinked(supabase, appointment, 'cancel')
-
-    // 4. Notify Admin
-    try {
-      const { sendAppointmentCancellationEmails } = await import('@/lib/email')
-      await sendAppointmentCancellationEmails({
-        businessId: appointment.business_id,
-        serviceName: appointment.service?.name,
-        clientName: appointment.client_name,
-        clientEmail: appointment.client_email,
-        startTime: appointment.start_time,
-        reason,
-      })
-    } catch (emailError) {
-      console.error('Error sending cancellation email:', emailError)
-    }
-
-    revalidatePath('/dashboard', 'layout')
-    return { success: true }
-  } catch (error: unknown) {
-    console.error('Error cancelling appointment:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error cancelling appointment' }
-  }
-}
-
 // ============================================
 // MERCADO PAGO INTEGRATION
 // ============================================
@@ -1957,213 +1674,5 @@ export async function getAppointmentsForWhatsApp(
   } catch (error: unknown) {
     console.error('Error fetching WhatsApp appointments:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error fetching appointments' }
-  }
-}
-
-// ============================================
-// RESCHEDULE - Appointment Rescheduling
-// ============================================
-
-/**
- * Check if appointment can be rescheduled based on time limit
- */
-export async function canRescheduleAppointment(appointmentId: string): Promise<ServerActionResponse<{ canReschedule: boolean; hoursUntil: number; reason?: string }>> {
-  try {
-    const supabase = await createClient()
-
-    // Get appointment with business settings
-    const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
-      .select('*, service:services(business_id)')
-      .eq('id', appointmentId)
-      .single()
-
-    if (fetchError || !appointment) {
-      return { success: false, error: 'Reserva no encontrada' }
-    }
-
-    // Check if already cancelled or completed
-    if (appointment.status === 'cancelled') {
-      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya fue cancelado' } }
-    }
-
-    if (appointment.status === 'completed') {
-      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya fue completado' } }
-    }
-
-    // Get business settings
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('settings')
-      .eq('id', appointment.service.business_id)
-      .single()
-
-    const settings = business?.settings || {}
-    const rescheduleHours = settings.rescheduleHours || 24 // Default 24 hours
-
-    // Calculate time until appointment
-    const appointmentTime = new Date(appointment.start_time)
-    const now = new Date()
-    const hoursUntil = (appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-
-    // Check if past appointment
-    if (hoursUntil < 0) {
-      return { success: true, data: { canReschedule: false, hoursUntil: 0, reason: 'El turno ya pasó' } }
-    }
-
-    // Check if within reschedule window
-    if (hoursUntil < rescheduleHours) {
-      return {
-        success: true,
-        data: {
-          canReschedule: false,
-          hoursUntil: Math.floor(hoursUntil),
-          reason: `Solo se puede reprogramar con al menos ${rescheduleHours} horas de anticipación`
-        }
-      }
-    }
-
-    return { success: true, data: { canReschedule: true, hoursUntil: Math.floor(hoursUntil) } }
-  } catch (error: unknown) {
-    console.error('Error checking reschedule eligibility:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error checking reschedule eligibility' }
-  }
-}
-
-/**
- * Reschedule an existing appointment to a new date/time
- */
-export async function rescheduleAppointment(
-  appointmentId: string,
-  newStartTime: string,
-  newEndTime: string
-): Promise<ServerActionResponse<Appointment>> {
-  try {
-    // Validate input with Zod
-    const validationResult = rescheduleAppointmentSchema.safeParse({
-      appointmentId,
-      newStartTime,
-      newEndTime,
-    })
-    if (!validationResult.success) {
-      const firstError = validationResult.error.issues[0]
-      return {
-        success: false,
-        error: firstError?.message || 'Error de validación'
-      }
-    }
-
-    const { appointmentId: validatedId, newStartTime: validatedStartTime, newEndTime: validatedEndTime } = validationResult.data
-    const supabase = await createClient()
-
-    // 1. Check if can reschedule
-    const eligibilityCheck = await canRescheduleAppointment(validatedId)
-    if (!eligibilityCheck.success || !eligibilityCheck.data?.canReschedule) {
-      return {
-        success: false,
-        error: eligibilityCheck.data?.reason || eligibilityCheck.error || 'No se puede reprogramar este turno'
-      }
-    }
-
-    // 2. Get appointment details
-    const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
-      .select('*, service:services(*)')
-      .eq('id', validatedId)
-      .single()
-
-    if (fetchError || !appointment) {
-      return { success: false, error: 'Reserva no encontrada' }
-    }
-
-    // 3. Check for overlapping appointments (prevent double booking)
-    const { data: existingAppointments, error: checkError } = await supabase
-      .from('appointments')
-      .select('id')
-      .neq('status', 'cancelled')
-      .neq('id', validatedId) // Exclude current appointment
-      .eq('business_id', appointment.business_id)
-      .or(`and(start_time.lt.${validatedEndTime},end_time.gt.${validatedStartTime})`)
-
-    if (checkError) throw checkError
-
-    if (existingAppointments && existingAppointments.length > 0) {
-      return {
-        success: false,
-        error: 'El nuevo horario ya no está disponible. Por favor seleccioná otro horario.'
-      }
-    }
-
-    // 4. Update appointment
-    const originalStartTime = appointment.rescheduled_from || appointment.start_time
-
-    const { data: updatedAppointment, error: updateError } = await supabase
-      .from('appointments')
-      .update({
-        start_time: validatedStartTime,
-        end_time: validatedEndTime,
-        rescheduled_from: originalStartTime,
-        reschedule_count: appointment.reschedule_count + 1,
-        last_rescheduled_at: new Date().toISOString(),
-        // Reset reminders since time changed
-        email_reminder_sent: false,
-        email_reminder_sent_at: null,
-        whatsapp_reminder_sent: false,
-        whatsapp_reminder_sent_at: null
-      })
-      .eq('id', validatedId)
-      .select()
-      .single()
-
-    if (updateError) throw updateError
-
-    // 5. Update Google Calendar if connected (using business-specific token)
-    if (appointment.google_event_id) {
-      try {
-        const { data: googleIntegration } = await supabase
-          .from('google_integrations')
-          .select('refresh_token')
-          .eq('business_id', appointment.business_id)
-          .single()
-
-        if (googleIntegration?.refresh_token) {
-          const { updateCalendarEvent } = await import('@/lib/google-calendar')
-          await updateCalendarEvent(
-            appointment.google_event_id,
-            {
-              startTime: new Date(validatedStartTime),
-              endTime: new Date(validatedEndTime)
-            },
-            googleIntegration.refresh_token
-          )
-          console.log('Google Calendar event updated')
-        }
-      } catch (calendarError) {
-        console.error('Error updating Google Calendar event:', calendarError)
-        // Don't fail the reschedule if calendar fails
-      }
-    }
-
-    // 6. Send notification emails
-    try {
-      const { sendAppointmentRescheduleEmails } = await import('@/lib/email')
-      await sendAppointmentRescheduleEmails({
-        businessId: appointment.business_id,
-        serviceName: appointment.service?.name,
-        clientName: appointment.client_name,
-        clientEmail: appointment.client_email,
-        oldStartTime: appointment.start_time,
-        newStartTime: validatedStartTime,
-      })
-    } catch (emailError) {
-      console.error('Error sending reschedule emails:', emailError)
-      // Don't fail the reschedule if email fails
-    }
-
-    revalidatePath('/dashboard', 'layout')
-    return { success: true, data: updatedAppointment }
-  } catch (error: unknown) {
-    console.error('Error rescheduling appointment:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error rescheduling appointment' }
   }
 }

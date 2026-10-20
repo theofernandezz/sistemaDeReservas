@@ -15,10 +15,12 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
   const initialMinAdvance = reservationSettings?.minAdvanceHours ?? 2
   const initialMaxAdvanceDays = reservationSettings?.maxAdvanceDays ?? 21
   const initialCancelHours = reservationSettings?.cancellationHours ?? 24
+  const initialRescheduleHours = reservationSettings?.rescheduleHours ?? 24
 
   const [minAdvance, setMinAdvance] = useState(String(initialMinAdvance))
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(String(initialMaxAdvanceDays))
   const [cancelHours, setCancelHours] = useState(String(initialCancelHours))
+  const [rescheduleHours, setRescheduleHours] = useState(String(initialRescheduleHours))
   const [saving, setSaving] = useState(false)
   const { success: showSuccess, error: showError } = useToast()
   const router = useRouter()
@@ -27,14 +29,21 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
     setMinAdvance(String(initialMinAdvance))
     setMaxAdvanceDays(String(initialMaxAdvanceDays))
     setCancelHours(String(initialCancelHours))
-  }, [initialMinAdvance, initialMaxAdvanceDays, initialCancelHours])
+    setRescheduleHours(String(initialRescheduleHours))
+  }, [initialMinAdvance, initialMaxAdvanceDays, initialCancelHours, initialRescheduleHours])
 
   const handleSave = async () => {
     const minAdvanceValue = Number(minAdvance)
     const maxAdvanceDaysValue = Number(maxAdvanceDays)
     const cancelHoursValue = Number(cancelHours)
+    const rescheduleHoursValue = Number(rescheduleHours)
 
-    if (Number.isNaN(minAdvanceValue) || Number.isNaN(maxAdvanceDaysValue) || Number.isNaN(cancelHoursValue)) {
+    if (
+      Number.isNaN(minAdvanceValue) ||
+      Number.isNaN(maxAdvanceDaysValue) ||
+      Number.isNaN(cancelHoursValue) ||
+      Number.isNaN(rescheduleHoursValue)
+    ) {
       showError('Error', 'Ingresá valores válidos')
       return
     }
@@ -50,6 +59,7 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
         minAdvanceHours: Math.max(0, minAdvanceValue),
         maxAdvanceDays: Math.max(1, maxAdvanceDaysValue),
         cancellationHours: Math.max(0, cancelHoursValue),
+        rescheduleHours: Math.max(0, rescheduleHoursValue),
       })
       if (result.success) {
         showSuccess('Guardado', 'Configuración de reservas actualizada')
@@ -118,6 +128,26 @@ export function ReservationsSection({ reservationSettings }: ReservationsSection
               type="number"
               value={cancelHours}
               onChange={e => setCancelHours(e.target.value)}
+              className="pl-10 w-28 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
+              min="0"
+            />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground/60 tracking-tight">horas antes</span>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-semibold tracking-tight mb-2 block text-foreground">Reprogramación permitida hasta</label>
+        <p className="text-sm text-muted-foreground/80 mb-3">
+          Hasta cuántas horas antes del turno original puede reprogramar el cliente (0 = hasta el momento del turno)
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative bg-background/50 rounded-xl p-1 border border-white/5 shadow-inner focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/50 transition-all">
+            <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+            <Input
+              type="number"
+              value={rescheduleHours}
+              onChange={e => setRescheduleHours(e.target.value)}
               className="pl-10 w-28 border-0 bg-transparent focus-visible:ring-0 shadow-none text-[15px] font-medium"
               min="0"
             />

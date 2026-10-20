@@ -1,16 +1,17 @@
 import Link from 'next/link'
 import { Check, Calendar, Clock, XCircle, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getAppointmentById } from '@/app/actions'
+import { getAppointmentByToken } from '@/app/actions/manage-appointment'
 import { createClient } from '@/utils/supabase/server'
 import { getAppUrl } from '@/lib/config'
+import type { ManagedAppointmentView } from '@/lib/manage-appointment-types'
 import CopyLinkButton from './copy-link-button'
 import { TransferDetailsCard } from '@/components/booking/transfer-details-card'
 import { ProofUploadCard } from '@/components/booking/proof-upload-card'
 import { BusinessSettings } from '@/types/database.types'
 
 interface SuccessPageProps {
-  searchParams: Promise<{ id?: string; appointment?: string; pending?: string; status?: string }>
+  searchParams: Promise<{ token?: string; pending?: string; status?: string }>
   params: Promise<{ slug: string }>
 }
 
@@ -82,14 +83,12 @@ function StatusIcon({ tone, children }: { tone: 'success' | 'pending' | 'failed'
 }
 
 export default async function SuccessPage({ searchParams, params }: SuccessPageProps) {
-  const { id, appointment: appointmentId, pending: pendingId, status: urlStatus } = await searchParams
+  const { token: tokenParam, pending: pendingId, status: urlStatus } = await searchParams
   const { slug } = await params
 
-  let appointment = null
+  let appointment: ManagedAppointmentView | null = null
   let pendingBooking = null
-
-  // First try to get appointment by ID
-  const bookingId = id || appointmentId
+  let manageToken: string | null = null
 
   const supabase = await createClient()
 
@@ -102,16 +101,17 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
 
   const settings = business?.settings as BusinessSettings | undefined
 
-  if (bookingId) {
-    const result = await getAppointmentById(bookingId)
-    if (result.success && result.data) {
+  // Direct / manual-transfer / MP-with-existing-appointment flows: the token is the credential
+  if (tokenParam) {
+    const result = await getAppointmentByToken(tokenParam)
+    if (result.success) {
       appointment = result.data
+      manageToken = tokenParam
     }
   }
 
-  // If pending ID provided, check pending_bookings table
+  // Mercado Pago flow: the pending booking id derives the token once the webhook created the appointment
   if (pendingId) {
-    // First check if payment was completed (converted_appointment_id exists)
     const { data: pending } = await supabase
       .from('pending_bookings')
       .select('*, service:services(name, price)')
@@ -120,19 +120,12 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
 
     if (pending) {
       pendingBooking = pending
-
-      // If converted, get the actual appointment
-      if (pending.converted_appointment_id) {
-        const result = await getAppointmentById(pending.converted_appointment_id)
-        if (result.success && result.data) {
-          appointment = result.data
-        }
-      }
+      // No token is derived from the pending id: the link reaches the client by email only.
     }
   }
 
   // Determine payment status
-  const paymentStatus = appointment?.payment_status as string | undefined
+  const paymentStatus = appointment?.paymentStatus ?? undefined
   const appointmentStatus = appointment?.status
   const pendingStatus = pendingBooking?.status
 
@@ -141,12 +134,13 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
   const isPaymentFailed = urlStatus === 'failure'
   const isConfirmed = paymentStatus === 'paid' || appointmentStatus === 'confirmed' || pendingStatus === 'paid'
 
-  const startDate = appointment ? new Date(appointment.start_time) : (pendingBooking ? new Date(pendingBooking.start_time) : null)
-  const endDate = appointment ? new Date(appointment.end_time) : (pendingBooking ? new Date(pendingBooking.end_time) : null)
-  const serviceName = appointment?.service?.name || (pendingBooking?.service as { name: string; price: number } | null)?.name || 'Cita'
-  const clientName = appointment?.client_name || pendingBooking?.client_name
-  const clientEmail = appointment?.client_email || pendingBooking?.client_email
-  const servicePrice = appointment?.service?.price || (pendingBooking?.service as { name: string; price: number } | null)?.price
+  const startDate = appointment ? new Date(appointment.startTime) : (pendingBooking ? new Date(pendingBooking.start_time) : null)
+  const endDate = appointment ? new Date(appointment.endTime) : (pendingBooking ? new Date(pendingBooking.end_time) : null)
+  const serviceName = appointment?.serviceName || (pendingBooking?.service as { name: string; price: number } | null)?.name || 'Cita'
+  const clientName = appointment?.clientName || pendingBooking?.client_name
+  const hasBooking = Boolean(appointment || pendingBooking)
+  const servicePrice = appointment?.servicePrice || (pendingBooking?.service as { name: string; price: number } | null)?.price
+  const cancellationHours = appointment?.cancellationHours
 
   const googleCalendarUrl = startDate && endDate && isConfirmed
     ? generateGoogleCalendarUrl(
@@ -221,7 +215,7 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
           <div className="w-full">
             <ProofUploadCard
               appointmentId={appointment?.id || ''}
-              currentProofUrl={(appointment as unknown as Record<string, unknown>)?.proof_url as string | null}
+              currentProofUrl={appointment?.proofUrl ?? null}
             />
           </div>
 
@@ -369,18 +363,24 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
         </div>
       )}
 
-      {clientEmail && (
+      {hasBooking && (
         <div className="w-full flex gap-2.5 items-start text-left">
           <Mail className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Te enviamos un email con un link para reprogramar o cancelar tu turno si lo necesitás.
+            {manageToken
+              ? 'Te enviamos un email con un link para reprogramar o cancelar tu turno si lo necesitás.'
+              : 'Te mandamos el link para gestionar tu turno por mail.'}
+            {cancellationHours !== undefined &&
+              (cancellationHours > 0
+                ? ` Podés cancelar hasta ${cancellationHours} ${cancellationHours === 1 ? 'hora' : 'horas'} antes del turno.`
+                : ' Podés cancelar hasta el momento del turno.')}{' '}
             Si no lo ves, revisá la carpeta de spam y marcalo como &quot;no es spam&quot; para no perderte los próximos.
           </p>
         </div>
       )}
 
-      {appointment && (
-        <CopyLinkButton link={`${getAppUrl()}/cancel/${appointment.id}`} />
+      {manageToken && (
+        <CopyLinkButton link={`${getAppUrl()}/turno/${manageToken}`} />
       )}
 
       <Link href={`/${slug}`} className="w-full">

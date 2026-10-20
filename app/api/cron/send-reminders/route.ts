@@ -3,6 +3,7 @@ import { createServiceClient } from '@/utils/supabase/server'
 import { sendAppointmentReminder } from '@/lib/email'
 import { addHours } from 'date-fns'
 import { toUTC } from '@/lib/utils/timezone'
+import { tryBuildManageToken } from '@/lib/manage-token'
 
 const AR_TZ = 'America/Argentina/Buenos_Aires'
 
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
         client_phone,
         email_reminder_sent,
         business_id,
+        manage_token_version,
         service:services(id, name, price)
       `)
       .gte('start_time', toUTC(tomorrow))
@@ -101,7 +103,8 @@ export async function GET(request: NextRequest) {
         date: startTime.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: AR_TZ }),
         time: startTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: AR_TZ }),
         startDateTime: startTime,
-        endDateTime: endTime
+        endDateTime: endTime,
+        manageToken: tryBuildManageToken(apt.id, apt.manage_token_version) ?? undefined,
       }, apt.business_id)
 
       if (emailResult.success) {

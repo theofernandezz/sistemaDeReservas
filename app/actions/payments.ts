@@ -6,6 +6,7 @@ import { ServerActionResponse } from '@/types/database.types'
 import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago'
 import { z } from 'zod'
 import { getAppUrl } from '@/lib/config'
+import { parseManageToken, verifyManageToken } from '@/lib/manage-token'
 
 // Payment limits for security
 const PAYMENT_LIMITS = {
@@ -31,6 +32,8 @@ interface PaymentConfig {
   depositPercentage: number
   hasMPConnected: boolean
   paymentFlowMode: 'mercadopago' | 'manual_transfer'
+  /** Hours of notice required to cancel (business setting, default 24). Shown in the booking UI. */
+  cancellationHours?: number
   manualTransfer: {
     enabled: boolean
     alias: string | null
@@ -144,6 +147,7 @@ export async function getBusinessPaymentConfig(businessId: string): Promise<Serv
         depositPercentage: business?.deposit_percentage || 100,
         hasMPConnected: !!mpIntegration,
         paymentFlowMode,
+        cancellationHours: typeof settingsObj.cancellationHours === 'number' ? settingsObj.cancellationHours : 24,
         manualTransfer,
       }
     }
@@ -262,14 +266,23 @@ export async function updateBusinessPaymentConfig(
 
 /**
  * Create a Mercado Pago payment preference for a booking
- * @param appointmentId - The appointment ID
+ * @param manageToken - Signed manage token returned by createAppointment. It is the credential:
+ *   the appointment id is derived from it and the token is verified against id + stored version.
+ *   No endpoint turns a bare id into a token.
  * @param customAmount - Optional custom amount to charge (if not provided, uses deposit percentage)
+ * The MP back_urls carry that same (verified) token (`?token=`).
  */
 export async function createBookingPaymentPreference(
-  appointmentId: string,
+  manageToken: string,
   customAmount?: number
 ): Promise<ServerActionResponse<PaymentPreferenceResult>> {
   try {
+    const parsedToken = parseManageToken(manageToken)
+    if (!parsedToken) {
+      return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
+    }
+    const appointmentId = parsedToken.appointmentId
+
     const supabase = await createClient()
 
     // Get appointment with service info
@@ -282,8 +295,13 @@ export async function createBookingPaymentPreference(
       .eq('id', appointmentId)
       .single()
 
-    if (aptError || !appointment) {
-      throw new Error('Reserva no encontrada')
+    // Same generic answer for unknown appointment / wrong token / wrong version
+    if (
+      aptError ||
+      !appointment ||
+      !verifyManageToken(manageToken, appointment.id, appointment.manage_token_version ?? 1)
+    ) {
+      return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
     }
 
     const businessId = (appointment.service as { business_id: string; name: string; price: number } | null)?.business_id
@@ -319,14 +337,16 @@ export async function createBookingPaymentPreference(
     const appUrl = getAppUrl()
     const businessSlug = business?.slug
 
-    // Build back URLs - ensure they are valid
+    // Build back URLs with the already-verified token
+    const successBase = `${appUrl}/${businessSlug}/booking/success`
     const backUrls = {
-      success: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}`,
-      failure: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}&status=failure`,
-      pending: `${appUrl}/${businessSlug}/booking/success?appointment=${appointmentId}&status=pending`,
+      success: `${successBase}?token=${manageToken}`,
+      failure: `${successBase}?token=${manageToken}&status=failure`,
+      pending: `${successBase}?token=${manageToken}&status=pending`,
     }
 
-    console.log('Creating MP preference with back_urls:', backUrls)
+    // Do not log back_urls: they may carry the secret manage token
+    console.log('Creating MP preference for appointment', appointmentId)
 
     const preference = await mpCreatePreference(
       mpIntegration.access_token,

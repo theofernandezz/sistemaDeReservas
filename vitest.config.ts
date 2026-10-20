@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { resolve } from 'path'
 
+// Fixed timezone so AR-time assertions don't depend on the machine running the suite
+process.env.TZ = 'UTC'
+
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   test: {

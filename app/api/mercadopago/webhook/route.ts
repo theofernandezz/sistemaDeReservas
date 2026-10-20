@@ -6,6 +6,7 @@ import { sendNewAppointmentNotification, sendClientConfirmation } from '@/lib/em
 import { createCalendarEvent } from '@/lib/google-calendar'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { tryBuildManageToken } from '@/lib/manage-token'
 import { mercadoPagoWebhookSchema, mercadoPagoPaymentSchema } from '@/lib/schemas'
 
 /**
@@ -174,7 +175,8 @@ async function sendPostPaymentNotifications(
   clientPhone: string | null,
   startTime: string,
   endTime: string,
-  businessId: string
+  businessId: string,
+  manageToken: string | null
 ) {
   const startDateTime = new Date(startTime)
   const endDateTime = new Date(endTime)
@@ -190,6 +192,7 @@ async function sendPostPaymentNotifications(
     time: format(startDateTime, 'HH:mm'),
     startDateTime,
     endDateTime,
+    manageToken: manageToken ?? undefined,
   }
 
   // Send admin notification (non-blocking)
@@ -349,6 +352,9 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
 
       console.log(`Created appointment ${newAppointment.id} from pending booking ${pending.id}`)
 
+      // Signed token recomputed from id + version (not stored)
+      const manageToken = tryBuildManageToken(newAppointment.id, newAppointment.manage_token_version)
+
       // Send notifications (emails + calendar)
       const serviceData = pending.service as { business_id: string; name: string; price: number } | null
       if (serviceData) {
@@ -362,7 +368,8 @@ async function processPendingBookingPayment(supabase: SupabaseClient, paymentId:
           pending.client_phone,
           pending.start_time,
           pending.end_time,
-          businessId
+          businessId,
+          manageToken
         )
       }
 

@@ -43,19 +43,6 @@ export const createAppointmentSchema = z.object({
   path: ['start_time'],
 })
 
-export const rescheduleAppointmentSchema = z.object({
-  appointmentId: z.string().uuid('ID de turno inválido'),
-  newStartTime: z.string().datetime('Fecha de inicio inválida'),
-  newEndTime: z.string().datetime('Fecha de fin inválida'),
-}).refine(data => {
-  const start = new Date(data.newStartTime)
-  const end = new Date(data.newEndTime)
-  return start < end
-}, {
-  message: 'La hora de inicio debe ser anterior a la hora de fin',
-  path: ['newStartTime'],
-})
-
 // ============================================================================
 // SERVICES
 // ============================================================================
@@ -249,7 +236,6 @@ export const mercadoPagoPaymentSchema = z.object({
 // ============================================================================
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>
-export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>
 export type CreateServiceInput = z.infer<typeof createServiceSchema>
 export type UpdateServiceInput = z.infer<typeof updateServiceSchema>
 export type UpdateServiceOrderInput = z.infer<typeof updateServiceOrderSchema>

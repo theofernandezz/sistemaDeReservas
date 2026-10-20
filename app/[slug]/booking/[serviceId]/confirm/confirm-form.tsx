@@ -222,7 +222,9 @@ export default function ConfirmForm({
         return
       }
 
-      router.push(`/${slug}/booking/success?id=${result.data.id}&status=pending`)
+      const pendingParams = new URLSearchParams({ status: 'pending' })
+      if (result.data.manage_token) pendingParams.set('token', result.data.manage_token)
+      router.push(`/${slug}/booking/success?${pendingParams.toString()}`)
       return
     }
 
@@ -271,7 +273,11 @@ export default function ConfirmForm({
       return
     }
 
-    router.push(`/${slug}/booking/success?id=${result.data.id}`)
+    router.push(
+      result.data.manage_token
+        ? `/${slug}/booking/success?token=${encodeURIComponent(result.data.manage_token)}`
+        : `/${slug}/booking/success`
+    )
   }
 
   const allFieldsValid = isFormValid(validation)

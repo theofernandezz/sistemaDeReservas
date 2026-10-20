@@ -168,6 +168,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 MP_ACCESS_TOKEN=
 RESEND_API_KEY=
+
+# Secreto (>= 32 chars) para firmar los links /turno/{token} de los clientes.
+# Rotarlo invalida todos los links. Generar con: openssl rand -base64 48
+MANAGE_LINK_SECRET=
 ```
 
 ### Ejecutar

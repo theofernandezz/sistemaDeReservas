@@ -12,6 +12,7 @@ export interface SettingsProps {
     minAdvanceHours?: number
     maxAdvanceDays?: number
     cancellationHours?: number
+    rescheduleHours?: number
   }
   businessName?: string
   business?: {
