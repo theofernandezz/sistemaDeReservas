@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { hasSuperAdminRole } from '@/lib/auth/is-super-admin'
 import { createClient } from '@/utils/supabase/server'
 import { SuperAdminPanel } from '../super-admin/super-admin-panel'
 
@@ -11,7 +12,7 @@ export default async function SuperAdminPage() {
   }
 
   // Verificar que sea super admin
-  if (!user.user_metadata?.is_super_admin) {
+  if (!hasSuperAdminRole(user)) {
     redirect('/dashboard')
   }
 
