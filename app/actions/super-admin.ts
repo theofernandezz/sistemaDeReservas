@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient, createServiceClient } from '@/utils/supabase/server'
+import { hasSuperAdminRole } from '@/lib/auth/is-super-admin'
 import { ServerActionResponse, Business } from '@/types/database.types'
 import { z } from 'zod'
 
@@ -17,7 +18,7 @@ const DEFAULT_HOURS = [
 async function assertSuperAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.user_metadata?.is_super_admin) {
+  if (!hasSuperAdminRole(user)) {
     throw new Error('Unauthorized')
   }
   return user

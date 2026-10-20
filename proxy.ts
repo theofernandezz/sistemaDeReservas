@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { hasSuperAdminRole } from '@/lib/auth/is-super-admin'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -40,7 +41,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  const isSuperAdmin = user?.user_metadata?.is_super_admin === true
+  const isSuperAdmin = hasSuperAdminRole(user)
 
   // Proteger rutas /super-admin (solo super admins)
   if (pathname.startsWith('/super-admin')) {

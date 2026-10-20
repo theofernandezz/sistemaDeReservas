@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { sendPasswordResetEmailViaResend } from '@/lib/email'
+import { hasSuperAdminRole } from '@/lib/auth/is-super-admin'
 import { getAppUrl } from '@/lib/config'
 import { passwordResetRequestSchema, passwordUpdateSchema } from '@/lib/validations/auth'
 import type { Business, ServerActionResponse } from '@/types/database.types'
@@ -27,7 +28,7 @@ export async function login(formData: FormData) {
   }
 
   // Si es super admin, redirigir al panel de admin
-  if (data.user?.user_metadata?.is_super_admin) {
+  if (hasSuperAdminRole(data.user)) {
     redirect('/super-admin')
   }
 
@@ -280,8 +281,7 @@ export async function isSuperAdmin(): Promise<boolean> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Verificar en ambos lugares (user_metadata y app_metadata)
-  return user?.user_metadata?.is_super_admin === true || user?.app_metadata?.is_super_admin === true
+  return hasSuperAdminRole(user)
 }
 
 // Obtener todos los negocios (solo para super admin)
@@ -294,7 +294,7 @@ export async function getAllBusinesses(): Promise<ServerActionResponse<Business[
   }
 
   // Verificar que sea super admin
-  if (!user.user_metadata?.is_super_admin) {
+  if (!hasSuperAdminRole(user)) {
     return { success: false, error: 'No autorizado' }
   }
 
@@ -426,7 +426,7 @@ export async function getCurrentBusiness(): Promise<ServerActionResponse<Busines
     return { success: false, error: 'No autenticado' }
   }
 
-  const isSuperAdminUser = user.user_metadata?.is_super_admin === true
+  const isSuperAdminUser = hasSuperAdminRole(user)
   const activeBusinessId = cookieStore.get(ACTIVE_BUSINESS_COOKIE)?.value
 
   // Si es super admin y tiene un negocio activo seleccionado, obtener ese
