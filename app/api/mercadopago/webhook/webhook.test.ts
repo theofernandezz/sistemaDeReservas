@@ -341,3 +341,46 @@ describe('Payment Action Tests', () => {
     })
   })
 })
+
+describe('MercadoPago Webhook - client manage link', () => {
+  const MANAGE_SECRET = 'test-secret-test-secret-test-secret-0123456789'
+  const CREATED_ID = '33333333-3333-4333-8333-333333333333'
+
+  function tablesWithClientEmail(): Record<string, TableConfig> {
+    const tables = pendingTables()
+    tables.pending_bookings = {
+      list: { data: [{ ...pendingBooking, client_email: 'ana@example.com' }], error: null },
+    }
+    tables.appointments = { single: { data: { id: CREATED_ID, manage_token_version: 4 }, error: null } }
+    return tables
+  }
+
+  it('gives the client confirmation a token valid for the created appointment id + version', async () => {
+    process.env.MANAGE_LINK_SECRET = MANAGE_SECRET
+    setup(tablesWithClientEmail())
+    mockMpPayment('approved')
+    const { sendClientConfirmation } = await import('@/lib/email')
+    const { buildManageToken, verifyManageToken } = await import('@/lib/manage-token')
+
+    const response = await callWebhook(paymentBody, signedHeaders(PAYMENT_ID))
+
+    expect(response.status).toBe(200)
+    expect(sendClientConfirmation).toHaveBeenCalledTimes(1)
+    const [data] = vi.mocked(sendClientConfirmation).mock.calls[0]
+    expect(data.manageToken).toBe(buildManageToken(CREATED_ID, 4))
+    expect(verifyManageToken(data.manageToken!, CREATED_ID, 4)).toBe(true)
+    expect(verifyManageToken(data.manageToken!, CREATED_ID, 1)).toBe(false)
+  })
+
+  it('never builds a link when MANAGE_LINK_SECRET is missing', async () => {
+    delete process.env.MANAGE_LINK_SECRET
+    setup(tablesWithClientEmail())
+    mockMpPayment('approved')
+    const { sendClientConfirmation } = await import('@/lib/email')
+
+    await callWebhook(paymentBody, signedHeaders(PAYMENT_ID))
+
+    expect(sendClientConfirmation).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(sendClientConfirmation).mock.calls[0][0].manageToken).toBeUndefined()
+  })
+})

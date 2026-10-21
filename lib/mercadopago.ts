@@ -33,7 +33,7 @@ export async function createPaymentPreference(
   const client = createMPClient(accessToken)
   const preference = new Preference(client)
 
-  console.log('MP Preference backUrls:', JSON.stringify(backUrls))
+  // backUrls may carry the secret manage token: not logged
 
   const result = await preference.create({
     body: {

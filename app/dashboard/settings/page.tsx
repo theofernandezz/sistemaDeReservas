@@ -39,7 +39,8 @@ export default async function SettingsServerPage() {
     ? {
         minAdvanceHours: business.settings.minAdvanceHours,
         maxAdvanceDays: business.settings.maxAdvanceDays,
-        cancellationHours: business.settings.cancellationHours
+        cancellationHours: business.settings.cancellationHours,
+        rescheduleHours: business.settings.rescheduleHours
       }
     : undefined
   const paymentSettings = business?.settings

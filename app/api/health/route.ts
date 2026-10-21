@@ -55,6 +55,7 @@ export async function GET() {
     'MERCADOPAGO_CLIENT_SECRET',
     'MP_WEBHOOK_SECRET',
     'CRON_SECRET',
+    'MANAGE_LINK_SECRET',
   ]
 
   const missingEnvVars = requiredEnvVars.filter(

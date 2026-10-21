@@ -66,7 +66,7 @@ export default function CompactConfirmPage() {
   const [fetchingData, setFetchingData] = useState(true)
   const [service, setService] = useState<Service | null>(null)
   const [addons, setAddons] = useState<ServiceAddon[]>([])
-  const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean } | null>(null)
+  const [paymentConfig, setPaymentConfig] = useState<{ depositPercentage: number; hasMPConnected: boolean; cancellationHours?: number } | null>(null)
 
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([])
   const [showAddons, setShowAddons] = useState(false)
@@ -129,6 +129,7 @@ export default function CompactConfirmPage() {
   const totalPrice = (service?.price || 0) + addonsTotal
   const totalDuration = (service?.duration_minutes || 0) + addonsDuration
 
+  const cancellationHours = paymentConfig?.cancellationHours ?? 24
   const depositPercentage = paymentConfig?.depositPercentage || 30
   const depositAmount = Math.round(totalPrice * depositPercentage / 100)
   const amountToPay = paymentConfig?.hasMPConnected
@@ -237,7 +238,12 @@ export default function CompactConfirmPage() {
     }
 
     if (paymentConfig?.hasMPConnected && amountToPay > 0) {
-      const preferenceResult = await createBookingPaymentPreference(result.data.id, amountToPay)
+      if (!result.data.manage_token) {
+        showError('Error al crear pago', 'No pudimos preparar el pago de tu reserva. Intentá de nuevo en unos minutos o contactá al negocio.')
+        setLoading(false)
+        return
+      }
+      const preferenceResult = await createBookingPaymentPreference(result.data.manage_token, amountToPay)
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
         // eslint-disable-next-line react-hooks/immutability -- External redirect to payment gateway
@@ -250,7 +256,11 @@ export default function CompactConfirmPage() {
       }
     }
 
-    router.push(`/${slug}/booking/success?id=${result.data.id}`)
+    router.push(
+      result.data.manage_token
+        ? `/${slug}/booking/success?token=${encodeURIComponent(result.data.manage_token)}`
+        : `/${slug}/booking/success`
+    )
   }
 
   if (fetchingData) {
@@ -703,7 +713,7 @@ export default function CompactConfirmPage() {
                   <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
                     <Check className="h-4 w-4 text-green-600" aria-hidden="true" />
                   </div>
-                  <span className="font-medium">Cancelación gratuita hasta 24hs antes</span>
+                  <span className="font-medium">{cancellationHours > 0 ? `Cancelación gratuita hasta ${cancellationHours}hs antes` : 'Cancelación gratuita hasta el momento del turno'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">

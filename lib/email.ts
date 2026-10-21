@@ -1,6 +1,9 @@
 import { Resend } from 'resend'
 import { createClient } from '@/utils/supabase/server'
 import { getAppUrl } from '@/lib/config'
+import { escapeHtml } from '@/lib/html'
+import { buildManageUrl } from '@/lib/manage-token'
+import { hasPaymentToResolve } from '@/lib/appointment-rules'
 
 let resendClient: Resend | null = null
 
@@ -45,6 +48,8 @@ export interface AppointmentEmailData {
   time: string
   startDateTime?: Date
   endDateTime?: Date
+  /** Clear manage token: only available at creation time / resend. Without it the client link falls back to /cancel/{id} (resend page). */
+  manageToken?: string
 }
 
 export interface PasswordResetEmailData {
@@ -59,6 +64,8 @@ export interface AppointmentCancellationEmailData {
   clientEmail?: string | null
   startTime: string
   reason: string
+  paymentStatus?: string | null
+  paymentAmount?: number | null
 }
 
 export interface AppointmentRescheduleEmailData {
@@ -68,6 +75,16 @@ export interface AppointmentRescheduleEmailData {
   clientEmail?: string | null
   oldStartTime: string
   newStartTime: string
+  manageToken?: string
+}
+
+export interface ManageLinkEmailData {
+  businessId: string
+  clientName: string
+  clientEmail: string
+  serviceName?: string | null
+  startTime: string
+  manageToken: string
 }
 
 /**
@@ -154,6 +171,10 @@ export function baseEmailTemplate({
   footerText?: string
 }): string {
   const year = new Date().getFullYear()
+  // Callers pass raw text (client/business-controlled); escape once here.
+  brandName = escapeHtml(brandName)
+  title = escapeHtml(title)
+  subtitle = subtitle === undefined ? undefined : escapeHtml(subtitle)
   return `
     <!DOCTYPE html>
     <html lang="es">
@@ -220,7 +241,7 @@ function infoRow(label: string, value: string): string {
     <tr>
       <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top;">
         <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">${label}</p>
-        <p style="margin: 4px 0 0; font-size: 15px; color: #111827;">${value}</p>
+        <p style="margin: 4px 0 0; font-size: 15px; color: #111827;">${escapeHtml(value)}</p>
       </td>
     </tr>
   `
@@ -276,6 +297,10 @@ function generateGoogleCalendarLink(data: AppointmentEmailData): string {
     encodeURIComponent(data.serviceName + ' - ' + data.clientName) +
     '&dates=' + fmt(data.startDateTime) + '/' + fmt(data.endDateTime) +
     '&details=' + encodeURIComponent('Cliente: ' + data.clientName + (data.clientPhone ? '\nTel: ' + data.clientPhone : ''))
+}
+
+function clientManageUrl(appUrl: string, data: { id: string; manageToken?: string }): string {
+  return data.manageToken ? buildManageUrl(appUrl, data.manageToken) : `${appUrl}/cancel/${data.id}`
 }
 
 // ─── Email senders ────────────────────────────────────────────────────────────
@@ -351,6 +376,17 @@ export async function sendAppointmentCancellationEmails(
       infoRow('Fecha original', `${formatDate(data.startTime)} a las ${formatTime(data.startTime)}hs`) +
       infoRow('Motivo de cancelacion', data.reason)
 
+    const paymentWarning = hasPaymentToResolve({
+      paymentStatus: data.paymentStatus ?? null,
+      paymentAmount: data.paymentAmount ?? null,
+    })
+      ? `
+      <div style="margin-bottom: 24px; padding: 16px; background-color: #fffbeb; border-radius: 8px; border: 1px solid #fde68a;">
+        <p style="margin: 0; font-size: 14px; font-weight: 700; color: #92400e;">Este turno tenia un pago o sena${data.paymentAmount ? ` de $${escapeHtml(data.paymentAmount)}` : ''}${data.paymentStatus ? ` (estado: ${escapeHtml(data.paymentStatus)})` : ''}.</p>
+        <p style="margin: 8px 0 0; font-size: 13px; color: #92400e; line-height: 1.6;">No se reembolsa automaticamente. Tenes que gestionarlo manualmente con el cliente.</p>
+      </div>`
+      : ''
+
     const adminBody = `
       <div style="display: inline-block; padding: 6px 14px; background-color: #fee2e2; border-radius: 20px; margin-bottom: 20px;">
         <p style="margin: 0; font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 1px;">Turno Cancelado</p>
@@ -359,6 +395,10 @@ export async function sendAppointmentCancellationEmails(
         Un cliente ha cancelado su turno. A continuacion se detallan los datos:
       </p>
       ${infoCard(adminRows, '#ef4444')}
+      ${paymentWarning}
+      <div>
+        ${ghostButton('Ver en el panel', `${appUrl}/dashboard`)}
+      </div>
     `
 
     let errorMessage: string | undefined
@@ -386,7 +426,7 @@ export async function sendAppointmentCancellationEmails(
 
       const clientBody = `
         <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-          Hola ${data.clientName}, te confirmamos que tu turno fue cancelado exitosamente.
+          Hola ${escapeHtml(data.clientName)}, te confirmamos que tu turno fue cancelado exitosamente.
         </p>
         ${infoCard(clientRows, '#ef4444')}
         <div style="margin-bottom: 24px;">
@@ -484,9 +524,10 @@ export async function sendAppointmentRescheduleEmails(
 
       const clientBody = `
         <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-          Hola ${data.clientName}, tu turno ha sido reprogramado exitosamente. Aqui estan los nuevos detalles:
+          Hola ${escapeHtml(data.clientName)}, tu turno ha sido reprogramado exitosamente. Aqui estan los nuevos detalles:
         </p>
         ${infoCard(clientRows, config.brandColor)}
+        ${data.manageToken ? `<div style="margin-bottom: 24px;">${ghostButton('Gestionar mi turno', buildManageUrl(getAppUrl(), data.manageToken))}</div>` : ''}
         <p style="margin: 0; font-size: 14px; color: #6b7280;">
           Si tienes alguna pregunta, no dudes en contactarnos.
         </p>
@@ -537,14 +578,14 @@ export async function sendNewAppointmentNotification(
 
     const appUrl = getAppUrl()
     const googleCalendarUrl = generateGoogleCalendarLink(data)
-    const cancelUrl = `${appUrl}/cancel/${data.id}`
+    const dashboardUrl = `${appUrl}/dashboard`
 
     const contactRows = [
       data.clientPhone
-        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Telefono:</strong> <a href="tel:${data.clientPhone}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientPhone}</a></td></tr>`
+        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Telefono:</strong> <a href="tel:${escapeHtml(data.clientPhone)}" style="color: ${config.brandColor}; text-decoration: none;">${escapeHtml(data.clientPhone)}</a></td></tr>`
         : '',
       data.clientEmail
-        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Email:</strong> <a href="mailto:${data.clientEmail}" style="color: ${config.brandColor}; text-decoration: none;">${data.clientEmail}</a></td></tr>`
+        ? `<tr><td style="padding: 4px 0; font-size: 13px; color: #6b7280;"><strong style="color: #374151;">Email:</strong> <a href="mailto:${escapeHtml(data.clientEmail)}" style="color: ${config.brandColor}; text-decoration: none;">${escapeHtml(data.clientEmail)}</a></td></tr>`
         : '',
     ].join('')
 
@@ -574,7 +615,7 @@ export async function sendNewAppointmentNotification(
         ${calendarBtn}
       </div>
       <div>
-        ${ghostButton('Cancelar turno', cancelUrl)}
+        ${ghostButton('Ver en el panel', dashboardUrl)}
       </div>
     `
 
@@ -631,11 +672,11 @@ export async function sendManualTransferPendingEmail(
       infoRow('Hora', data.time) +
       infoRow('Total', `$${data.servicePrice}`)
 
-    const cancelUrl = `${appUrl}/cancel/${data.id}`
+    const cancelUrl = clientManageUrl(appUrl, data)
 
     const body = `
       <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-        Hola ${data.clientName}, tu turno está confirmado. Para evitar inconvenientes, te pedimos que realices la transferencia y subas el comprobante.
+        Hola ${escapeHtml(data.clientName)}, tu turno está confirmado. Para evitar inconvenientes, te pedimos que realices la transferencia y subas el comprobante.
       </p>
       ${infoCard(rows, config.brandColor)}
       <div style="margin-bottom: 12px;">
@@ -694,7 +735,7 @@ export async function sendClientConfirmation(
     const config = await getBusinessEmailConfig(businessId)
     const googleCalendarUrl = generateGoogleCalendarLink(data)
     const appUrl = getAppUrl()
-    const cancelUrl = `${appUrl}/cancel/${data.id}`
+    const cancelUrl = clientManageUrl(appUrl, data)
 
     const rows =
       infoRow('Servicio', data.serviceName) +
@@ -704,7 +745,7 @@ export async function sendClientConfirmation(
 
     const body = `
       <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-        Hola ${data.clientName}, tu reserva fue confirmada. Aqui tienes los detalles:
+        Hola ${escapeHtml(data.clientName)}, tu reserva fue confirmada. Aqui tienes los detalles:
       </p>
       ${infoCard(rows, config.brandColor)}
       <div style="margin-bottom: 12px;">
@@ -762,7 +803,7 @@ export async function sendAppointmentReminder(
   try {
     const config = await getBusinessEmailConfig(businessId)
     const appUrl = getAppUrl()
-    const cancelUrl = `${appUrl}/cancel/${data.id}`
+    const cancelUrl = clientManageUrl(appUrl, data)
 
     const rows =
       infoRow('Servicio', data.serviceName) +
@@ -771,7 +812,7 @@ export async function sendAppointmentReminder(
 
     const body = `
       <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
-        Hola ${data.clientName}, te recordamos que manana tienes un turno agendado con nosotros.
+        Hola ${escapeHtml(data.clientName)}, te recordamos que manana tienes un turno agendado con nosotros.
       </p>
       ${infoCard(rows, config.brandColor)}
       <p style="margin: 0 0 20px; font-size: 15px; color: #374151; text-align: center;">
@@ -807,5 +848,54 @@ export async function sendAppointmentReminder(
   } catch (error: unknown) {
     console.error('Error sending appointment reminder:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Error sending appointment reminder' }
+  }
+}
+
+
+/**
+ * Send the client a fresh manage link (used by "resend my link").
+ * Always goes to the client_email registered on the appointment.
+ */
+export async function sendManageLinkEmail(
+  data: ManageLinkEmailData
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getBusinessEmailConfig(data.businessId)
+    const manageUrl = buildManageUrl(getAppUrl(), data.manageToken)
+
+    const rows =
+      infoRow('Servicio', data.serviceName ?? 'Turno') +
+      infoRow('Fecha', formatDate(data.startTime)) +
+      infoRow('Hora', `${formatTime(data.startTime)}hs`)
+
+    const body = `
+      <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+        Hola ${escapeHtml(data.clientName)}, pediste el link para gestionar tu turno.
+      </p>
+      ${infoCard(rows, config.brandColor)}
+      <div style="margin-bottom: 24px;">
+        ${primaryButton('Gestionar mi turno', manageUrl, config.brandColor)}
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+        Si no lo pediste vos, podés ignorar este mail.
+      </p>
+    `
+
+    const { error } = await getResendClient().emails.send({
+      from: `${config.emailFromName} <${config.emailFrom}>`,
+      to: data.clientEmail,
+      subject: `Tu link para gestionar el turno — ${data.serviceName ?? config.brandName}`,
+      html: baseEmailTemplate({
+        brandName: config.brandName,
+        brandColor: config.brandColor,
+        title: 'Gestioná tu turno',
+        body,
+      }),
+    })
+
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Error sending manage link email' }
   }
 }
