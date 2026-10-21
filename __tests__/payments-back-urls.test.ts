@@ -37,13 +37,14 @@ function setup(version: number | undefined) {
     ...(version === undefined ? {} : { manage_token_version: version }),
     service: { name: 'Corte', price: 10000, business_id: 'biz-1' },
   }
-  vi.mocked(createClient).mockResolvedValue(
-    fakeClient({ appointments: appointment, businesses: { deposit_percentage: 30, name: 'Salon', slug: 'salon' } }) as never
-  )
-  vi.mocked(createServiceClient).mockReturnValue(
-    fakeClient({ mp_integrations: { access_token: 'mp-token' } }) as never
-  )
+  anonClient = fakeClient({ businesses: { deposit_percentage: 30, name: 'Salon', slug: 'salon' } })
+  serviceClient = fakeClient({ appointments: appointment, mp_integrations: { access_token: 'mp-token' } })
+  vi.mocked(createClient).mockResolvedValue(anonClient as never)
+  vi.mocked(createServiceClient).mockReturnValue(serviceClient as never)
 }
+
+let anonClient: ReturnType<typeof fakeClient>
+let serviceClient: ReturnType<typeof fakeClient>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -127,5 +128,15 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
       const result = await createBookingPaymentPreference(APPOINTMENT_ID)
       expect(JSON.stringify(result)).not.toContain(buildManageToken(APPOINTMENT_ID, 1))
     })
+  })
+
+  it('reads and updates appointments with the service client, never the anon/session one (RLS closed by 025)', async () => {
+    setup(1)
+
+    const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1))
+
+    expect(result.success).toBe(true)
+    expect(anonClient.from.mock.calls.map((c) => c[0])).not.toContain('appointments')
+    expect(serviceClient.from.mock.calls.filter((c) => c[0] === 'appointments').length).toBe(2) // read + update
   })
 })

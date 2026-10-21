@@ -84,7 +84,8 @@ Cerrar la lectura pública (PR B). (Sí en scope: borrar `cancelAppointment`, `r
 1. Inventario de todos los lectores de `appointments` que hoy corren como anon (sin sesión) y moverlos a: (a) lectura por token (PR A), (b) service client en servidor con autorización explícita, o (c) RPC.
 2. RPC `SECURITY DEFINER` para disponibilidad: dado `business_id` (+ opcional `team_member_id`) y rango de fechas, devuelve solo `start_time`, `end_time`, `team_member_id` de turnos no cancelados. Ejecutable por anon.
 3. `createAppointment`: el INSERT público no puede depender de SELECT público para el `RETURNING` (mover a service client tras validar input, o no pedir retorno).
-4. Migración: DROP de "Public can view appointments by ID" y `anon_select_appointments`, con guard final que aborte si queda un SELECT `true` en `appointments`. Aplicación manual, después del deploy.
+4. Migración `025`: RPC + DROP de "Public can view appointments by ID" y `anon_select_appointments`, con guard final que aborte si queda un SELECT `true` en `appointments`. Una sola transacción. Aplicación manual, DESPUÉS del deploy.
+5. `/reserva/[id]` y `/api/upload/proof` dejan de aceptar el id del turno como credencial: pasan a exigir el token de gestión (verificado con `verifyManageToken`), y quien los linkea/llama pasa el token.
 
 ### Out of scope (PR B)
 "Public can create appointments" (INSERT público) — se revisa aparte. Storage, notifications.
@@ -94,4 +95,7 @@ Cerrar la lectura pública (PR B). (Sí en scope: borrar `cancelAppointment`, `r
 - [ ] Booking público completo (ver horarios, reservar, página de éxito) funciona como anon
 - [ ] Disponibilidad calculada vía RPC sin exponer datos personales
 - [ ] Panel del dueño sin cambios
+- [ ] El código desplegado funciona igual antes y después de aplicar la 025 (ningún lector anon depende de las políticas que se borran)
+- [ ] `/reserva/[id]` y `/api/upload/proof` rechazan id sin token válido; con token válido funcionan (subir comprobante en transferencia manual)
+- [ ] La migración aborta si queda un SELECT `true` en `appointments`
 - [ ] Typecheck y suite pasan

@@ -284,9 +284,12 @@ export async function createBookingPaymentPreference(
     const appointmentId = parsedToken.appointmentId
 
     const supabase = await createClient()
+    // Anon cannot SELECT/UPDATE appointments (RLS closed in migration 025). The token format was
+    // validated above and the HMAC is verified right after the read, before anything is used.
+    const serviceSupabase = createServiceClient()
 
     // Get appointment with service info
-    const { data: appointment, error: aptError } = await supabase
+    const { data: appointment, error: aptError } = await serviceSupabase
       .from('appointments')
       .select(`
         *,
@@ -316,8 +319,7 @@ export async function createBookingPaymentPreference(
       .eq('id', businessId)
       .single()
 
-    // Use service client for mp_integrations — this may be called from public pages
-    const serviceSupabase = createServiceClient()
+    // Service client for mp_integrations — this may be called from public pages
     const { data: mpIntegration } = await serviceSupabase
       .from('mp_integrations')
       .select('access_token')
@@ -367,7 +369,7 @@ export async function createBookingPaymentPreference(
     )
 
     // Save preference ID to appointment
-    await supabase
+    await serviceSupabase
       .from('appointments')
       .update({
         mp_preference_id: preference.id,

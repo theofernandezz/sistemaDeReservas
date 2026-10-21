@@ -212,17 +212,19 @@ export default async function SuccessPage({ searchParams, params }: SuccessPageP
             />
           </div>
 
-          <div className="w-full">
-            <ProofUploadCard
-              appointmentId={appointment?.id || ''}
-              currentProofUrl={appointment?.proofUrl ?? null}
-            />
-          </div>
+          {manageToken && (
+            <div className="w-full">
+              <ProofUploadCard
+                token={manageToken}
+                currentProofUrl={appointment?.proofUrl ?? null}
+              />
+            </div>
+          )}
 
-          {appointment?.id && (
+          {manageToken && (
             <p className="text-xs text-muted-foreground -mt-2">
               ¿Cerraste la página?{' '}
-              <a href={`/reserva/${appointment.id}`} className="underline underline-offset-2 hover:text-foreground transition-colors">
+              <a href={`/reserva/${manageToken}`} className="underline underline-offset-2 hover:text-foreground transition-colors">
                 Accedé a tu reserva
               </a>
             </p>

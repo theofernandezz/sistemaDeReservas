@@ -150,7 +150,7 @@ describe('booking success page - /turno/{token} link', () => {
     const cards = proofCards(await renderTree({ token: TOKEN, status: 'pending' }))
 
     expect(cards).toHaveLength(1)
-    expect(cards[0]).toMatchObject({ appointmentId: APPOINTMENT_ID, currentProofUrl: 'https://files.test/proof.png' })
+    expect(cards[0]).toMatchObject({ token: TOKEN, currentProofUrl: 'https://files.test/proof.png' })
   })
 
   it('an invalid token shows no link and loads no appointment data', async () => {

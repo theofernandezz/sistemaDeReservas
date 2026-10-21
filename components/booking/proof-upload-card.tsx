@@ -8,7 +8,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 interface ProofUploadCardProps {
-  appointmentId: string
+  /** Signed manage token of the appointment (credential, not the id) */
+  token: string
   currentProofUrl?: string | null
   onUploadSuccess?: () => void
 }
@@ -25,7 +26,7 @@ const ACCEPTED_TYPES = new Set([
 const MAX_SIZE_BYTES = 10 * 1024 * 1024
 
 export function ProofUploadCard({
-  appointmentId,
+  token,
   currentProofUrl,
   onUploadSuccess,
 }: ProofUploadCardProps) {
@@ -62,7 +63,7 @@ export function ProofUploadCard({
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('appointmentId', appointmentId)
+      formData.append('token', token)
 
       const res = await fetch('/api/upload/proof', {
         method: 'POST',
