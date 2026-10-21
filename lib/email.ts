@@ -648,7 +648,7 @@ export async function sendNewAppointmentNotification(
 
 /**
  * Send pending payment email to client for manual transfer bookings.
- * Includes a link to /reserva/[id] so they can upload the proof later.
+ * Includes a link to /reserva/[token] so they can upload the proof later.
  */
 export async function sendManualTransferPendingEmail(
   data: AppointmentEmailData & {
@@ -664,7 +664,8 @@ export async function sendManualTransferPendingEmail(
   try {
     const config = await getBusinessEmailConfig(businessId)
     const appUrl = getAppUrl()
-    const uploadUrl = `${appUrl}/reserva/${data.id}`
+    // The upload page needs the signed token; without it fall back to the resend page (/cancel/{id})
+    const uploadUrl = data.manageToken ? `${appUrl}/reserva/${data.manageToken}` : `${appUrl}/cancel/${data.id}`
 
     const rows =
       infoRow('Servicio', data.serviceName) +

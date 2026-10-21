@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { getCurrentBusiness } from '@/app/actions/auth'
 import {
   Service,
@@ -615,6 +615,10 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
     const validatedInput = validationResult.data
     const supabase = await createClient()
+    // Public booking: anon cannot SELECT appointments (RLS closed in migration 025), so the overlap
+    // check and the INSERT ... RETURNING run with the service client. Input is validated above and
+    // business_id is derived from the service row, never from the client.
+    const serviceSupabase = createServiceClient()
 
     // Validate appointment is not in the past
     const startTime = new Date(validatedInput.start_time)
@@ -642,7 +646,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     // TODO: TOCTOU race condition — two concurrent requests for the same member+slot
     // can both pass this check before either inserts. Fix: PostgreSQL exclusion constraint
     // using btree_gist + tsrange(start_time, end_time) per team_member_id.
-    let overlapQuery = supabase
+    let overlapQuery = serviceSupabase
       .from('appointments')
       .select('id, start_time, end_time')
       .neq('status', 'cancelled')
@@ -669,7 +673,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       ? new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString()
       : null
 
-    const { data, error } = await supabase
+    const { data, error } = await serviceSupabase
       .from('appointments')
       .insert([{
         start_time: validatedInput.start_time,
@@ -759,8 +763,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
             // Save event ID to appointment
             if (event && event.id) {
-              const supabase2 = await createClient()
-              await supabase2
+              await serviceSupabase
                 .from('appointments')
                 .update({ google_event_id: event.id })
                 .eq('id', data.id)

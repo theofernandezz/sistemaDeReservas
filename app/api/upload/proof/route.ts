@@ -1,8 +1,8 @@
 /**
  * POST /api/upload/proof
  *
- * Public endpoint — no session required. Accepts a proof-of-payment file
- * and an appointmentId, uploads to Supabase Storage, and transitions the
+ * Public endpoint — no session required; the manage token is the credential. Accepts a proof-of-payment file
+ * and the signed manage token, uploads to Supabase Storage, and transitions the
  * appointment to 'pending_confirmation'.
  *
  * SETUP: Create a bucket named "payment-proofs" in Supabase Storage.
@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/utils/supabase/server'
+import { parseManageToken, verifyManageToken } from '@/lib/manage-token'
 
 const ALLOWED_TYPES = new Set([
   'image/jpeg',
@@ -39,15 +40,17 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
-    const appointmentId = formData.get('appointmentId')
+    const token = formData.get('token')
 
     if (!file) {
       return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 })
     }
 
-    if (typeof appointmentId !== 'string' || !appointmentId.trim()) {
-      return NextResponse.json({ error: 'appointmentId requerido' }, { status: 400 })
+    const parsedToken = typeof token === 'string' ? parseManageToken(token.trim()) : null
+    if (typeof token !== 'string' || !parsedToken) {
+      return NextResponse.json({ error: 'Link inválido' }, { status: 400 })
     }
+    const appointmentId = parsedToken.appointmentId
 
     if (!ALLOWED_TYPES.has(file.type)) {
       return NextResponse.json(
@@ -69,11 +72,11 @@ export async function POST(request: NextRequest) {
     // Validate appointment exists and is awaiting proof
     const { data: appointment, error: fetchError } = await supabase
       .from('appointments')
-      .select('id, business_id, status, payment_status')
-      .eq('id', appointmentId.trim())
-      .single()
+      .select('id, business_id, status, payment_status, manage_token_version')
+      .eq('id', appointmentId)
+      .maybeSingle()
 
-    if (fetchError || !appointment) {
+    if (fetchError || !appointment || !verifyManageToken(token.trim(), appointment.id, appointment.manage_token_version)) {
       return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
     }
 

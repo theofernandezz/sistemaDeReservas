@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { ServerActionResponse } from '@/types/database.types'
+import { parseManageToken, verifyManageToken } from '@/lib/manage-token'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,13 +153,16 @@ export async function rejectPaymentProof(
 
 /**
  * Get appointment data for the public "Mi reserva" page.
- * No authentication required.
+ * No session: the signed manage token is the credential (the appointment id alone is not).
  */
 export async function getPublicAppointmentWithProof(
-  appointmentId: string
+  token: string
 ): Promise<ServerActionResponse<AppointmentProofData>> {
   try {
-    // Service client — public page, no session
+    const parsedToken = parseManageToken(token)
+    if (!parsedToken) return { success: false, error: 'Reserva no encontrada' }
+
+    // Service client — public page, no session; access granted only after verifyManageToken below
     const supabase = createServiceClient()
 
     const { data, error } = await supabase
@@ -176,20 +180,25 @@ export async function getPublicAppointmentWithProof(
         proof_expires_at,
         proof_auto_approve_at,
         business_id,
+        manage_token_version,
         service:services(name, price),
         business:businesses(name, slug, phone, settings, deposit_percentage)
       `)
-      .eq('id', appointmentId)
-      .single()
+      .eq('id', parsedToken.appointmentId)
+      .maybeSingle()
 
     if (error || !data) {
       return { success: false, error: 'Reserva no encontrada' }
     }
 
-    return {
-      success: true,
-      data: data as unknown as AppointmentProofData,
+    const { manage_token_version: version, ...appointment } = data as unknown as AppointmentProofData & {
+      manage_token_version: number
     }
+    if (!verifyManageToken(token, appointment.id, version)) {
+      return { success: false, error: 'Reserva no encontrada' }
+    }
+
+    return { success: true, data: appointment }
   } catch (error: unknown) {
     console.error('getPublicAppointmentWithProof error:', error)
     return { success: false, error: 'Error al obtener la reserva' }

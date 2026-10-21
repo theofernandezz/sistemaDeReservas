@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TimeSlot } from '@/types/database.types'
+import { createServiceClient } from '@/utils/supabase/server'
 import {
   startOfDayUTC,
   endOfDayUTC,
@@ -20,6 +21,59 @@ export interface AvailableSlotsOptions {
   blockOnAnyAppointment?: boolean
   /** Override the service duration (service + addons) */
   durationMinutes?: number
+}
+
+interface BusyAppointment {
+  start_time: string
+  end_time: string
+  team_member_id: string | null
+}
+
+/** PostgREST "function not found in schema cache" / Postgres undefined_function. */
+const RPC_MISSING_CODES = new Set(['PGRST202', '42883'])
+
+/**
+ * Non-cancelled appointments starting inside the day, with no personal data.
+ * Public (anon) callers cannot SELECT appointments once migration 025 is applied, so the
+ * default path is the SECURITY DEFINER RPC `get_busy_slots`. Until 025 is applied the RPC does
+ * not exist: in that case (and only then) we fall back to the direct query, which still works
+ * under the old permissive policy. Rescheduling excludes its own appointment, which the RPC
+ * does not support; that caller uses the service client, so it queries directly.
+ * TODO: remove the fallback branch once 025 is applied in every environment.
+ */
+async function fetchBusyAppointments(
+  supabase: SupabaseClient,
+  params: { businessId: string; dayStartUTC: string; dayEndUTC: string; excludeAppointmentId?: string }
+): Promise<BusyAppointment[]> {
+  if (!params.excludeAppointmentId) {
+    const { data, error } = await supabase.rpc('get_busy_slots', {
+      p_business_id: params.businessId,
+      p_from: params.dayStartUTC,
+      p_to: params.dayEndUTC,
+      p_team_member_id: null,
+    })
+    if (!error) return (data ?? []) as BusyAppointment[]
+    if (!error.code || !RPC_MISSING_CODES.has(error.code)) throw error
+  }
+
+  // Fallback (RPC missing, pre-025) or reschedule: server-only code, so use the service client when
+  // we got here through the fallback; anon would read 0 rows once 025 closes the SELECT policies.
+  const reader = params.excludeAppointmentId ? supabase : createServiceClient()
+  let query = reader
+    .from('appointments')
+    .select('start_time, end_time, team_member_id')
+    .gte('start_time', params.dayStartUTC)
+    .lte('start_time', params.dayEndUTC)
+    .eq('business_id', params.businessId)
+    .neq('status', 'cancelled')
+
+  if (params.excludeAppointmentId) {
+    query = query.neq('id', params.excludeAppointmentId)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as BusyAppointment[]
 }
 
 /**
@@ -81,21 +135,12 @@ export async function computeAvailableSlots(
   const dayStartUTC = startOfDayUTC(date)
   const dayEndUTC = endOfDayUTC(date)
 
-  let appointmentsQuery = supabase
-    .from('appointments')
-    .select('start_time, end_time, team_member_id')
-    .gte('start_time', dayStartUTC)
-    .lte('start_time', dayEndUTC)
-    .eq('business_id', service.business_id)
-    .neq('status', 'cancelled')
-
-  if (options.excludeAppointmentId) {
-    appointmentsQuery = appointmentsQuery.neq('id', options.excludeAppointmentId)
-  }
-
-  const { data: appointments, error: appointmentsError } = await appointmentsQuery
-
-  if (appointmentsError) throw appointmentsError
+  const appointments = await fetchBusyAppointments(supabase, {
+    businessId: service.business_id,
+    dayStartUTC,
+    dayEndUTC,
+    excludeAppointmentId: options.excludeAppointmentId,
+  })
 
   // Get blocked slots for that day
   const { data: blocked, error: blockedError } = await supabase

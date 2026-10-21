@@ -61,7 +61,15 @@ function fakeSupabase(fixture: Fixture) {
     return q
   }
 
-  return { client: { from: (name: string) => table(name) } as unknown as SupabaseClient, neqCalls }
+  const rpc = (fn: string) => {
+    if (fn !== 'get_busy_slots') return Promise.resolve({ data: null, error: { code: 'PGRST202' } })
+    const data = (fixture.appointments ?? [])
+      .filter((row) => row.status !== 'cancelled')
+      .map((row) => ({ start_time: row.start_time, end_time: row.end_time, team_member_id: row.team_member_id }))
+    return Promise.resolve({ data, error: null })
+  }
+
+  return { client: { from: (name: string) => table(name), rpc } as unknown as SupabaseClient, neqCalls }
 }
 
 async function slotMap(fixture: Fixture, date: string, options: Parameters<typeof computeAvailableSlots>[3] = {}) {

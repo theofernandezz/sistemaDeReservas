@@ -13,7 +13,7 @@ vi.mock('@/lib/email', () => ({
 }))
 vi.mock('@/lib/google-calendar', () => ({ createCalendarEvent: vi.fn() }))
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { sendClientConfirmation, sendManualTransferPendingEmail, sendNewAppointmentNotification } from '@/lib/email'
 import { buildManageToken, verifyManageToken } from '@/lib/manage-token'
 import { createAppointment } from '@/app/actions'
@@ -63,6 +63,9 @@ function setupDb(createdVersion: number | undefined) {
 
   vi.mocked(createClient).mockResolvedValue({ from: (name: string) => table(name) } as unknown as Awaited<
     ReturnType<typeof createClient>
+  >)
+  vi.mocked(createServiceClient).mockReturnValue({ from: (name: string) => table(name) } as unknown as ReturnType<
+    typeof createServiceClient
   >)
   return { inserted }
 }
