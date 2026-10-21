@@ -33,6 +33,17 @@ import {
 import { startOfDayUTC } from '@/lib/utils/timezone'
 import { computeAvailableSlots } from '@/lib/availability'
 import { tryBuildManageToken } from '@/lib/manage-token'
+import {
+  BookingValidationError,
+  assertSlotAvailable,
+  computeEndTime,
+  resolveAddons,
+  resolvePaymentMode,
+  stateForPaymentMode,
+  totalDurationMinutes,
+  totalPrice,
+  type ServerBookingState,
+} from '@/lib/services/booking-rules'
 
 function isDynamicServerUsageError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -640,6 +651,43 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
     const businessId = service.business_id || await requireBusinessId()
 
+    // Add-ons and duration come from the DB; end_time/price from the client are never used
+    const addons = await resolveAddons(serviceSupabase, businessId, validatedInput.addon_ids)
+    const durationMinutes = totalDurationMinutes(service.duration_minutes, addons)
+    const endTimeISO = computeEndTime(validatedInput.start_time, durationMinutes)
+
+    const assignedMemberId = await assertSlotAvailable(supabase, {
+      serviceId: validatedInput.service_id,
+      businessId,
+      startISO: validatedInput.start_time,
+      durationMinutes,
+      teamMemberId: validatedInput.team_member_id,
+    })
+
+    // Status/payment_status: the authenticated owner of this business may set them (manual entry);
+    // everyone else gets what the server derives from the business payment configuration.
+    const { data: { user } } = await supabase.auth.getUser()
+    let isBusinessOwner = false
+    if (user) {
+      const { data: ownerRow } = await serviceSupabase
+        .from('businesses')
+        .select('owner_id')
+        .eq('id', businessId)
+        .single()
+      isBusinessOwner = ownerRow?.owner_id === user.id
+    }
+
+    const serverState: ServerBookingState = isBusinessOwner
+      ? {
+          status: (validatedInput.status as ServerBookingState['status'] | undefined) ?? 'pending',
+          payment_status: validatedInput.payment_status as ServerBookingState['payment_status'],
+        }
+      : stateForPaymentMode(
+          await resolvePaymentMode(serviceSupabase, businessId, totalPrice(service.price, addons))
+        )
+    const appointmentStatus: string = serverState.status
+    const appointmentPaymentStatus: string | null = serverState.payment_status ?? null
+
     // Check for overlapping appointments (prevent double booking).
     // Scoped to the specific team member when one is assigned, so two different
     // members can take concurrent bookings at the same time slot.
@@ -651,10 +699,10 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       .select('id, start_time, end_time')
       .neq('status', 'cancelled')
       .eq('business_id', businessId)
-      .or(`and(start_time.lt.${validatedInput.end_time},end_time.gt.${validatedInput.start_time})`)
+      .or(`and(start_time.lt.${endTimeISO},end_time.gt.${validatedInput.start_time})`)
 
-    if (validatedInput.team_member_id) {
-      overlapQuery = overlapQuery.eq('team_member_id', validatedInput.team_member_id)
+    if (assignedMemberId) {
+      overlapQuery = overlapQuery.eq('team_member_id', assignedMemberId)
     }
 
     const { data: existingAppointments, error: checkError } = await overlapQuery
@@ -669,7 +717,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     }
 
     // For manual transfer bookings, set a deadline for the client to upload proof.
-    const proofExpiresAt = validatedInput.payment_status === 'pending'
+    const proofExpiresAt = appointmentPaymentStatus === 'pending'
       ? new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString()
       : null
 
@@ -677,16 +725,17 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       .from('appointments')
       .insert([{
         start_time: validatedInput.start_time,
-        end_time: validatedInput.end_time,
+        end_time: endTimeISO,
+        addons,
         client_name: validatedInput.client_name,
         client_phone: validatedInput.client_phone,
         client_email: validatedInput.client_email,
-        status: validatedInput.status || 'pending',
-        payment_status: validatedInput.payment_status ?? null,
+        status: appointmentStatus,
+        payment_status: appointmentPaymentStatus,
         proof_expires_at: proofExpiresAt,
         service_id: validatedInput.service_id,
         business_id: businessId,
-        team_member_id: validatedInput.team_member_id ?? null,
+        team_member_id: assignedMemberId,
       }])
       .select()
       .single()
@@ -701,7 +750,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
       if (service) {
         const { sendNewAppointmentNotification, sendClientConfirmation, sendManualTransferPendingEmail } = await import('@/lib/email')
         const startDate = new Date(validatedInput.start_time)
-        const endDate = new Date(validatedInput.end_time)
+        const endDate = new Date(endTimeISO)
 
         const emailData = {
           id: data.id,
@@ -722,7 +771,7 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
 
         // Email to client (if email provided)
         if (input.client_email) {
-          if (validatedInput.payment_status === 'pending') {
+          if (appointmentPaymentStatus === 'pending') {
             await sendManualTransferPendingEmail({
               ...emailData,
               clientEmail: input.client_email,
@@ -783,8 +832,11 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     revalidatePath('/dashboard', 'layout')
     return { success: true, data: { ...(data as Appointment), manage_token: manageToken } }
   } catch (error: unknown) {
+    if (error instanceof BookingValidationError) {
+      return { success: false, error: error.message }
+    }
     console.error('Error creating appointment:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error creating appointment' }
+    return { success: false, error: 'No pudimos crear el turno. Intentá de nuevo.' }
   }
 }
 

@@ -176,14 +176,15 @@ export interface UpdateServiceInput {
 
 export interface CreateAppointmentInput {
   start_time: string;
-  end_time: string;
+  /** Ignored by the server: end_time is computed from DB durations */
+  end_time?: string;
   client_name: string;
   client_phone?: string | null;
   client_email?: string | null;
   status?: string;
   payment_status?: 'pending' | 'pending_confirmation' | 'paid' | 'rejected' | null;
   service_id: string;
-  addons?: SelectedAddon[];
+  addon_ids?: string[];
   team_member_id?: string | null;
 }
 
@@ -194,11 +195,6 @@ export interface UpdateAppointmentInput {
   client_phone?: string | null;
   client_email?: string | null;
   status?: string;
-}
-
-export interface RescheduleAppointmentInput {
-  new_start_time: string;
-  new_end_time: string;
 }
 
 export interface CreateServiceAddonInput {

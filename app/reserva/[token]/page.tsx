@@ -36,7 +36,7 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
   const isManualTransfer =
     settings?.paymentFlowMode === 'manual_transfer' && settings?.manualTransfer?.enabled
 
-  const depositPercentage = appointment.business?.deposit_percentage ?? 100
+  const depositPercentage = appointment.business?.deposit_percentage || 100
   const totalAmount = appointment.service?.price ?? 0
   const depositAmount = Math.round(totalAmount * (depositPercentage / 100))
 

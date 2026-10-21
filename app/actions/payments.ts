@@ -7,6 +7,16 @@ import { createPaymentPreference as mpCreatePreference } from '@/lib/mercadopago
 import { z } from 'zod'
 import { getAppUrl } from '@/lib/config'
 import { parseManageToken, verifyManageToken } from '@/lib/manage-token'
+import {
+  BookingValidationError,
+  assertSlotAvailable,
+  computeEndTime,
+  computePaymentAmount,
+  resolveAddons,
+  totalDurationMinutes,
+  totalPrice as sumTotalPrice,
+  type ResolvedAddon,
+} from '@/lib/services/booking-rules'
 
 // Payment limits for security
 const PAYMENT_LIMITS = {
@@ -15,6 +25,9 @@ const PAYMENT_LIMITS = {
 } as const
 
 const MP_TOKEN_INVALID_ERROR = 'mp_token_invalid'
+
+const paymentOptionSchema = z.enum(['deposit', 'full'])
+type PaymentOption = z.infer<typeof paymentOptionSchema>
 
 function isMPTokenInvalid(error: unknown): boolean {
   if (error instanceof Error) {
@@ -269,14 +282,20 @@ export async function updateBusinessPaymentConfig(
  * @param manageToken - Signed manage token returned by createAppointment. It is the credential:
  *   the appointment id is derived from it and the token is verified against id + stored version.
  *   No endpoint turns a bare id into a token.
- * @param customAmount - Optional custom amount to charge (if not provided, uses deposit percentage)
+ * @param option - 'deposit' (business deposit_percentage) or 'full'. The amount is always computed here
+ *   from the DB (service + stored add-ons); there is no client-supplied amount.
  * The MP back_urls carry that same (verified) token (`?token=`).
  */
 export async function createBookingPaymentPreference(
   manageToken: string,
-  customAmount?: number
+  option: PaymentOption
 ): Promise<ServerActionResponse<PaymentPreferenceResult>> {
   try {
+    const parsedOption = paymentOptionSchema.safeParse(option)
+    if (!parsedOption.success) {
+      return { success: false, error: 'Opción de pago inválida' }
+    }
+
     const parsedToken = parseManageToken(manageToken)
     if (!parsedToken) {
       return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
@@ -307,6 +326,15 @@ export async function createBookingPaymentPreference(
       return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
     }
 
+    // Nothing to charge for a cancelled or already-paid / proof-under-review appointment
+    if (
+      appointment.status === 'cancelled' ||
+      appointment.payment_status === 'paid' ||
+      appointment.payment_status === 'pending_confirmation'
+    ) {
+      return { success: false, error: 'Este turno ya no admite un nuevo pago.' }
+    }
+
     const businessId = (appointment.service as { business_id: string; name: string; price: number } | null)?.business_id
     if (!businessId) {
       throw new Error('Negocio no encontrado')
@@ -330,10 +358,17 @@ export async function createBookingPaymentPreference(
       throw new Error('El negocio no tiene Mercado Pago conectado')
     }
 
-    // Calculate amount - use customAmount if provided, otherwise calculate deposit
-    const totalPrice = (appointment.service as { business_id: string; name: string; price: number } | null)?.price || 0
-    const depositPercentage = business?.deposit_percentage || 30
-    const paymentAmount = customAmount || Math.round(totalPrice * depositPercentage / 100)
+    // Amount computed from DB data only: service price + add-ons stored (server-resolved) on the appointment
+    const servicePrice = (appointment.service as { business_id: string; name: string; price: number } | null)?.price || 0
+    const storedAddons = (appointment.addons ?? []) as ResolvedAddon[]
+    const paymentAmount = computePaymentAmount(
+      sumTotalPrice(servicePrice, storedAddons),
+      parsedOption.data,
+      business?.deposit_percentage ?? null
+    )
+    if (paymentAmount <= 0) {
+      return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
+    }
 
     // Create MP preference
     const appUrl = getAppUrl()
@@ -390,7 +425,10 @@ export async function createBookingPaymentPreference(
     if (isMPTokenInvalid(error)) {
       return { success: false, error: MP_TOKEN_INVALID_ERROR }
     }
-    return { success: false, error: error instanceof Error ? error.message : 'Error creating payment preference' }
+    if (error instanceof BookingValidationError) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
   }
 }
 
@@ -398,12 +436,11 @@ export async function createBookingPaymentPreference(
 export interface PendingBookingData {
   serviceId: string
   startTime: string
-  endTime: string
   clientName: string
   clientPhone: string
   clientEmail?: string
-  addons?: { id: string; name: string; price: number; duration_minutes: number }[]
-  paymentAmount: number
+  addonIds?: string[]
+  teamMemberId?: string | null
   paymentMethod: 'full' | 'deposit'
 }
 
@@ -411,17 +448,11 @@ export interface PendingBookingData {
 const pendingBookingSchema = z.object({
   serviceId: z.string().uuid('ID de servicio inválido'),
   startTime: z.string().datetime('Fecha de inicio inválida'),
-  endTime: z.string().datetime('Fecha de fin inválida'),
   clientName: z.string().min(1, 'Nombre del cliente requerido').max(100),
   clientPhone: z.string().min(1, 'Teléfono del cliente requerido').max(20),
   clientEmail: z.string().email('Email inválido').optional().or(z.literal('')),
-  addons: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    price: z.number().nonnegative(),
-    duration_minutes: z.number().nonnegative(),
-  })).optional(),
-  paymentAmount: z.number().min(PAYMENT_LIMITS.MIN_AMOUNT_ARS).max(PAYMENT_LIMITS.MAX_AMOUNT_ARS),
+  addonIds: z.array(z.string().uuid('ID de extra inválido')).max(20, 'Demasiados extras').optional(),
+  teamMemberId: z.string().uuid('ID de miembro inválido').optional().nullable(),
   paymentMethod: z.enum(['full', 'deposit']),
 })
 
@@ -448,8 +479,8 @@ export async function createPendingBookingPreference(
     // Get service AND business data in one query
     const { data: service, error: serviceError } = await supabase
       .from('services')
-      .select('id, name, price, business_id, businesses!inner(deposit_percentage, name, slug)')
-      .eq('id', bookingData.serviceId)
+      .select('id, name, price, duration_minutes, business_id, businesses!inner(deposit_percentage, name, slug)')
+      .eq('id', validationResult.data.serviceId)
       .single()
 
     if (serviceError || !service) {
@@ -472,17 +503,31 @@ export async function createPendingBookingPreference(
       throw new Error('Configuración de depósito inválida')
     }
 
-    // CRITICAL: Recalculate payment amount server-side (NEVER trust client input)
-    const servicePrice = service.price
-    const addonsTotal = (bookingData.addons || []).reduce((sum, addon) => sum + addon.price, 0)
-    const totalPrice = servicePrice + addonsTotal
+    // CRITICAL: everything that affects money/agenda is derived from the DB (NEVER trust client input)
+    // Service client only after the Zod validation above; add-ons are read by id, client prices ignored.
+    const serviceSupabase = createServiceClient()
+    const addons = await resolveAddons(serviceSupabase, businessId, validationResult.data.addonIds)
+    const durationMinutes = totalDurationMinutes(service.duration_minutes, addons)
+    const endTimeISO = computeEndTime(validationResult.data.startTime, durationMinutes)
 
-    let serverCalculatedAmount: number
-    if (bookingData.paymentMethod === 'full') {
-      serverCalculatedAmount = totalPrice
-    } else {
-      serverCalculatedAmount = Math.round(totalPrice * depositPercentage / 100)
+    if (new Date(validationResult.data.startTime) < new Date(Date.now() - 60000)) {
+      return { success: false, error: 'No se pueden crear turnos en el pasado' }
     }
+
+    await assertSlotAvailable(supabase, {
+      serviceId: validationResult.data.serviceId,
+      businessId,
+      startISO: validationResult.data.startTime,
+      durationMinutes,
+      teamMemberId: validationResult.data.teamMemberId,
+    })
+
+    const totalPrice = sumTotalPrice(service.price, addons)
+    const serverCalculatedAmount = computePaymentAmount(
+      totalPrice,
+      validationResult.data.paymentMethod,
+      business.deposit_percentage
+    )
 
     // Validate calculated amount is within limits
     if (serverCalculatedAmount < PAYMENT_LIMITS.MIN_AMOUNT_ARS ||
@@ -493,25 +538,8 @@ export async function createPendingBookingPreference(
       }
     }
 
-    // Verify client-provided amount matches server calculation (tolerance: 1 ARS for rounding)
-    if (Math.abs(bookingData.paymentAmount - serverCalculatedAmount) > 1) {
-      console.error('Payment amount mismatch:', {
-        client: bookingData.paymentAmount,
-        server: serverCalculatedAmount,
-        service: servicePrice,
-        addons: addonsTotal,
-        method: bookingData.paymentMethod,
-        depositPct: depositPercentage
-      })
-      return {
-        success: false,
-        error: 'Monto de pago inválido. Por favor recarga la página.'
-      }
-    }
-
     // Get MP integration — use service client because this is called from
     // the public booking page where the user is not authenticated
-    const serviceSupabase = createServiceClient()
     const { data: mpIntegration } = await serviceSupabase
       .from('mp_integrations')
       .select('access_token')
@@ -531,15 +559,15 @@ export async function createPendingBookingPreference(
       .insert({
         id: pendingBookingId,
         business_id: businessId,
-        service_id: bookingData.serviceId,
-        start_time: bookingData.startTime,
-        end_time: bookingData.endTime,
-        client_name: bookingData.clientName,
-        client_phone: bookingData.clientPhone,
-        client_email: bookingData.clientEmail || null,
-        addons: bookingData.addons || [],
+        service_id: validationResult.data.serviceId,
+        start_time: validationResult.data.startTime,
+        end_time: endTimeISO,
+        client_name: validationResult.data.clientName,
+        client_phone: validationResult.data.clientPhone,
+        client_email: validationResult.data.clientEmail || null,
+        addons,
         payment_amount: serverCalculatedAmount, // Use server-calculated amount
-        payment_method: bookingData.paymentMethod,
+        payment_method: validationResult.data.paymentMethod,
         status: 'pending_payment',
         created_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 min expiry
@@ -597,7 +625,10 @@ export async function createPendingBookingPreference(
     if (isMPTokenInvalid(error)) {
       return { success: false, error: MP_TOKEN_INVALID_ERROR }
     }
-    return { success: false, error: error instanceof Error ? error.message : 'Error creating pending booking preference' }
+    if (error instanceof BookingValidationError) {
+      return { success: false, error: error.message }
+    }
+    return { success: false, error: 'No pudimos iniciar el pago. Intentá de nuevo.' }
   }
 }
 
