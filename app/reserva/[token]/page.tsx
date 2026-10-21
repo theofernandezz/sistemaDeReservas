@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Clock, CheckCircle2, XCircle, AlertCircle, Ban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -8,14 +8,19 @@ import { ProofUploadCard } from '@/components/booking/proof-upload-card'
 import { BusinessSettings } from '@/types/database.types'
 import { cn } from '@/lib/utils'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 interface ReservaPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ token: string }>
 }
 
 export default async function ReservaPage({ params }: ReservaPageProps) {
-  const { id } = await params
+  const { token } = await params
 
-  const result = await getPublicAppointmentWithProof(id)
+  // Old email links carried the bare appointment id: send them to the resend page
+  if (UUID_REGEX.test(token)) redirect(`/cancel/${token}`)
+
+  const result = await getPublicAppointmentWithProof(token)
 
   if (!result.success || !result.data) {
     notFound()
@@ -167,7 +172,7 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
               </div>
               <div className="animate-in fade-in-from-bottom-2 duration-500 delay-700 fill-mode-both">
                 <ProofUploadCard
-                  appointmentId={appointment.id}
+                  token={token}
                   currentProofUrl={appointment.proof_url}
                 />
               </div>
@@ -208,7 +213,7 @@ export default async function ReservaPage({ params }: ReservaPageProps) {
                 </div>
               )}
               <ProofUploadCard
-                appointmentId={appointment.id}
+                token={token}
                 currentProofUrl={null}
               />
             </div>
