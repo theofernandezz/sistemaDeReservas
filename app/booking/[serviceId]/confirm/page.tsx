@@ -217,18 +217,14 @@ export default function CompactConfirmPage() {
     setLoading(true)
 
     const startDateTime = `${date}T${time}:00`
-    const endDateTime = new Date(startDateTime)
-    endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
 
     const result = await createAppointment({
       service_id: serviceId,
       start_time: new Date(startDateTime).toISOString(),
-      end_time: endDateTime.toISOString(),
       client_name: name.trim(),
       client_email: email.trim(),
       client_phone: phone.trim(),
-      status: 'pending',
-      addons: selectedAddons
+      addon_ids: selectedAddons.map((a) => a.id)
     })
 
     if (!result.success || !result.data) {
@@ -243,7 +239,7 @@ export default function CompactConfirmPage() {
         setLoading(false)
         return
       }
-      const preferenceResult = await createBookingPaymentPreference(result.data.manage_token, amountToPay)
+      const preferenceResult = await createBookingPaymentPreference(result.data.manage_token, paymentMethod)
 
       if (preferenceResult.success && preferenceResult.data?.initPoint) {
         // eslint-disable-next-line react-hooks/immutability -- External redirect to payment gateway

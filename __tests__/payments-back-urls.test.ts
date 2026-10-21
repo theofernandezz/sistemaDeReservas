@@ -58,7 +58,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
   it('carry a signed manage token for the appointment (id + current version), not the bare id', async () => {
     setup(5)
 
-    const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 5))
+    const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 5), 'deposit')
 
     expect(result.success).toBe(true)
     const backUrls = vi.mocked(createPaymentPreference).mock.calls[0][3]
@@ -76,7 +76,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
   it('falls back to version 1 for rows without manage_token_version', async () => {
     setup(undefined)
 
-    await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1))
+    await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1), 'deposit')
 
     const backUrls = vi.mocked(createPaymentPreference).mock.calls[0][3]
     expect(backUrls.success).toContain(`token=${buildManageToken(APPOINTMENT_ID, 1)}`)
@@ -87,7 +87,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
     delete process.env.MANAGE_LINK_SECRET
     setup(1)
 
-    const result = await createBookingPaymentPreference(token)
+    const result = await createBookingPaymentPreference(token, 'deposit')
 
     expect(result.success).toBe(false)
     expect(createPaymentPreference).not.toHaveBeenCalled()
@@ -102,7 +102,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
       ['an empty string', ''],
     ])('rejects %s without touching the DB or MP', async (_label, value) => {
       setup(1)
-      const result = await createBookingPaymentPreference(value)
+      const result = await createBookingPaymentPreference(value, 'deposit')
       expect(result.success).toBe(false)
       expect(createClient).not.toHaveBeenCalled()
       expect(createPaymentPreference).not.toHaveBeenCalled()
@@ -110,7 +110,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
 
     it('rejects a token of an outdated version', async () => {
       setup(2)
-      const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1))
+      const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1), 'deposit')
       expect(result.success).toBe(false)
       expect(createPaymentPreference).not.toHaveBeenCalled()
     })
@@ -118,14 +118,14 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
     it('rejects a token whose MAC belongs to another appointment', async () => {
       setup(1)
       const grafted = `${APPOINTMENT_ID}.${buildManageToken(OTHER_ID, 1).split('.')[1]}`
-      const result = await createBookingPaymentPreference(grafted)
+      const result = await createBookingPaymentPreference(grafted, 'deposit')
       expect(result.success).toBe(false)
       expect(createPaymentPreference).not.toHaveBeenCalled()
     })
 
     it('never echoes a token for an id it was not given a valid token for', async () => {
       setup(1)
-      const result = await createBookingPaymentPreference(APPOINTMENT_ID)
+      const result = await createBookingPaymentPreference(APPOINTMENT_ID, 'deposit')
       expect(JSON.stringify(result)).not.toContain(buildManageToken(APPOINTMENT_ID, 1))
     })
   })
@@ -133,7 +133,7 @@ describe('createBookingPaymentPreference - MP back_urls', () => {
   it('reads and updates appointments with the service client, never the anon/session one (RLS closed by 025)', async () => {
     setup(1)
 
-    const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1))
+    const result = await createBookingPaymentPreference(buildManageToken(APPOINTMENT_ID, 1), 'deposit')
 
     expect(result.success).toBe(true)
     expect(anonClient.from.mock.calls.map((c) => c[0])).not.toContain('appointments')

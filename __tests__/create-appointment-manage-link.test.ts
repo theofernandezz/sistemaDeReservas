@@ -12,6 +12,15 @@ vi.mock('@/lib/email', () => ({
   sendManualTransferPendingEmail: vi.fn().mockResolvedValue({ success: true }),
 }))
 vi.mock('@/lib/google-calendar', () => ({ createCalendarEvent: vi.fn() }))
+// Slot validation has its own tests (create-appointment-server-validation.test.ts): every slot is open here
+vi.mock('@/lib/availability', () => ({
+  computeAvailableSlots: vi.fn(async () =>
+    Array.from({ length: 24 * 60 }, (_, i) => ({
+      time: `${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+      available: true,
+    }))
+  ),
+}))
 
 import { createClient, createServiceClient } from '@/utils/supabase/server'
 import { sendClientConfirmation, sendManualTransferPendingEmail, sendNewAppointmentNotification } from '@/lib/email'
@@ -24,7 +33,12 @@ const MANAGE_SECRET = 'test-secret-test-secret-test-secret-0123456789'
 
 type Result = { data: unknown; error: unknown }
 
-function setupDb(createdVersion: number | undefined) {
+const TRANSFER_SETTINGS = {
+  paymentFlowMode: 'manual_transfer',
+  manualTransfer: { enabled: true, alias: 'a.b.c', cvu: '0000000000000000000000', accountHolder: 'Ana' },
+}
+
+function setupDb(createdVersion: number | undefined, businessSettings: Record<string, unknown> = {}) {
   const inserted: Record<string, unknown>[] = []
   const createdRow = {
     id: CREATED_ID,
@@ -51,6 +65,7 @@ function setupDb(createdVersion: number | undefined) {
             error: null,
           })
         }
+        if (name === 'businesses') return Promise.resolve({ data: { settings: businessSettings }, error: null })
         if (name === 'appointments' && op === 'insert') return Promise.resolve({ data: createdRow, error: null })
         return Promise.resolve({ data: null, error: null })
       }),
@@ -61,7 +76,10 @@ function setupDb(createdVersion: number | undefined) {
     return q
   }
 
-  vi.mocked(createClient).mockResolvedValue({ from: (name: string) => table(name) } as unknown as Awaited<
+  vi.mocked(createClient).mockResolvedValue({
+    from: (name: string) => table(name),
+    auth: { getUser: async () => ({ data: { user: null } }) },
+  } as unknown as Awaited<
     ReturnType<typeof createClient>
   >)
   vi.mocked(createServiceClient).mockReturnValue({ from: (name: string) => table(name) } as unknown as ReturnType<
@@ -75,6 +93,7 @@ const input = (overrides: Record<string, unknown> = {}) => ({
   service_id: SERVICE_ID,
   start_time: futureStart().toISOString(),
   end_time: new Date(futureStart().getTime() + 60 * 60 * 1000).toISOString(),
+  team_member_id: '99999999-9999-4999-8999-999999999999',
   client_name: 'Ana',
   client_phone: '1122334455',
   client_email: 'ana@example.com',
@@ -104,9 +123,9 @@ describe('createAppointment - client manage link', () => {
   })
 
   it('uses the same token in the manual-transfer pending email', async () => {
-    setupDb(1)
+    setupDb(1, TRANSFER_SETTINGS)
 
-    const result = await createAppointment(input({ payment_status: 'pending' }))
+    const result = await createAppointment(input())
 
     expect(result.success).toBe(true)
     expect(sendClientConfirmation).not.toHaveBeenCalled()

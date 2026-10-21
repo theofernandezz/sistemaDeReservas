@@ -15,6 +15,11 @@ vi.mock('@/lib/email', () => ({
   sendManualTransferPendingEmail: vi.fn().mockResolvedValue({ success: true }),
 }))
 vi.mock('@/lib/google-calendar', () => ({ createCalendarEvent: vi.fn() }))
+// Real implementation by default; the createAppointment test overrides it once (slot rules are tested elsewhere)
+vi.mock('@/lib/availability', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/availability')>()
+  return { ...actual, computeAvailableSlots: vi.fn(actual.computeAvailableSlots) }
+})
 
 import { NextRequest } from 'next/server'
 import { createClient, createServiceClient } from '@/utils/supabase/server'
@@ -116,14 +121,19 @@ describe('createAppointment does not touch appointments with the anon client', (
       }
       return q
     }
-    vi.mocked(createClient).mockResolvedValue({ from: make(anonTables) } as unknown as Awaited<ReturnType<typeof createClient>>)
+    vi.mocked(createClient).mockResolvedValue({
+      from: make(anonTables),
+      auth: { getUser: async () => ({ data: { user: null } }) },
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
     vi.mocked(createServiceClient).mockReturnValue({ from: make(serviceTables) } as unknown as ReturnType<typeof createServiceClient>)
 
     const start = new Date(Date.now() + 72 * 3600 * 1000)
+    const arTime = new Date(start.getTime() - 3 * 3600 * 1000).toISOString().slice(11, 16)
+    vi.mocked(computeAvailableSlots).mockResolvedValueOnce([{ time: arTime, available: true }])
     const result = await createAppointment({
       service_id: SERVICE_ID,
       start_time: start.toISOString(),
-      end_time: new Date(start.getTime() + 3600 * 1000).toISOString(),
+      team_member_id: '99999999-9999-4999-8999-999999999999',
       client_name: 'Ana',
       client_phone: '1122334455',
       client_email: 'ana@example.com',

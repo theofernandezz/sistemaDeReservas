@@ -7,7 +7,6 @@ import {
   ChevronDown, ChevronUp, Check, Landmark, User, Mail, Phone
 } from 'lucide-react'
 import { createAppointment } from '@/app/actions'
-import { getActiveTeamMembersForBusiness } from '@/app/actions/team'
 import { createPendingBookingPreference } from '@/app/actions/payments'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
@@ -190,30 +189,18 @@ export default function ConfirmForm({
 
     setLoading(true)
 
-    let resolvedTeamMemberId: string | null = specificMemberId
-    if (!resolvedTeamMemberId && service.business_id) {
-      const membersResult = await getActiveTeamMembersForBusiness(service.business_id)
-      if (membersResult.success && membersResult.data && membersResult.data.length > 0) {
-        resolvedTeamMemberId = membersResult.data[0].id
-      }
-    }
-
     const startDateTime = `${date}T${time}:00`
-    const endDateTime = new Date(startDateTime)
-    endDateTime.setMinutes(endDateTime.getMinutes() + totalDuration)
+    const addonIds = selectedAddons.map((a) => a.id)
 
     if (isManualTransferFlow) {
       const result = await createAppointment({
         service_id: serviceId,
         start_time: new Date(startDateTime).toISOString(),
-        end_time: endDateTime.toISOString(),
         client_name: name.trim(),
         client_phone: phone.trim(),
         client_email: email.trim(),
-        status: 'confirmed',
-        payment_status: 'pending',
-        addons: selectedAddons,
-        team_member_id: resolvedTeamMemberId,
+        addon_ids: addonIds,
+        team_member_id: specificMemberId,
       })
 
       if (!result.success || !result.data) {
@@ -232,12 +219,11 @@ export default function ConfirmForm({
       const preferenceResult = await createPendingBookingPreference({
         serviceId,
         startTime: new Date(startDateTime).toISOString(),
-        endTime: endDateTime.toISOString(),
         clientName: name.trim(),
         clientPhone: phone.trim(),
         clientEmail: email.trim(),
-        addons: selectedAddons,
-        paymentAmount: amountToPay,
+        addonIds,
+        teamMemberId: specificMemberId,
         paymentMethod,
       })
 
@@ -258,13 +244,11 @@ export default function ConfirmForm({
     const result = await createAppointment({
       service_id: serviceId,
       start_time: new Date(startDateTime).toISOString(),
-      end_time: endDateTime.toISOString(),
       client_name: name.trim(),
       client_phone: phone.trim(),
       client_email: email.trim(),
-      status: 'confirmed',
-      addons: selectedAddons,
-      team_member_id: resolvedTeamMemberId,
+      addon_ids: addonIds,
+      team_member_id: specificMemberId,
     })
 
     if (!result.success || !result.data) {

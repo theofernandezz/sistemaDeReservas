@@ -21,26 +21,15 @@ export const PAYMENT_LIMITS = {
 export const createAppointmentSchema = z.object({
   service_id: z.string().uuid('ID de servicio inválido'),
   start_time: z.string().datetime('Fecha de inicio inválida'),
-  end_time: z.string().datetime('Fecha de fin inválida'),
+  // Ignored by the server (end_time = start + service + add-ons from DB); accepted so old clients don't break
+  end_time: z.string().datetime('Fecha de fin inválida').optional(),
   client_name: z.string().min(1, 'Nombre del cliente requerido').max(100, 'Nombre demasiado largo'),
   client_phone: z.string().max(20, 'Teléfono demasiado largo').optional().nullable(),
   client_email: z.string().email('Email inválido').max(100, 'Email demasiado largo').optional().nullable(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'completed']).optional(),
   payment_status: z.enum(['pending', 'pending_confirmation', 'paid', 'rejected']).optional().nullable(),
-  addons: z.array(z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    price: z.number().nonnegative(),
-    duration_minutes: z.number().nonnegative(),
-  })).optional(),
+  addon_ids: z.array(z.string().uuid('ID de extra inválido')).max(20, 'Demasiados extras').optional(),
   team_member_id: z.string().uuid('ID de miembro inválido').optional().nullable(),
-}).refine(data => {
-  const start = new Date(data.start_time)
-  const end = new Date(data.end_time)
-  return start < end
-}, {
-  message: 'La hora de inicio debe ser anterior a la hora de fin',
-  path: ['start_time'],
 })
 
 // ============================================================================
