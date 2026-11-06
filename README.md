@@ -1,213 +1,142 @@
-# 📅 Turnero SaaS para Profesionales
+# Buki
 
-Aplicación web multi-tenant diseñada para profesionales y pequeños negocios que necesitan gestionar turnos de forma automatizada, reemplazando flujos manuales como Excel o WhatsApp.
+Sistema de turnos online para profesionales y pequeños negocios que hoy organizan su agenda por WhatsApp o en una planilla. Cada negocio tiene su página pública de reservas, su panel de gestión y cobra señas por MercadoPago o transferencia.
 
-👉 **Demo en vivo:[https://buki.devora.lat/]
-Usuario demo: maelcum69@gmail.com
-Password demo: PyH*iS9pu-*q3Ha
+Está en producción y lo usa un negocio real.
 
----
+**Demo:** https://buki.devora.lat/  
+Usuario: maelcum69@gmail.com  
+Contraseña: PyH*iS9pu-*q3Ha
 
-## 🚀 Problema que resuelve
+## Qué resuelve
 
-Muchos profesionales gestionan turnos de forma manual, lo que genera:
+Llevar los turnos a mano genera reservas superpuestas, mucho ida y vuelta para coordinar horarios y clientes que no se presentan. Con Buki el cliente elige un horario libre, paga la seña si el negocio la pide y recibe la confirmación y un recordatorio por email. El profesional ve todo en un calendario.
 
-* Doble reserva de horarios
-* Pérdida de tiempo en coordinación
-* Mala experiencia para el cliente
-* Falta de control sobre disponibilidad
+## Funcionalidades
 
-Este sistema permite:
+**Reservas**
+- Página pública por negocio (`/[slug]`) donde el cliente elige servicio, extras y horario
+- Horarios disponibles calculados a partir del horario de atención, la duración del servicio y los turnos ya tomados
+- Bloqueos de agenda (vacaciones, almuerzo, etc.)
+- Link privado para que el cliente vea o cancele su turno sin crear una cuenta
 
-* Reservas online en tiempo real
-* Gestión automática de disponibilidad
-* Pagos anticipados
-* Centralización de clientes y servicios
+**Panel del negocio**
+- Calendario con vista de día, semana y mes (FullCalendar)
+- Servicios con duración, precio y extras opcionales
+- Confirmación y cancelación de turnos e historial por cliente
+- Sincronización de turnos con Google Calendar
 
----
+**Pagos**
+- Cada negocio conecta su propia cuenta de MercadoPago (OAuth) y cobra la seña o el total al reservar
+- Webhook de MercadoPago para confirmar los pagos
+- Alternativa por transferencia: el cliente sube el comprobante y el negocio lo aprueba
 
-## 📊 Uso real
+**Notificaciones y tareas programadas**
+- Emails de confirmación y cancelación con Resend
+- Cron diario que manda recordatorios de los turnos próximos
+- Cron diario que limpia turnos cancelados y completados viejos
 
-* 1 negocio activo utilizando el sistema
-* Implementado en entorno real (no solo demo)
-* Validación práctica del flujo de reservas
+**Administración**
+- Onboarding guiado para dar de alta un negocio nuevo
+- Panel de super admin para crear y editar negocios
 
+## Stack
 
----
+- Next.js 16 (App Router, Server Actions), React 19 y TypeScript
+- Supabase: PostgreSQL, Auth y Storage
+- Tailwind CSS v4, Radix UI y Framer Motion
+- Zod para validar datos
+- MercadoPago, Resend y Google Calendar API
+- Vitest para los tests y GitHub Actions para CI
+- Deploy en Vercel, con Vercel Cron
 
-## ✨ Funcionalidades principales
+## Decisiones técnicas
 
-### 🏢 Multi-Tenant
+- **Multi-tenant en una sola instancia.** Cada negocio se identifica por su `slug` y todas las tablas están asociadas a un `business_id`, así los datos de un negocio quedan separados de los de otro.
+- **Server Actions en lugar de una API REST.** La lógica de negocio corre en el servidor sin una capa de endpoints intermedia. Solo hay Route Handlers donde hace falta una URL externa: webhooks, callbacks de OAuth y crons.
+- **Links de turno sin estado.** El link que recibe el cliente lleva un token firmado con HMAC-SHA256, así que no hace falta guardarlo en la base. Para invalidar un link se incrementa una versión en el turno; para invalidarlos todos, se rota el secreto.
+- **Reglas de reserva separadas de la UI.** La disponibilidad y las reglas de reserva y pago están en funciones puras dentro de `lib/`, cubiertas por tests.
 
-* Aislamiento de datos por negocio
-* Página pública por usuario (`/[slug]`)
-* Panel independiente por cliente
+## Calidad
 
-### 📆 Gestión de Turnos
+- Tests con Vitest de disponibilidad, reglas de turnos, links de gestión, validación de reservas, escape de HTML en emails y el webhook de MercadoPago
+- CI en GitHub Actions que corre lint, type-check, build y tests en cada push y pull request a `main`
+- Endpoint `/api/health` que verifica la conexión a la base y las variables de entorno
 
-* Calendario con vistas (día / semana / mes)
-* Generación automática de slots disponibles
-* Bloqueo de horarios (vacaciones, almuerzos, etc.)
-* Confirmación y cancelación de citas
-
-### 💼 Servicios
-
-* CRUD completo
-* Configuración de duración y precio
-* Add-ons opcionales
-* Activación/desactivación dinámica
-
-### 👥 Clientes
-
-* Registro de clientes
-* Historial de citas
-* Notificaciones por email
-
-### 💳 Pagos
-
-* Integración con MercadoPago
-* Pagos anticipados o completos
-* Registro de transacciones
-
-### 🔐 Autenticación
-
-* Login / Signup con email
-* Protección de rutas
-* Gestión de sesión segura
-
----
-
-## 🧠 Decisiones Técnicas
-
-* **Arquitectura multi-tenant:** separación lógica por `slug` para soportar múltiples negocios en una sola instancia
-* **Supabase (PostgreSQL):** elegido para acelerar desarrollo sin sacrificar relaciones complejas entre entidades
-* **Server Actions (Next.js):** simplificación del backend evitando una capa REST innecesaria
-* **TypeScript:** tipado fuerte para reducir errores en runtime
-* **FullCalendar:** manejo eficiente de visualización de turnos
-
----
-
-## 🛠️ Stack Tecnológico
-
-* **Frontend / Backend:** Next.js (App Router)
-* **Lenguaje:** TypeScript
-* **Base de Datos:** PostgreSQL (Supabase)
-* **Autenticación:** Supabase Auth
-* **UI:** Tailwind CSS + shadcn/ui
-* **Calendario:** FullCalendar
-* **Pagos:** MercadoPago
-* **Emails:** Resend
-
----
-
-## 🧩 Arquitectura (Resumen)
-
-* Aplicación fullstack con Next.js
-
-* Server Actions para lógica de negocio
-
-* Base de datos relacional con entidades principales:
-
-  * negocios
-  * servicios
-  * clientes
-  * turnos
-
-* Separación de dominios:
-
-  * panel administrativo
-  * flujo público de reservas
-
----
-
-## 📁 Estructura del Proyecto
+## Estructura
 
 ```
 app/
- ├── (marketing)/      # Landing, auth
- ├── [slug]/           # Página pública de reservas
- ├── dashboard/        # Panel del usuario
- ├── admin/            # Gestión interna
- ├── api/              # Webhooks / integraciones
- └── actions.ts        # Server Actions
-
-components/
- ├── booking/
- ├── dashboard/
- ├── admin/
- └── ui/
-
-lib/                   # Configuración y helpers
-supabase/              # Migraciones
-types/                 # Tipos TypeScript
+  (marketing)/   landing
+  (auth)/        login y registro
+  [slug]/        página pública de reservas del negocio
+  turno/[token]/ gestión del turno por parte del cliente
+  dashboard/     panel del negocio
+  onboarding/    alta de un negocio nuevo
+  super-admin/   gestión de todos los negocios
+  api/           webhooks, OAuth (MercadoPago, Google), crons, uploads
+components/      componentes por área (booking, dashboard, ui, ...)
+lib/             reglas de negocio, disponibilidad, emails, integraciones
+supabase/        migraciones SQL
+__tests__/       tests
 ```
 
----
+## Cómo correrlo
 
-## ⚙️ Instalación
-
-### Prerrequisitos
-
-* Node.js 16+
-* pnpm o npm
-* Cuenta en Supabase
-
-### Setup
+Requisitos: Node.js 20 o superior, pnpm y un proyecto de Supabase.
 
 ```bash
-git clone https://github.com/tu-usuario/sistemadereservas.git
-cd sistemadereservas
+git clone https://github.com/theofernandezz/sistemaDeReservas.git
+cd sistemaDeReservas
 pnpm install
 ```
 
-### Variables de entorno
+Aplicá las migraciones de `supabase/migrations` en tu proyecto de Supabase y creá un archivo `.env.local`:
 
 ```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
-MP_ACCESS_TOKEN=
+# MercadoPago (OAuth para conectar la cuenta de cada negocio)
+MERCADOPAGO_CLIENT_ID=
+MERCADOPAGO_CLIENT_SECRET=
+MERCADOPAGO_REDIRECT_URI=
+MP_WEBHOOK_SECRET=
+
+# Emails
 RESEND_API_KEY=
+RESEND_FROM_MAIL=
+ADMIN_MAIL=
 
-# Secreto (>= 32 chars) para firmar los links /turno/{token} de los clientes.
-# Rotarlo invalida todos los links. Generar con: openssl rand -base64 48
+# Google Calendar (opcional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+# Protege los endpoints de cron
+CRON_SECRET=
+
+# Secreto de al menos 32 caracteres para firmar los links /turno/{token}.
+# Rotarlo invalida todos los links. Se puede generar con: openssl rand -base64 48
 MANAGE_LINK_SECRET=
 ```
 
-### Ejecutar
+Después:
 
 ```bash
-pnpm dev
+pnpm dev    # servidor de desarrollo en http://localhost:3000
+pnpm test   # tests
 ```
 
----
+## Próximos pasos
 
-## 🔄 Flujo de Usuario
+- Notificaciones push
+- Reportes y métricas para el negocio
+- Varios usuarios por negocio
 
-1. Registro del profesional
-2. Configuración del negocio (slug, horarios)
-3. Creación de servicios
-4. Publicación de página de reservas
-5. Cliente agenda turno
-6. Gestión desde dashboard
-
----
-
-## 📌 Posibles mejoras (roadmap)
-
-* Notificaciones push
-* Integración con Google Calendar
-* Reportes y métricas de negocio
-* Multi-usuario por negocio
-
----
-
-## 🤝 Conclusión
-
-Este proyecto no es solo un ejercicio técnico, sino una solución funcional validada en un caso real, enfocada en resolver un problema común de gestión de turnos en pequeños negocios.
-
----
-
-## 📄 Licencia
+## Licencia
 
 Proyecto privado.
